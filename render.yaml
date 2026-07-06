@@ -1,0 +1,38 @@
+# Render Blueprint — deploys the app as a single web service (free plan).
+# The database lives on TiDB Cloud Serverless (free, MySQL-compatible);
+# set DATABASE_URL and the other secrets in the Render dashboard.
+services:
+  - type: web
+    name: voice-mining
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install && pnpm db:push && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-4-8
+      - key: SERP_API_KEY
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: NEWS_API_KEY
+        sync: false
+      - key: TWITTER_BEARER_TOKEN
+        sync: false
+      - key: CRON_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
