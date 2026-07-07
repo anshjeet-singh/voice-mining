@@ -45,11 +45,14 @@ export default function NewSearch() {
     .filter(Boolean)
     .slice(0, 10);
 
-  const competitorList = competitorsText
-    .split("\n")
-    .map((u) => u.trim())
-    .filter(Boolean)
-    .slice(0, 10);
+  // Loose count of links in the paste — server does the real extraction.
+  // Users paste whole Notion blocks, not clean URL lists.
+  const detectedUrls = Array.from(
+    new Set([
+      ...(competitorsText.match(/https?:\/\/[^\s)\]"'<>*]+/g) ?? []),
+      ...(competitorsText.match(/(?:^|[\s(])((?:www\.)?(?:instagram|facebook|youtube|skool|tiktok|linkedin)\.com\/[^\s)\]"'<>*]+)/gi) ?? []),
+    ].map((u) => u.trim().replace(/^https?:\/\/(www\.)?/, "").toLowerCase()))
+  ).slice(0, 10);
 
   // Debounce the first keyword so suggestions don't fire on every keystroke
   useEffect(() => {
@@ -114,7 +117,7 @@ export default function NewSearch() {
       keywords: keywordList,
       platforms: selectedPlatforms,
       brandVoice: context.trim() || undefined,
-      competitorUrls: competitorList.length ? competitorList : undefined,
+      competitors: competitorsText.trim() || undefined,
     });
   };
 
@@ -211,21 +214,21 @@ export default function NewSearch() {
                 Competitors{" "}
                 <span className="text-muted-foreground font-normal">(optional)</span>
               </Label>
-              {competitorList.length > 0 && (
-                <span className="text-xs text-muted-foreground">{competitorList.length} / 10</span>
+              {detectedUrls.length > 0 && (
+                <span className="text-xs text-emerald-400">{detectedUrls.length} link{detectedUrls.length === 1 ? "" : "s"} detected</span>
               )}
             </div>
             <Textarea
               id="competitors"
-              placeholder={"Paste competitor links, one per line: Instagram, Facebook, Skool, or website\nhttps://instagram.com/competitor\nhttps://www.skool.com/their-community"}
+              placeholder={"Paste anything about your competitors: links, notes, whole docs.\nInstagram, YouTube, Facebook, Skool, or website links get pulled out automatically, and your notes make the intel sharper."}
               value={competitorsText}
               onChange={(e) => setCompetitorsText(e.target.value)}
               disabled={isLoading}
-              rows={3}
+              rows={4}
               className="bg-input border-border/60 text-foreground placeholder:text-muted-foreground/40 focus:border-primary/50 resize-none text-sm leading-relaxed"
             />
             <p className="text-xs text-muted-foreground">
-              We'll analyse their pages directly and go deeper in your Competitor Intel.
+              Doesn't need to be tidy. We find the links, scrape their pages, and use your notes in Competitor Intel.
             </p>
           </div>
 
@@ -286,8 +289,8 @@ export default function NewSearch() {
                       {keywordList.length === 1 ? `"${keywordList[0]}"` : `${keywordList.length} keywords`}
                     </span>{" "}
                     across <span className="text-foreground font-medium">{selectedPlatforms.length} platforms</span> into one report.
-                    {competitorList.length > 0 && (
-                      <> Plus direct analysis of <span className="text-foreground font-medium">{competitorList.length} competitor {competitorList.length === 1 ? "page" : "pages"}</span>.</>
+                    {detectedUrls.length > 0 && (
+                      <> Plus direct analysis of <span className="text-foreground font-medium">{detectedUrls.length} competitor {detectedUrls.length === 1 ? "page" : "pages"}</span>.</>
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">

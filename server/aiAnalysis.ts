@@ -39,6 +39,37 @@ function extractContent(raw: string | unknown[]): string {
   return "{}";
 }
 
+/**
+ * Parse LLM JSON output with repair fallbacks. Models occasionally emit
+ * trailing commas, smart quotes, or prose around the object — a raw
+ * JSON.parse throw here used to kill the entire report pipeline.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseLLMJson(content: string): Record<string, any> {
+  try {
+    return JSON.parse(content);
+  } catch {
+    // Fall through to repairs
+  }
+  let repaired = content
+    // cut anything before the first { and after the last }
+    .slice(content.indexOf("{"), content.lastIndexOf("}") + 1)
+    // smart quotes → straight quotes (only when used as JSON string delimiters)
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    // trailing commas before } or ]
+    .replace(/,\s*([}\]])/g, "$1")
+    // unescaped control characters inside strings (keep \n for the last-resort pass)
+    .replace(/[\u0000-\u0009\u000B-\u001F]/g, " ");
+  try {
+    return JSON.parse(repaired);
+  } catch {
+    // Last resort: escape literal newlines that appear inside string values
+    repaired = repaired.replace(/("(?:[^"\\]|\\.)*)\n((?:[^"\\]|\\.)*")/g, "$1\\n$2");
+    return JSON.parse(repaired);
+  }
+}
+
 // Strip em-dashes from AI output
 function stripEmDashes(text: string): string {
   return text.replace(/\s*—\s*/g, ". ").replace(/\s*–\s*/g, ". ");
@@ -229,7 +260,7 @@ export async function runAnalysis(
   });
 
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
-  const parsed = JSON.parse(content);
+  const parsed = parseLLMJson(content);
 
   return stripEmDashesDeep({
     painPoints: coerceInsights(parsed.painPoints),
@@ -342,7 +373,7 @@ Return JSON:
   });
 
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
-  return stripEmDashesDeep(JSON.parse(content));
+  return stripEmDashesDeep(parseLLMJson(content) as unknown as DeepMarketIntelligence);
 }
 
 // ─── Viral Hooks (trained on A-Z + Hormozi frameworks) ───────────────────────
@@ -403,7 +434,7 @@ Return JSON: {"hooks": [{"category": "short_form_video", "hook": "...", "hookTyp
   });
 
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
-  const parsed = JSON.parse(content);
+  const parsed = parseLLMJson(content);
   if (!Array.isArray(parsed.hooks)) return [];
 
   const validCategories = new Set(["short_form_video", "carousel", "email_subject", "ad_headline"]);
@@ -526,7 +557,7 @@ Return JSON:
   });
 
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
-  const parsed = JSON.parse(content);
+  const parsed = parseLLMJson(content);
   const ads: AdCopyIdea[] = Array.isArray(parsed.ads) ? parsed.ads : [];
   return stripEmDashesDeep(
     ads.map((ad) => ({
@@ -642,7 +673,7 @@ Return JSON:
   });
 
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
-  const parsed = JSON.parse(content);
+  const parsed = parseLLMJson(content);
   const rawPosts: SkoolPostWithDMWorkflow[] = Array.isArray(parsed.posts) ? parsed.posts : [];
 
   // Enforce the contract regardless of what the model returns: no markdown
@@ -725,7 +756,7 @@ Return JSON:
   });
 
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
-  const parsed = JSON.parse(content);
+  const parsed = parseLLMJson(content);
   const ideas: YouTubeIdea[] = Array.isArray(parsed.ideas) ? parsed.ideas : [];
   return stripEmDashesDeep(
     ideas.map((idea) => ({
@@ -825,7 +856,7 @@ Return JSON:
   });
 
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
-  const parsed = JSON.parse(content);
+  const parsed = parseLLMJson(content);
   const scripts: TalkingHeadScript[] = Array.isArray(parsed.scripts) ? parsed.scripts : [];
   return stripEmDashesDeep(
     scripts.map((script, i) => ({
@@ -973,7 +1004,7 @@ Return JSON:
   });
 
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
-  const parsed = JSON.parse(content) as EmailSequence;
+  const parsed = parseLLMJson(content) as unknown as EmailSequence;
   if (Array.isArray(parsed.emails)) {
     parsed.emails = parsed.emails.map((email) => ({
       ...email,
@@ -994,16 +1025,21 @@ Return JSON:
 export async function generateCompetitorIntel(
   keyword: string,
   brandVoice?: string,
-  competitorUrls?: string[]
+  competitorUrls?: string[],
+  competitorNotes?: string
 ): Promise<CompetitorIntel | null> {
   const [searchScraped, directScraped] = await Promise.all([
     scrapeCompetitorsForKeyword(keyword),
     competitorUrls?.length ? scrapeCompetitorUrls(competitorUrls) : Promise.resolve(""),
   ]);
   const hasSearchData = searchScraped !== "NO_SCRAPED_DATA";
-  if (!hasSearchData && !directScraped) return null;
+  const notes = competitorNotes?.trim().slice(0, 8000) ?? "";
+  if (!hasSearchData && !directScraped && !notes) return null;
 
   const scraped = [
+    notes
+      ? `── THE USER'S OWN COMPETITOR NOTES (first-hand knowledge — treat as the highest-signal data) ──\n${notes}`
+      : "",
     directScraped
       ? `── DIRECT COMPETITOR PAGES (pasted by the user — analyse these FIRST and in the most depth) ──\n${directScraped}`
       : "",
@@ -1044,7 +1080,8 @@ Return JSON:
 
 Rules:
 - 4-8 competitors, ranked by how prominent they are in the data
-- If DIRECT COMPETITOR PAGES are present, each one MUST appear as its own competitor entry, listed first, with the deepest analysis: quote their actual headline/bio language in "angle", and infer weakness from what their page does NOT address that the market complains about
+- If the USER'S OWN COMPETITOR NOTES name specific competitors, every one of them MUST appear as its own entry, listed first with the deepest analysis. Combine the user's first-hand observations with the scraped page data for these
+- If DIRECT COMPETITOR PAGES are present, each one MUST appear as its own competitor entry with deep analysis: quote their actual headline/bio language in "angle", and infer weakness from what their page does NOT address that the market complains about
 - marketGaps: 3-6 gaps NOBODY in the data is filling, each one line, each ownable by a coach/course creator
 - Weaknesses must be grounded in actual complaint language from the data
 - No em dashes. Use a full stop instead
@@ -1055,7 +1092,7 @@ Rules:
   });
 
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
-  const parsed = JSON.parse(content);
+  const parsed = parseLLMJson(content);
   if (!Array.isArray(parsed.competitors) || parsed.competitors.length === 0) return null;
 
   return stripEmDashesDeep({
@@ -1106,6 +1143,6 @@ Return JSON: {"positioningStatement": "..."}`,
   });
 
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
-  const parsed = JSON.parse(content);
+  const parsed = parseLLMJson(content);
   return stripEmDashes(typeof parsed.positioningStatement === "string" ? parsed.positioningStatement : "");
 }

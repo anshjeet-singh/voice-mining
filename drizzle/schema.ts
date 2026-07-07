@@ -78,9 +78,13 @@ export const miningSearches = mysqlTable("mining_searches", {
   progress: int("progress").default(0).notNull(),
   progressMessage: text("progressMessage"),
   brandVoice: text("brandVoice"),
-  // Competitor URLs (Instagram/Facebook/Skool/website) pasted by the user.
-  // No .default() — TiDB rejects literal DEFAULT on JSON columns.
+  // Competitor URLs extracted from whatever the user pasted (Instagram/
+  // Facebook/Skool/website). No .default() — TiDB rejects literal DEFAULT
+  // on JSON columns.
   competitorUrls: json("competitorUrls").$type<string[]>(),
+  // The raw competitor paste (notes, handles, descriptions) — fed to the
+  // competitor intel generator as context alongside the scraped pages.
+  competitorNotes: text("competitorNotes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -56,10 +56,42 @@ import {
   runAnalysis,
   type AnalysisInput,
 } from "./aiAnalysis";
+import type { DeepMarketIntelligence } from "@shared/reportContent";
 import { fetchRelatedSearches } from "./realScraper";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+
+/**
+ * Pull competitor URLs out of whatever the user pasted — full URLs, bare
+ * domains, Notion exports with markdown around them. Users are not going
+ * to paste a clean one-URL-per-line list.
+ */
+function extractCompetitorUrls(text: string): string[] {
+  const urls = new Set<string>();
+  const clean = (u: string) => u.replace(/[*)\],.'"«»<>]+$/g, "").replace(/\/+$/, "");
+
+  for (const m of Array.from(text.matchAll(/https?:\/\/[^\s)\]"'<>*]+/g))) {
+    urls.add(clean(m[0]));
+  }
+  // Protocol-less links on known platforms (instagram.com/x, www.skool.com/y)
+  for (const m of Array.from(
+    text.matchAll(/(?:^|[\s(])((?:www\.)?(?:instagram|facebook|youtube|skool|tiktok|linkedin)\.com\/[^\s)\]"'<>*]+)/gi)
+  )) {
+    urls.add(clean(`https://${m[1].replace(/^www\./i, "www.")}`));
+  }
+
+  // Dedupe by normalised form (protocol-less matches often duplicate full URLs)
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const u of Array.from(urls)) {
+    const key = u.replace(/^https?:\/\/(www\.)?/, "").toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(u);
+  }
+  return out.slice(0, 10);
+}
 
 /** Report sections that can be regenerated individually. */
 const REPORT_SECTIONS = [
@@ -99,7 +131,8 @@ export const appRouter = router({
           niche: z.string().max(100000).optional(),
           platforms: z.array(z.string()).min(1),
           brandVoice: z.string().max(100000).optional(),
-          competitorUrls: z.array(z.string().max(500)).max(10).optional(),
+          /** Raw competitor paste — URLs get extracted server-side, notes kept as context. */
+          competitors: z.string().max(20000).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -107,10 +140,8 @@ export const appRouter = router({
         if (keywords.length === 0) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "No valid keywords provided" });
         }
-        const competitorUrls = (input.competitorUrls ?? [])
-          .map((u) => u.trim())
-          .filter((u) => /^https?:\/\/\S+\.\S+/.test(u))
-          .slice(0, 10);
+        const competitorPaste = (input.competitors ?? "").trim();
+        const competitorUrls = competitorPaste ? extractCompetitorUrls(competitorPaste) : [];
 
         const insertId = await createMiningSearch({
           userId: ctx.user.id,
@@ -121,6 +152,7 @@ export const appRouter = router({
           progress: 0,
           brandVoice: input.brandVoice ?? null,
           competitorUrls: competitorUrls.length ? competitorUrls : null,
+          competitorNotes: competitorPaste || null,
         });
 
         const search = await getMiningSearchById(insertId);
@@ -216,7 +248,8 @@ export const appRouter = router({
           search.platforms as string[],
           brandVoice,
           ctx.user.id,
-          (search.competitorUrls as string[] | null) ?? undefined
+          (search.competitorUrls as string[] | null) ?? undefined,
+          search.competitorNotes ?? undefined
         ).catch((err) => console.error("[Analysis] Failed:", err));
 
         return { started: true };
@@ -262,7 +295,7 @@ export const appRouter = router({
         }
 
         const brandVoice = search.brandVoice ?? undefined;
-        const sections = await generateAllSections(search.keyword, analysisResult, brandVoice, (search.competitorUrls as string[] | null) ?? undefined);
+        const sections = await generateAllSections(search.keyword, analysisResult, brandVoice, (search.competitorUrls as string[] | null) ?? undefined, search.competitorNotes ?? undefined);
 
         await createReport({
           searchId: input.searchId,
@@ -327,7 +360,7 @@ export const appRouter = router({
         if (!search) throw new TRPCError({ code: "NOT_FOUND" });
 
         const brandVoice = search.brandVoice ?? undefined;
-        const sections = await generateAllSections(search.keyword, analysisResult, brandVoice, (search.competitorUrls as string[] | null) ?? undefined);
+        const sections = await generateAllSections(search.keyword, analysisResult, brandVoice, (search.competitorUrls as string[] | null) ?? undefined, search.competitorNotes ?? undefined);
 
         await updateReport(input.id, sections);
         return getReportById(input.id);
@@ -374,7 +407,7 @@ export const appRouter = router({
             await updateReport(input.id, { youtubeIdeas: await generateYouTubeIdeas(search.keyword, analysis, brandVoice) });
             break;
           case "competitorIntel": {
-            const intel = await generateCompetitorIntel(search.keyword, brandVoice, (search.competitorUrls as string[] | null) ?? undefined);
+            const intel = await generateCompetitorIntel(search.keyword, brandVoice, (search.competitorUrls as string[] | null) ?? undefined, search.competitorNotes ?? undefined);
             if (!intel) {
               throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Could not find competitor data for this keyword. Try again in a moment." });
             }
@@ -870,14 +903,32 @@ export type AppRouter = typeof appRouter;
 // ─── Report generation pipeline ────────────────────────────────────────────────
 
 /**
+ * Run a section generator with one retry. A single flaky LLM response
+ * (malformed JSON, transient error) must never kill the whole report —
+ * the section comes back undefined and the user can hit Regenerate.
+ */
+async function sectionWithRetry<T>(label: string, fn: () => Promise<T>): Promise<T | undefined> {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      console.warn(`[${label}] attempt ${attempt} failed:`, err);
+    }
+  }
+  return undefined;
+}
+
+/**
  * Generate every report section in parallel from an analysis result.
- * Competitor intel failing (or finding nothing) never blocks the report.
+ * Each section retries once and fails independently — one bad section
+ * never blocks the report.
  */
 async function generateAllSections(
   keyword: string,
   analysisResult: AnalysisInput | Record<string, unknown>,
   brandVoice?: string,
-  competitorUrls?: string[]
+  competitorUrls?: string[],
+  competitorNotes?: string
 ) {
   const analysis = analysisResult as unknown as AnalysisInput;
   const [
@@ -890,34 +941,48 @@ async function generateAllSections(
     youtubeIdeas,
     competitorIntel,
   ] = await Promise.all([
-    generateDeepMarketIntelligence(keyword, analysis, brandVoice),
-    generateViralHooks(keyword, analysis, brandVoice),
-    generateAdCopy(keyword, analysis, brandVoice),
-    generateSkoolPosts(keyword, analysis, brandVoice),
-    generateTalkingHeadScripts(keyword, analysis, brandVoice),
-    generateEmailSequence(keyword, analysis, brandVoice),
-    generateYouTubeIdeas(keyword, analysis, brandVoice),
-    generateCompetitorIntel(keyword, brandVoice, competitorUrls).catch((err) => {
-      console.warn("[CompetitorIntel] Generation failed, continuing without it:", err);
-      return null;
-    }),
+    sectionWithRetry("MarketIntelligence", () => generateDeepMarketIntelligence(keyword, analysis, brandVoice)),
+    sectionWithRetry("ViralHooks", () => generateViralHooks(keyword, analysis, brandVoice)),
+    sectionWithRetry("AdCopy", () => generateAdCopy(keyword, analysis, brandVoice)),
+    sectionWithRetry("SkoolPosts", () => generateSkoolPosts(keyword, analysis, brandVoice)),
+    sectionWithRetry("TalkingHeadScripts", () => generateTalkingHeadScripts(keyword, analysis, brandVoice)),
+    sectionWithRetry("EmailSequence", () => generateEmailSequence(keyword, analysis, brandVoice)),
+    sectionWithRetry("YouTubeIdeas", () => generateYouTubeIdeas(keyword, analysis, brandVoice)),
+    sectionWithRetry("CompetitorIntel", () => generateCompetitorIntel(keyword, brandVoice, competitorUrls, competitorNotes)),
   ]);
 
+  // Typed empty fallbacks for the two non-nullable object columns — the UI
+  // shows a Regenerate state when a section comes back empty.
+  const emptyIntelligence: DeepMarketIntelligence = {
+    executiveSummary: "",
+    trendingTopics: [],
+    competitorPatterns: [],
+    emergingOpportunities: [],
+    marketShifts: [],
+    topDesires: [],
+    topFears: [],
+    dominantBeliefs: [],
+    emotionalTriggers: [],
+    languagePatterns: [],
+    verbatimPhrases: [],
+    keywordIntelligence: { longTailKeywords: [], emotionalKeywords: [], highConvertingPhrases: [], relatedSearches: [], trendingTerms: [] },
+  };
+
   return {
-    marketIntelligence,
-    viralHooks,
-    adCopyIdeas,
-    skoolPosts,
-    talkingHeadScripts,
-    emailSequence,
-    youtubeIdeas,
+    marketIntelligence: marketIntelligence ?? emptyIntelligence,
+    viralHooks: viralHooks ?? [],
+    adCopyIdeas: adCopyIdeas ?? [],
+    skoolPosts: skoolPosts ?? [],
+    talkingHeadScripts: talkingHeadScripts ?? [],
+    emailSequence: emailSequence ?? { sequenceName: "", emails: [] },
+    youtubeIdeas: youtubeIdeas ?? [],
     competitorIntel: competitorIntel ?? undefined,
   };
 }
 
 // ─── Background processing ────────────────────────────────────────────────────
 
-async function processAnalysis(searchId: number, keyword: string, platforms: string[], brandVoice?: string, userId?: number, competitorUrls?: string[]) {
+async function processAnalysis(searchId: number, keyword: string, platforms: string[], brandVoice?: string, userId?: number, competitorUrls?: string[], competitorNotes?: string) {
   try {
     await updateMiningSearchStatus(searchId, "mining", 10, "Warming up the scrapers...");
 
@@ -939,7 +1004,7 @@ async function processAnalysis(searchId: number, keyword: string, platforms: str
 
     // Auto-generate the full report immediately — no manual button needed
     const reportName = `${keyword} Market Intelligence Report`;
-    const sections = await generateAllSections(keyword, analysisOutput, brandVoice, competitorUrls);
+    const sections = await generateAllSections(keyword, analysisOutput, brandVoice, competitorUrls, competitorNotes);
 
     await updateMiningSearchStatus(searchId, "analyzing", 90, "Finalising your report...");
 
