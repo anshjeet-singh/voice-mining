@@ -752,6 +752,61 @@ export async function scrapeCompetitorsForKeyword(keyword: string): Promise<stri
   return deduped.slice(0, 120).join("\n");
 }
 
+// ─── Direct Competitor URL Scraping ──────────────────────────────────────────
+
+/**
+ * Fetch the competitor URLs the user pasted (Instagram, Facebook, Skool,
+ * websites) and extract whatever is publicly readable: title, meta/og tags,
+ * ld+json, headings, and visible page text. Social platforms block full
+ * pages for anonymous requests, but their og: meta tags (bio, follower
+ * blurbs) usually survive. Returns an LLM-ready blob, or "" if nothing
+ * could be read.
+ */
+export async function scrapeCompetitorUrls(urls: string[]): Promise<string> {
+  const sections = await Promise.allSettled(
+    urls.slice(0, 10).map(async (url) => {
+      const resp = await fetchWithRetry(url, {
+        headers: { "User-Agent": BROWSER_UA, Accept: "text/html" },
+        redirect: "follow",
+      }, 1);
+      if (!resp.ok) return "";
+      const html = (await resp.text()).slice(0, 400_000);
+
+      const lines: string[] = [`=== COMPETITOR: ${url} ===`];
+      const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+      if (title) lines.push(`TITLE: ${stripHtml(title)}`);
+
+      for (const m of Array.from(html.matchAll(/<meta[^>]+(?:name|property)=["'](description|og:title|og:description|og:site_name|twitter:description)["'][^>]+content=["']([^"']+)["']/gi))) {
+        lines.push(`${m[1].toUpperCase()}: ${decodeEntities(m[2])}`);
+      }
+      for (const m of Array.from(html.matchAll(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["'](description|og:title|og:description)["']/gi))) {
+        lines.push(`${m[2].toUpperCase()}: ${decodeEntities(m[1])}`);
+      }
+
+      for (const m of Array.from(html.matchAll(/<h[12][^>]*>([\s\S]*?)<\/h[12]>/gi)).slice(0, 12)) {
+        const text = stripHtml(m[1]);
+        if (text.length > 3) lines.push(`HEADING: ${text}`);
+      }
+
+      for (const m of Array.from(html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)).slice(0, 3)) {
+        const json = m[1].trim().slice(0, 2000);
+        if (json) lines.push(`STRUCTURED_DATA: ${json}`);
+      }
+
+      const body = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ");
+      const text = stripHtml(body).slice(0, 3000);
+      if (text.length > 100) lines.push(`PAGE_TEXT: ${text}`);
+
+      return lines.length > 1 ? lines.join("\n") : "";
+    })
+  );
+
+  return sections
+    .map((s) => (s.status === "fulfilled" ? s.value : ""))
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 // ─── Related Keyword Suggestions (Google Suggest — FREE, no key) ─────────────
 
 /**

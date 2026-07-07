@@ -162,7 +162,7 @@ export default function ReportView() {
     ).join(""));
 
     if (posts2.length) body += section("Skool Posts", posts2.map((post, i) =>
-      `<div class="card"><h3>Post ${i + 1} [${esc(post.commentKeyword)}]${post.postFormat ? ` &mdash; ${esc(post.postFormat)}` : ""}</h3>${block(post.postCopy ?? "")}${
+      `<div class="card"><h3>Post ${i + 1}${post.commentKeyword ? ` [${esc(post.commentKeyword)}]` : " [Link CTA]"}${post.postFormat ? ` &mdash; ${esc(post.postFormat)}` : ""}</h3>${block(post.postCopy ?? "")}${
         post.dmWorkflow?.length
           ? `<h4>DM Workflow</h4>` + (post.dmWorkflow as DMMessage[]).map((dm) =>
             `<div class="dm"><strong>DM ${dm.dmNumber} (${esc(dm.timing)}):</strong><br/>${esc(dm.copy).replace(/\n/g, "<br/>")}</div>`

@@ -61,9 +61,6 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
-/** How many bulk searches may run their pipelines at once. */
-const BULK_CONCURRENCY = 3;
-
 /** Report sections that can be regenerated individually. */
 const REPORT_SECTIONS = [
   "marketIntelligence",
@@ -91,43 +88,18 @@ export const appRouter = router({
   // ─── Mining Searches ───────────────────────────────────────────────────────
 
   mining: router({
-    create: protectedProcedure
-      .input(
-        z.object({
-          keyword: z.string().min(1).max(100000),
-          niche: z.string().max(100000).optional(),
-          platforms: z.array(z.string()).min(1),
-          brandVoice: z.string().max(100000).optional(),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        const insertId = await createMiningSearch({
-          userId: ctx.user.id,
-          keyword: input.keyword,
-          niche: input.niche ?? null,
-          platforms: input.platforms,
-          status: "pending",
-          progress: 0,
-          brandVoice: input.brandVoice ?? null,
-        });
-
-        const search = await getMiningSearchById(insertId);
-        if (!search) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        await logActivity(ctx.user.id, "search_created", input.keyword);
-        return search;
-      }),
-
     /**
-     * Bulk mode: create up to 10 keyword searches at once and start their
-     * pipelines immediately, running at most BULK_CONCURRENCY in parallel.
+     * One search, one report. Accepts up to 10 keywords (the UI sends one per
+     * line) that all feed the SAME report, plus optional competitor URLs.
      */
-    createBulk: protectedProcedure
+    create: protectedProcedure
       .input(
         z.object({
           keywords: z.array(z.string().min(1).max(500)).min(1).max(10),
           niche: z.string().max(100000).optional(),
           platforms: z.array(z.string()).min(1),
           brandVoice: z.string().max(100000).optional(),
+          competitorUrls: z.array(z.string().max(500)).max(10).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -135,28 +107,26 @@ export const appRouter = router({
         if (keywords.length === 0) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "No valid keywords provided" });
         }
+        const competitorUrls = (input.competitorUrls ?? [])
+          .map((u) => u.trim())
+          .filter((u) => /^https?:\/\/\S+\.\S+/.test(u))
+          .slice(0, 10);
 
-        const searchIds: number[] = [];
-        for (const keyword of keywords) {
-          const insertId = await createMiningSearch({
-            userId: ctx.user.id,
-            keyword,
-            niche: input.niche ?? null,
-            platforms: input.platforms,
-            status: "pending",
-            progress: 0,
-            brandVoice: input.brandVoice ?? null,
-          });
-          searchIds.push(insertId);
-          await logActivity(ctx.user.id, "search_created", keyword);
-        }
+        const insertId = await createMiningSearch({
+          userId: ctx.user.id,
+          keyword: keywords.join(", "),
+          niche: input.niche ?? null,
+          platforms: input.platforms,
+          status: "pending",
+          progress: 0,
+          brandVoice: input.brandVoice ?? null,
+          competitorUrls: competitorUrls.length ? competitorUrls : null,
+        });
 
-        // Fire the pipelines with a small concurrency cap (fire and forget)
-        runBulkPipelines(searchIds, keywords, input.platforms, input.brandVoice, ctx.user.id).catch(
-          (err) => console.error("[Bulk] Pipeline error:", err)
-        );
-
-        return { searchIds };
+        const search = await getMiningSearchById(insertId);
+        if (!search) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await logActivity(ctx.user.id, "search_created", keywords.join(", "));
+        return search;
       }),
 
     list: protectedProcedure.query(async ({ ctx }) => {
@@ -240,9 +210,14 @@ export const appRouter = router({
         const brandVoice = input.brandVoice ?? (search.brandVoice ?? undefined);
 
         // Start async processing (fire and forget)
-        processAnalysis(input.searchId, search.keyword, search.platforms as string[], brandVoice, ctx.user.id).catch(
-          (err) => console.error("[Analysis] Failed:", err)
-        );
+        processAnalysis(
+          input.searchId,
+          search.keyword,
+          search.platforms as string[],
+          brandVoice,
+          ctx.user.id,
+          (search.competitorUrls as string[] | null) ?? undefined
+        ).catch((err) => console.error("[Analysis] Failed:", err));
 
         return { started: true };
       }),
@@ -287,7 +262,7 @@ export const appRouter = router({
         }
 
         const brandVoice = search.brandVoice ?? undefined;
-        const sections = await generateAllSections(search.keyword, analysisResult, brandVoice);
+        const sections = await generateAllSections(search.keyword, analysisResult, brandVoice, (search.competitorUrls as string[] | null) ?? undefined);
 
         await createReport({
           searchId: input.searchId,
@@ -352,7 +327,7 @@ export const appRouter = router({
         if (!search) throw new TRPCError({ code: "NOT_FOUND" });
 
         const brandVoice = search.brandVoice ?? undefined;
-        const sections = await generateAllSections(search.keyword, analysisResult, brandVoice);
+        const sections = await generateAllSections(search.keyword, analysisResult, brandVoice, (search.competitorUrls as string[] | null) ?? undefined);
 
         await updateReport(input.id, sections);
         return getReportById(input.id);
@@ -399,7 +374,7 @@ export const appRouter = router({
             await updateReport(input.id, { youtubeIdeas: await generateYouTubeIdeas(search.keyword, analysis, brandVoice) });
             break;
           case "competitorIntel": {
-            const intel = await generateCompetitorIntel(search.keyword, brandVoice);
+            const intel = await generateCompetitorIntel(search.keyword, brandVoice, (search.competitorUrls as string[] | null) ?? undefined);
             if (!intel) {
               throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Could not find competitor data for this keyword. Try again in a moment." });
             }
@@ -901,7 +876,8 @@ export type AppRouter = typeof appRouter;
 async function generateAllSections(
   keyword: string,
   analysisResult: AnalysisInput | Record<string, unknown>,
-  brandVoice?: string
+  brandVoice?: string,
+  competitorUrls?: string[]
 ) {
   const analysis = analysisResult as unknown as AnalysisInput;
   const [
@@ -921,7 +897,7 @@ async function generateAllSections(
     generateTalkingHeadScripts(keyword, analysis, brandVoice),
     generateEmailSequence(keyword, analysis, brandVoice),
     generateYouTubeIdeas(keyword, analysis, brandVoice),
-    generateCompetitorIntel(keyword, brandVoice).catch((err) => {
+    generateCompetitorIntel(keyword, brandVoice, competitorUrls).catch((err) => {
       console.warn("[CompetitorIntel] Generation failed, continuing without it:", err);
       return null;
     }),
@@ -941,7 +917,7 @@ async function generateAllSections(
 
 // ─── Background processing ────────────────────────────────────────────────────
 
-async function processAnalysis(searchId: number, keyword: string, platforms: string[], brandVoice?: string, userId?: number) {
+async function processAnalysis(searchId: number, keyword: string, platforms: string[], brandVoice?: string, userId?: number, competitorUrls?: string[]) {
   try {
     await updateMiningSearchStatus(searchId, "mining", 10, "Warming up the scrapers...");
 
@@ -963,7 +939,7 @@ async function processAnalysis(searchId: number, keyword: string, platforms: str
 
     // Auto-generate the full report immediately — no manual button needed
     const reportName = `${keyword} Market Intelligence Report`;
-    const sections = await generateAllSections(keyword, analysisOutput, brandVoice);
+    const sections = await generateAllSections(keyword, analysisOutput, brandVoice, competitorUrls);
 
     await updateMiningSearchStatus(searchId, "analyzing", 90, "Finalising your report...");
 
@@ -981,27 +957,6 @@ async function processAnalysis(searchId: number, keyword: string, platforms: str
     console.error("[processAnalysis] Error:", err);
     await updateMiningSearchStatus(searchId, "failed", 0, "Analysis failed. Please try again.");
   }
-}
-
-/** Run bulk search pipelines with a concurrency cap. */
-async function runBulkPipelines(
-  searchIds: number[],
-  keywords: string[],
-  platforms: string[],
-  brandVoice: string | undefined,
-  userId: number
-) {
-  const queue = searchIds.map((id, i) => ({ id, keyword: keywords[i] }));
-  const workers = Array.from({ length: Math.min(BULK_CONCURRENCY, queue.length) }, async () => {
-    while (queue.length > 0) {
-      const job = queue.shift();
-      if (!job) break;
-      await processAnalysis(job.id, job.keyword, platforms, brandVoice, userId).catch((err) =>
-        console.error(`[Bulk] Search ${job.id} failed:`, err)
-      );
-    }
-  });
-  await Promise.all(workers);
 }
 
 /** Trend data is stored per keyword; only allow access to keywords the user has actually searched. */

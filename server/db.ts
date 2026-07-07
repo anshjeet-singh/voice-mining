@@ -265,13 +265,18 @@ export async function saveTrendSnapshot(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  // Refreshing twice in one day replaces the day's snapshot instead of duplicating it.
+  await db
+    .delete(trendSnapshots)
+    .where(and(eq(trendSnapshots.keyword, data.keyword), eq(trendSnapshots.snapshotDate, data.snapshotDate)));
+  // createdAt is epoch SECONDS — the column is INT, so milliseconds overflow it.
   await db.insert(trendSnapshots).values({
     keyword: data.keyword,
     snapshotDate: data.snapshotDate,
     trendingTopics: data.trendingTopics,
     trendingPhrases: data.trendingPhrases,
     emergingQuestions: data.emergingQuestions,
-    createdAt: Date.now(),
+    createdAt: Math.floor(Date.now() / 1000),
   });
 }
 

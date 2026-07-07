@@ -118,7 +118,7 @@ export default function TrendTracker() {
           <div>
             <h1 className="text-2xl font-bold text-white">Trend Tracker</h1>
             <p className="text-sm text-zinc-400 mt-1">
-              Daily internet trend snapshots. Refreshed every morning at 7 AM EST.
+              What's gaining momentum for your keywords.
             </p>
           </div>
 
@@ -240,7 +240,7 @@ export default function TrendTracker() {
         {!effectiveKeyword && !loadingKeywords && (
           <EmptyState
             title="No searches yet"
-            description="Run a Voice Mining search first. Your keywords will appear in the dropdown above and the daily cron will start tracking trends for them."
+            description="Run a Voice Mining search first. Your keywords will show up here."
           />
         )}
 
@@ -256,9 +256,8 @@ export default function TrendTracker() {
         {/* Awaiting first refresh */}
         {effectiveKeyword && !loadingSnapshots && !hasSnapshots && (
           <EmptyState
-            title={`Awaiting first daily refresh for "${effectiveKeyword}"`}
-            description="The daily trend cron runs every morning at 7 AM EST. Once the site is deployed and the cron is scheduled, your first snapshot will appear here automatically."
-            showCronNote
+            title={`No snapshots yet for "${effectiveKeyword}"`}
+            description="Hit Refresh Now to pull the first one. It takes about a minute."
           />
         )}
 
@@ -497,15 +496,7 @@ export default function TrendTracker() {
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-function EmptyState({
-  title,
-  description,
-  showCronNote,
-}: {
-  title: string;
-  description: string;
-  showCronNote?: boolean;
-}) {
+function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
       <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center text-3xl">
@@ -513,16 +504,6 @@ function EmptyState({
       </div>
       <h2 className="text-lg font-semibold text-white">{title}</h2>
       <p className="text-sm text-zinc-400 max-w-md leading-relaxed">{description}</p>
-      {showCronNote && (
-        <div className="mt-4 bg-zinc-900 border border-zinc-700 rounded-xl px-5 py-4 max-w-md text-left space-y-2">
-          <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
-            How the daily cron works
-          </p>
-          <p className="text-xs text-zinc-400 leading-relaxed">
-            After you publish the site, a daily AGENT cron runs at 7 AM EST. It analyses the internet for fresh trending topics, emerging questions, and viral phrases in the business funding and credit space. Each day a new snapshot is added, giving you a rolling 7-day view of what is gaining momentum in your niche.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

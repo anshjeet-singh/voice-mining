@@ -14,7 +14,6 @@ import ReportView from "./pages/ReportView";
 import ContentCalendar from "./pages/ContentCalendar";
 import SavedReports from "./pages/SavedReports";
 import SharedReport from "./pages/SharedReport";
-import BulkProgress from "./pages/BulkProgress";
 import NicheComparison from "./pages/NicheComparison";
 import Vault from "./pages/Vault";
 import TrendTracker from "./pages/TrendTracker";
@@ -35,7 +34,6 @@ function Router() {
             <Route path="/" component={Home} />
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/search/new" component={NewSearch} />
-            <Route path="/search/bulk" component={BulkProgress} />
             <Route path="/search/:id" component={SearchResults} />
             <Route path="/report/:id" component={ReportView} />
             <Route path="/share/:token" component={SharedReport} />

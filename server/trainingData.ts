@@ -483,3 +483,95 @@ Structure: Hook → Mind Read → Twist/Tease → CTA → Payoff
 - Use "you" and "your" constantly — make it about the viewer
 - End every script with a comment keyword CTA to drive engagement
 `;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// $100M HOOKS DISTILLATION (structure + abstract patterns from the playbook)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const HORMOZI_HOOK_BANK = `
+## THE $100M HOOK FORMULA (what actually performs)
+
+Every winning hook has two parts:
+1. CALL OUT — makes the right person think "this is for me" (name their identity,
+   their situation, or their exact problem in their words).
+2. VALUE CONDITION — an implicit or explicit promise: "if you keep reading/watching,
+   you get [specific value]".
+
+## WHAT WINS (distribution across 121 proven hooks):
+- ~48% STATEMENTS: bold declarative claims. "The most miserable place in business is [specific stage]."
+- ~22% COMMANDS: tell them to do something. "Read this if you're tired of [pain]."
+- ~10% QUESTIONS: yes-questions and either/or. "Would you pay [$X] to have [dream outcome] in [time]? How about free?"
+- ~9% EXCLAMATIONS: raw emotion. "At last! It's finally here."
+- ~6% LISTS: "[N] ways to [avoid pain / get outcome]."
+- rest: STORIES ("When I was [age], I [unexpected situation]...") and CONDITIONALS ("If you're [doing X] and [not getting Y], you're [doing wrong thing].")
+
+## ABSTRACT PATTERNS OF THE TOP PERFORMERS (fill with THIS market's verbatim language):
+- "[Identity], I have a gift for you."
+- "Read this if you're tired of [their #1 pain, verbatim]."
+- "The smartest thing you can do today: [one action]."
+- "How to get ahead of 99% of [identity]."
+- "How I [specific result with number] in [timeframe]."
+- "[Shocking specific stat]. That means [what it means for THEM]."
+- "Throw out your [common approach] and switch to [named mechanism]."
+- "I have a confession... I'm sick of seeing [villain] do [harmful thing] to [identity]."
+- "Would you pay [$X] for [dream outcome] in [time]? How about [$smaller]? How about free?"
+- "Which would you rather be: [painful identity] or [dream identity]?"
+- "[Number] lessons I learned from [credible experience] I wish I knew earlier."
+- "We're all one decision away from changing our lives. Most of us don't know it."
+- "[Common belief] is wrong. Here's what [winners] do instead."
+- "Everyone tells [identity] to [common advice]. That advice is why you're [stuck state]."
+- "The [emotional label] place in [niche] is [specific stage]. It's the swamp."
+- "If you're [action] all the time and [result] isn't happening, you're working on the wrong thing."
+- "For people who want to [dream outcome] someday."
+- "Stop [common behavior]. It's costing you [specific loss]."
+- "I [did painful thing] for [long time]. Here's what it taught me about [topic]."
+- "[Specific person/type] went from [low point] to [specific result]. The difference was one thing."
+
+## HOOK QUALITY BAR (reject anything that fails these):
+- Sounds like a human said it out loud, not a marketer wrote it.
+- Contains either a specific number, a named identity, or a verbatim pain phrase.
+- Zero hype words: no "unlock", "unleash", "game-changer", "revolutionary", "skyrocket".
+- No questions that can be answered "no" and scrolled past.
+- Would stop THIS market's scroll — uses their words from the voice data, not industry jargon.
+- One idea per hook. Short. Punchy. No compound sentences.
+`;
+
+/**
+ * GOATED_ADS_FRAMEWORK — distilled from Alex Hormozi's $100M GOATed Ads playbook.
+ * Injected into the ad copy generator so every talking-head and story ad follows
+ * the Hook x Meat x CTA assembly process instead of generic ad copy.
+ */
+export const GOATED_ADS_FRAMEWORK = `
+GOATED ADS METHOD (Hormozi):
+
+THE ASSEMBLY RULE: every ad = HOOK x MEAT x CTA. 80% of the quality lives in the hook.
+If someone doesn't make it through the hook, nothing else matters.
+
+AWARENESS-MATCHED HOOKS (match the hook style to the level):
+- most_aware: OFFER driven. "50% off our best-selling [product] for the rest of the month."
+- product_aware: PROOF driven. "Why 9 out of 10 [users] reached their goal within 3 months."
+- solution_aware: PROMISE driven. "The fastest way to [result] in [timeframe]." Specific big outcome, fast.
+- problem_aware: PAIN driven. "Tired of [specific problem]? There's a better way."
+- unaware: CURIOSITY driven. "The hidden [issue] that's costing you [money/time/health]." Suggest an unknown issue costing them.
+
+THE MEAT (pick the format that fits, these 5 work in every industry):
+1. Demonstration: show the thing working, before-and-afters, comparisons.
+2. Testimonial: founder direct to camera, raw phone-style story, walk-and-talk rant, parade of proof (many results back to back).
+3. Education: teach one useful thing, whiteboard explainer, listicle ("3 biggest problems facing [niche]").
+4. Story: narrative, warning, opportunity, problem-to-solution arc.
+5. Faceless: screenshots of real customer messages/results read aloud.
+The meat must FULFILL the hook. It educates about the offer, product, solution, or problem depending on awareness level.
+
+CTA RULES (Clear > Clever):
+A good CTA tells them ALL of: (1) what to do, (2) how to do it, (3) when to do it, (4) what they get for doing it, (5) what happens next.
+Example: "Take advantage of this by tapping the button below before it expires, and you'll get the full playbook delivered straight to your inbox."
+Never end an ad without spelling out the next step. More people do what you want when you tell them to do it.
+Optional boosters: urgency, scarcity, guarantee, bonus.
+
+QUALITY BAR:
+- Sounds like a founder talking, never like an agency wrote it
+- Their verbatim pain/desire language in the hook and agitate lines
+- One specific number or timeframe minimum per ad
+- One CTA per ad, spelled out
+- Meet the audience at their awareness level, never pitch product to the unaware
+`;

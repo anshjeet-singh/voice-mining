@@ -17,6 +17,8 @@ import type {
 import { estimateScriptSeconds, insightTexts } from "../shared/reportContent";
 import {
   HOOK_TEMPLATES,
+  HORMOZI_HOOK_BANK,
+  GOATED_ADS_FRAMEWORK,
   FACEBOOK_AD_FRAMEWORKS,
   SKOOL_POST_FRAMEWORKS,
   EMAIL_SEQUENCE_FRAMEWORKS,
@@ -24,7 +26,7 @@ import {
 } from "./trainingData";
 
 // Real internet scraping — imported from realScraper.ts
-import { scrapeCompetitorsForKeyword, scrapeInternetForKeyword } from "./realScraper";
+import { scrapeCompetitorsForKeyword, scrapeCompetitorUrls, scrapeInternetForKeyword } from "./realScraper";
 
 // ─── Helper to extract string content from LLM response ─────────────────────
 
@@ -129,11 +131,26 @@ export async function runAnalysis(
   brandVoice?: string,
   onProgress?: (message: string) => void
 ): Promise<AnalysisOutput> {
-  // Fetch real internet conversations for this keyword
-  const conversations = await scrapeInternetForKeyword(keyword, platforms, onProgress);
+  // One search can carry several comma-separated keywords ("kw1, kw2, kw3")
+  // that all feed the SAME report. Scrape each one and merge the blobs.
+  const keywords = keyword
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean)
+    .slice(0, 10);
+
+  const blobs: string[] = [];
+  for (const [i, kw] of Array.from(keywords.entries())) {
+    const prefix = keywords.length > 1 ? `[${i + 1}/${keywords.length}] "${kw}": ` : "";
+    const blob = await scrapeInternetForKeyword(kw, platforms, onProgress ? (m) => onProgress(prefix + m) : undefined);
+    if (blob !== "NO_SCRAPED_DATA" && blob.trim().length > 0) {
+      blobs.push(keywords.length > 1 ? `═══ KEYWORD: ${kw} ═══\n${blob}` : blob);
+    }
+  }
+  const conversations = blobs.join("\n\n");
 
   // If no scraped data came back, skip LLM entirely — never generate from niche context
-  const hasRealData = conversations !== "NO_SCRAPED_DATA" && conversations.trim().length > 0;
+  const hasRealData = conversations.trim().length > 0;
   if (!hasRealData) {
     return {
       painPoints: [],
@@ -226,6 +243,29 @@ export async function runAnalysis(
     topThemes: parsed.topThemes ?? [],
     sentimentBreakdown: parsed.sentimentBreakdown ?? { positive: 33, negative: 34, neutral: 33 },
   });
+}
+
+// ─── Shared comment keywords ─────────────────────────────────────────────────
+// The user wants ONE consistent set of 3 comment keywords across Skool posts,
+// video scripts, and YouTube ideas — not a different keyword per asset.
+const KEYWORD_STOPWORDS = new Set(["THE", "AND", "FOR", "HOW", "BEST", "TOP", "WITH", "YOUR", "GET"]);
+
+export function deriveCommentKeywords(keyword: string): [string, string, string] {
+  // Multi-keyword searches store "kw1, kw2, kw3" — derive from the first one.
+  const primary = keyword.split(",")[0] ?? keyword;
+  const words = primary
+    .toUpperCase()
+    .replace(/[^A-Z ]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && w.length <= 12 && !KEYWORD_STOPWORDS.has(w));
+  const topic = words.length ? words[words.length - 1] : "";
+  const pool = ["GUIDE", "PLAN", "RESULTS", "PLAYBOOK"];
+  const out: string[] = topic ? [topic] : [];
+  for (const p of pool) {
+    if (out.length >= 3) break;
+    if (!out.includes(p)) out.push(p);
+  }
+  return [out[0], out[1], out[2]];
 }
 
 // ─── Shared brand voice helper ───────────────────────────────────────────────
@@ -328,7 +368,7 @@ Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {
         role: "user",
-        content: `Create viral hooks for "${keyword}" using this exact human language from voice mining.
+        content: `Create the 20 best hooks for "${keyword}" using this exact human language from voice mining.
 
 Pain Points: ${topInsights(analysis.painPoints, 6)}
 Emotional Language: ${analysis.emotionalLanguage.slice(0, 8).join(" | ")}
@@ -336,25 +376,25 @@ Trending Phrases: ${analysis.trendingPhrases.slice(0, 6).join(" | ")}
 Desires: ${topInsights(analysis.desires, 5)}
 Fears: ${topInsights(analysis.fears, 4)}
 
-PROVEN HOOK FRAMEWORKS TO MODEL (use these as templates, fill with the keyword's specific language):
+${HORMOZI_HOOK_BANK}
+
+MORE PROVEN TEMPLATES:
 ${HOOK_TEMPLATES}
 
-Generate hooks in these four categories:
-- 7x short_form_video: opening lines for Reels/Shorts/TikTok. Use the Steak Method structure
-- 6x carousel: first-slide text for Instagram/LinkedIn carousels. Must make them swipe
-- 6x email_subject: subject lines, lowercase, curiosity or story driven, never salesy
-- 7x ad_headline: paid ad headlines for cold traffic. Specific and scroll-stopping
+Write EXACTLY 20 hooks. One style, one quality bar:
+- Each hook is a bold, standalone statement or command a real person would say out loud. The kind of first line that works as a video opener, a carousel slide 1, or an ad opener interchangeably
+- Model them on the $100M patterns above, filled with THIS market's verbatim language from the voice data
+- Follow the winning distribution: mostly statements and commands, a couple of questions, one or two lists or stories
+- Every hook must pass the QUALITY BAR above. If a hook would not stop this exact market's scroll, replace it before answering
 
 Each hook also gets:
-- hookType: exactly one of curiosity, pain, desire, social_proof, pattern_interrupt. Spread the types across each category, do not make everything curiosity
-- whyThisWorks: ONE line explaining the psychological mechanism (e.g. "Opens an information gap the reader has to close", "Uses their exact pain language so they feel seen"). Plain English, no jargon
+- hookType: exactly one of curiosity, pain, desire, social_proof, pattern_interrupt (used internally, spread them)
+- whyThisWorks: ONE short line, plain English
 
-Rules:
-- Use THEIR exact language, not polished marketing speak
-- Be specific: "$147K" not "six figures", "18 months" not "quickly"
-- Each hook must work as a standalone sentence
-- No fluff, no filler. Every word earns its place
-- No em dashes. Use a full stop or start a new line instead
+Hard rules:
+- THEIR exact words, never industry jargon or polished marketing speak
+- Specific beats vague: "$147K" not "six figures", "18 months" not "quickly"
+- No hype words. No em dashes. No compound sentences. One idea per hook
 
 Return JSON: {"hooks": [{"category": "short_form_video", "hook": "...", "hookType": "pain", "whyThisWorks": "..."}, ...]}`,
       },
@@ -381,11 +421,11 @@ Return JSON: {"hooks": [{"category": "short_form_video", "hook": "...", "hookTyp
   );
 }
 
-// ─── Facebook Ad Copy — Talking Head + B-Roll formats ────────────────────────
+// ─── Facebook Ad Copy — Talking Head + Instagram Story formats ───────────────
 
 /**
- * 15 ads across three formats (Talking Head, B-Roll, Instagram Story), one
- * per awareness level each, with a 1-10 pain agitation score per ad.
+ * 8 ads across two formats (5 Talking Head, 3 Instagram Story) with a 1-10
+ * pain agitation score per ad.
  */
 export async function generateAdCopy(
   keyword: string,
@@ -399,12 +439,12 @@ export async function generateAdCopy(
         content: `You are a direct response copywriter trained on Alex Hormozi's GOATed Ads method and $100M Leads.
 You write Facebook and Instagram ads ONLY. You understand the 5 levels of audience awareness and match copy to each level.
 You use the customer's exact language. Never polished marketing speak.
-You produce three formats: Talking Head (full script for a person speaking to camera), B-Roll (text overlay copy for a 5-second B-roll clip — the text IS the ad), and Instagram Story (vertical full-screen story frames with a swipe-up/link-sticker CTA).
+You produce two formats: Talking Head (full script for a person speaking to camera) and Instagram Story (vertical full-screen story frames with a link-sticker CTA).
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {
         role: "user",
-        content: `Write 15 ads for "${keyword}" — 5 Talking Head + 5 B-Roll + 5 Instagram Story, one per awareness level each.
+        content: `Write 8 ads for "${keyword}" — 5 Talking Head (one per awareness level) + 3 Instagram Story (most_aware, solution_aware, problem_aware).
 
 Voice mining data (use this exact language):
 Pain Points: ${topInsights(analysis.painPoints, 5)}
@@ -413,13 +453,16 @@ Desires: ${topInsights(analysis.desires, 5)}
 Fears: ${topInsights(analysis.fears, 4)}
 Emotional Language: ${analysis.emotionalLanguage.slice(0, 6).join(" | ")}
 
+${GOATED_ADS_FRAMEWORK}
+
 FACEBOOK AD FRAMEWORKS (follow these exactly):
 ${FACEBOOK_AD_FRAMEWORKS}
 
 TALKING HEAD FORMAT (5 ads — one per awareness level):
 Each Talking Head ad is a full script for someone speaking directly to camera.
+Vary the MEAT format across the 5 ads: use at least one testimonial-style, one education-style, and one story-style script. Do not write 5 identical pitch scripts.
 Structure:
-HOOK (1-2 lines, pattern interrupt — borrow authority or use a specific number)
+HOOK (1-2 lines. MUST match the awareness level per the GOATed method above: offer-driven for most_aware, proof for product_aware, promise for solution_aware, pain for problem_aware, curiosity for unaware)
 [blank line]
 AGITATE (2-3 lines, their exact pain language — make them feel seen)
 [blank line]
@@ -429,21 +472,9 @@ SOLUTION (2-3 lines, the mechanism — what you do differently)
 [blank line]
 SOCIAL PROOF (1-2 lines, specific client result)
 [blank line]
-CTA (1 natural-language line — e.g. "Click the link below to register for our free training", "Comment FUNDING below and I'll send you the full playbook", "Book your free strategy call using the link below")
+CTA (1-2 natural-language lines that spell out what to do, how, when, what they get, and what happens next — e.g. "Click the link below, drop your email, and the full playbook lands in your inbox in the next two minutes")
 
-B-ROLL FORMAT (5 ads — one per awareness level):
-B-Roll ads are short clips with text overlays ONLY. The text IS the entire ad. There is NO voiceover, NO audio, NO person on camera. The viewer reads the text on screen.
-Write EXACTLY 5 short sentences of text overlay copy. Each sentence appears on screen one at a time.
-Structure:
-SENTENCE 1 (Opening Hook — 5-8 words. MUST use a verbatim pain point, fear, or desire from the voice mining data. Use their exact words. E.g. if they say "keep getting denied" use that exact phrase)
-SENTENCE 2 (Agitate — 6-10 words. Pull directly from the Emotional Language or Fears in the voice data. Their exact words, not paraphrased)
-SENTENCE 3 (Proof or contrast — 6-10 words. A specific dollar amount, timeframe, or result relevant to the keyword. Use a real number from the voice data if available)
-SENTENCE 4 (Promise — 6-10 words. Use a Desire verbatim from the voice data. The exact outcome they want)
-SENTENCE 5 (CTA — 4-6 words. Use one of: "Click the link below", "Join the free community", or "Comment [KEYWORD] below" where [KEYWORD] is a short word derived from the actual topic, e.g. GUIDE, RESULTS, PLAN, TRAINING — NOT a generic placeholder)
-
-CRITICAL B-ROLL RULE: Sentences 1-4 MUST contain verbatim or near-verbatim language from the voice mining data provided. Do NOT write generic ad copy. Pull the actual words the audience uses to describe their pain, fear, and desire.
-
-INSTAGRAM STORY FORMAT (5 ads — one per awareness level):
+INSTAGRAM STORY FORMAT (3 ads — most_aware, solution_aware, problem_aware):
 Story ads are full-screen vertical frames the viewer taps through. Each frame is ONE short text block on screen.
 Write EXACTLY 4 frames per story ad:
 FRAME 1 (Hook — 5-10 words. Verbatim pain, fear, or desire from the voice data. Must stop the tap-through)
@@ -452,7 +483,7 @@ FRAME 3 (Promise or proof — 8-14 words. A specific outcome or number)
 FRAME 4 (CTA — 4-8 words paired with a link sticker, e.g. "Tap the link for the free training")
 Story ads feel native: casual, personal, like a friend talking. NOT polished ad speak.
 
-Awareness levels for all three formats:
+Awareness levels for Talking Head (one each):
 1. most_aware
 2. product_aware
 3. solution_aware
@@ -477,15 +508,6 @@ Return JSON:
     "body": "Full ad body copy with \\n for line breaks",
     "cta": "Single CTA line",
     "painAgitationScore": 4
-  },
-  {
-    "type": "facebook",
-    "format": "b_roll",
-    "awarenessLevel": "most_aware",
-    "headline": "Sentence 1 text overlay (hook)",
-    "body": "Sentence 2 (agitate)\\nSentence 3 (proof/contrast)\\nSentence 4 (promise)",
-    "cta": "Sentence 5 CTA overlay",
-    "painAgitationScore": 6
   },
   {
     "type": "facebook",
@@ -526,60 +548,56 @@ export async function generateSkoolPosts(
   analysis: AnalysisInput,
   brandVoice?: string
 ): Promise<SkoolPostWithDMWorkflow[]> {
+  const commentKeywords = deriveCommentKeywords(keyword);
   const response = await invokeLLM({
     messages: [
       {
         role: "system",
-        content: `You are a Skool community post writer. Your job is to write posts for a free online community that drive one of two outcomes: keyword comments that trigger a DM, or clicks to book a strategy call. You decide the format, length, and style based on the topic and what will perform best.
+        content: `You are a Skool community post writer. Your job is to write posts for a free online community that drive one of two outcomes: keyword comments that trigger a DM sequence, or direct clicks on a link.
 
 You write as the community host: someone who has achieved the result personally, not someone who teaches theory.
 
 The audience is sceptical of generic coaching content. They stop scrolling for specific numbers, insider knowledge, and posts that feel like real information. They ignore anything that reads like an ad or a template.
 
-YOUR THREE POST STYLES:
-Style 1 - SHORT & PUNCHY (keyword CTA): Use when the topic has a single sharp insight, a surprising result, or a myth to debunk. 80-150 words.
-Style 2 - MEDIUM VALUE (call CTA): Provides real, specific insight then directs to a strategy call. 200-300 words.
-Style 3 - LONG VALUE POST (pure value, soft CTA): Educational, process-driven, or answers a question the audience is actively asking. 400-600 words.
-
-FORMATTING RULES:
-- Headline: Every post starts with a bold headline. 1-2 emojis at the very start. Title case. Must be a specific result, bold claim, or counterintuitive fact. Never a question. Never generic.
-- Body: Short paragraphs. No walls of text. Sentences under 18 words. White space between paragraphs.
-- Lists: Maximum one list per post. Each item gets a single emoji bullet. Lists only in Style 2 or Style 3.
+FORMATTING RULES (Skool renders PLAIN TEXT — markdown does not work):
+- NEVER use asterisks, underscores, hashes, or any markdown syntax anywhere. No **bold**, no *italics*, no # headers. Asterisks show up literally and look broken.
+- Headline: Every post starts with a plain-text headline line. 1-2 emojis at the very start. Title case. Must be a specific result, bold claim, or counterintuitive fact. Never a question. Never generic.
+- Body: Short paragraphs. No walls of text. Sentences under 18 words. Blank line between paragraphs.
+- Lists: Maximum one list per post. Each item gets a single emoji bullet. No dashes or asterisks as bullets.
 - Emojis: 1-2 in the headline only. In the body, emojis only as list bullets or very sparingly.
 - GIF suggestion: Every post ends with its own line: GIF: [2-4 word search term]
 
 BANNED WORDS: journey, struggle, frustrating, game-changer, transform, empower, "sound familiar?", "you're not alone", "many people", "so many of you", "I see this all the time", "in today's world"
 
-CTA RULES:
-- Keyword CTA (Style 1 and sometimes Style 3): End with "Comment [KEYWORD] below and I'll send you [specific named resource]."
-- Call CTA (Style 2 and sometimes Style 3): End with a soft bridge sentence, then "Book a free strategy call here: [link]"
-- Keywords: Derive 1-3 short all-caps keywords from the actual topic the post is about. Examples: PLAYBOOK, GUIDE, RESULTS, TRAINING, BLUEPRINT, VAULT, ACCESS, PLAN, ROADMAP. Only use FUNDING or CREDIT if the topic is literally about funding or credit.
+TWO POST TYPES (write exactly 3 of each):
+1. keyword_trigger (3 posts): End with "Comment [KEYWORD] below and I'll send you [specific named resource]." These posts get a DM workflow.
+2. link_cta (3 posts): End with ONE plain link line, e.g. "Grab the free training here: [link]" or "Book your free call here: [link]". The link IS the entire CTA. NO comment keyword, NO "drop a comment", NO DM workflow. Never mix a keyword ask into a link post.
 
 WRITING RULES:
 - Lead every post with a specific number, result, or counterintuitive fact. Never a question, never a problem statement.
 - Debunk objections like an insider, not a coach.
 - Never open with empathy or pain-framing.
-- At least one specific number, named strategy, or real-world datapoint per paragraph in Style 2 and Style 3.
+- At least one specific number, named strategy, or real-world datapoint per post.
 - The post must read like it was written by someone who has done it.
 - No em dashes anywhere. Use a full stop or start a new line.
 
-DM WORKFLOW RULES:
-- DM 1 fires within 5 minutes of keyword comment: deliver the resource + qualify them
-- DM 2 fires 4 hours later IF they have NOT replied
-- DM 3 fires 1 day later IF they have still NOT replied
-- DM 4 fires 2 days later IF they have still NOT replied
-- DM 5 fires 1 day after DM 4 IF they have still NOT replied
-- DM 6 fires 7 days after DM 5 IF they have still NOT replied (final re-open: casual check-in, reference something new, zero pressure)
+DM WORKFLOW RULES (keyword_trigger posts only — EXACTLY 5 DMs):
+Every DM sequence exists to do ONE of two things: get them to book a call, or get them to click a lead-magnet link. Pick one goal per post and every DM drives toward it.
+- DM 1 fires within 5 minutes of keyword comment: deliver the promised resource link + one light qualifying question
+- DM 2 fires 4 hours later IF no reply: ask if they got a chance to look, restate the one-line benefit
+- DM 3 fires 1 day later IF no reply: share one quick win or datapoint, then the call/link ask again
+- DM 4 fires 2 days later IF no reply: short and casual, direct ask with the booking or resource link
+- DM 5 fires 7 days later IF no reply: final casual re-open, reference something new, zero pressure, link one last time
 - NO "if they reply" branch. Every DM is a no-reply follow-up only.
 - Use #NAME# as the personalisation token.
-- Write like a real person texting, not a corporate script.
-- No em dashes in DMs.
+- Write like a real person texting, not a corporate script. 1-3 short sentences per DM.
+- No em dashes, no asterisks, no markdown in DMs.
 
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {
         role: "user",
-        content: `Create 6 Skool posts with DM workflows for the keyword "${keyword}".
+        content: `Create 6 Skool posts for the keyword "${keyword}": exactly 3 keyword_trigger posts followed by 3 link_cta posts.
 
 Voice mining data (use this exact language from real customers):
 Pain Points: ${topInsights(analysis.painPoints, 6)}
@@ -588,28 +606,34 @@ Buying Triggers: ${analysis.buyingTriggers.slice(0, 5).join(" | ")}
 Emotional Language: ${analysis.emotionalLanguage.slice(0, 8).join(" | ")}
 Verbatim Quotes: ${analysis.verbatimQuotes.slice(0, 4).map((q) => q.text).join(" | ")}
 
+COMMENT KEYWORDS — use ONLY these three, one per keyword_trigger post, in this order: ${commentKeywords.join(", ")}. Never write [KEYWORD], [undefined], or invent a different keyword.
+
 For each post:
-1. Choose the right style (1, 2, or 3) based on the topic angle
-2. Pick a different angle for each post (insight, result, myth-bust, process, datapoint)
-3. Tag each post with its postFormat: exactly one of story, list, question, controversy, case_study. Cover at least 4 different formats across the 6 posts. ("question" here means the post is built around a direct question TO the community in the body, even though the headline itself is never a question)
-4. Use a different short comment keyword for each post. Derive keywords from the actual topic (e.g. for "dog training" use TRAINING, GUIDE, RESULTS; for "weight loss" use PLAN, RESULTS, GUIDE). Do NOT use FUNDING or CREDIT unless the keyword is literally about funding or credit.
+1. Pick a different angle (insight, result, myth-bust, process, datapoint, story)
+2. Tag each post with its postFormat: exactly one of story, list, question, controversy, case_study. Cover at least 4 different formats across the 6 posts. ("question" here means the post is built around a direct question TO the community in the body, even though the headline itself is never a question)
+3. keyword_trigger posts get a 5-DM workflow. link_cta posts get "commentKeyword": null and "dmWorkflow": []
 
 Return JSON:
 {"posts": [
   {
     "postType": "keyword_trigger",
-    "style": "Style 1",
     "postFormat": "story",
-    "postCopy": "Full post copy with \\n for line breaks. Include GIF suggestion at end.",
-    "commentKeyword": "KEYWORD",
+    "postCopy": "Full plain-text post copy with \\n for line breaks. Ends with the comment CTA then the GIF line.",
+    "commentKeyword": "${commentKeywords[0]}",
     "dmWorkflow": [
-      {"dmNumber": 1, "timing": "Immediate, off comment", "copy": "Hey #NAME#, thanks for commenting. Here's [the resource]. Quick question: [qualify them]..."},
+      {"dmNumber": 1, "timing": "Immediate, off comment", "copy": "Hey #NAME#, here's the [resource]: [link]. Quick question: [qualify]"},
       {"dmNumber": 2, "timing": "4 hours later, no reply", "copy": "Follow-up copy"},
       {"dmNumber": 3, "timing": "1 day later, no reply", "copy": "Follow-up copy"},
       {"dmNumber": 4, "timing": "2 days later, no reply", "copy": "Follow-up copy"},
-      {"dmNumber": 5, "timing": "1 day later, no reply", "copy": "Follow-up copy"},
-      {"dmNumber": 6, "timing": "7 days later, no reply", "copy": "Final casual re-open copy"}
+      {"dmNumber": 5, "timing": "7 days later, no reply", "copy": "Final casual re-open copy"}
     ]
+  },
+  {
+    "postType": "link_cta",
+    "postFormat": "case_study",
+    "postCopy": "Full plain-text post copy ending with one link line then the GIF line.",
+    "commentKeyword": null,
+    "dmWorkflow": []
   }
 ]}`,
       },
@@ -619,7 +643,33 @@ Return JSON:
 
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
   const parsed = JSON.parse(content);
-  return stripEmDashesDeep(parsed.posts ?? []);
+  const rawPosts: SkoolPostWithDMWorkflow[] = Array.isArray(parsed.posts) ? parsed.posts : [];
+
+  // Enforce the contract regardless of what the model returns: no markdown
+  // asterisks (Skool renders plain text), keyword posts always carry one of the
+  // three fixed keywords (fixes the "[undefined]" bug), link posts carry none,
+  // and DM workflows are capped at 5 messages.
+  const stripAsterisks = (s: string) => s.replace(/\*+/g, "");
+  let keywordIndex = 0;
+  const posts = rawPosts.map((post) => {
+    const isKeywordPost = post.postType !== "link_cta";
+    const assignedKeyword = isKeywordPost
+      ? (typeof post.commentKeyword === "string" && /^[A-Z]{2,15}$/.test(post.commentKeyword)
+          ? post.commentKeyword
+          : commentKeywords[keywordIndex % 3])
+      : undefined;
+    if (isKeywordPost) keywordIndex++;
+    return {
+      postType: isKeywordPost ? ("keyword_trigger" as const) : ("link_cta" as const),
+      postFormat: post.postFormat,
+      postCopy: stripAsterisks(post.postCopy ?? ""),
+      commentKeyword: assignedKeyword,
+      dmWorkflow: isKeywordPost
+        ? (post.dmWorkflow ?? []).slice(0, 5).map((dm, i) => ({ ...dm, dmNumber: i + 1, copy: stripAsterisks(dm.copy ?? "") }))
+        : [],
+    };
+  });
+  return stripEmDashesDeep(posts);
 }
 
 // ─── YouTube Ideas + Talking Head Scripts ────────────────────────────────────
@@ -698,6 +748,7 @@ export async function generateTalkingHeadScripts(
   analysis: AnalysisInput,
   brandVoice?: string
 ): Promise<TalkingHeadScript[]> {
+  const commentKeywords = deriveCommentKeywords(keyword);
   const response = await invokeLLM({
     messages: [
       {
@@ -740,7 +791,7 @@ Rules:
 - twistTease must build real curiosity and tension. At least 3 sentences
 - payoff must deliver a real insight or mechanism. At least 3 sentences
 - End every script with a comment keyword CTA
-- Create 1-3 short comment keywords derived from the actual keyword/topic (e.g. for "dog training" use TRAINING, GUIDE, PLAYBOOK; for "weight loss" use RESULTS, PLAN, GUIDE)
+- COMMENT KEYWORDS: use ONLY these three, spread across the 5 scripts: ${commentKeywords.join(", ")}. Never invent a different keyword, never write [KEYWORD] or [undefined]
 - bRollSuggestions: for EACH section (Pattern Interrupt, Hook, Mind Read, Twist/Tease, CTA, Payoff, Closing CTA) describe in one line what visuals/B-roll to show while it is spoken (screen recording, text overlay, cutaway, prop, location change). Concrete and filmable, not "relevant footage"
 - No em dashes. Use a full stop or start a new line
 
@@ -777,8 +828,12 @@ Return JSON:
   const parsed = JSON.parse(content);
   const scripts: TalkingHeadScript[] = Array.isArray(parsed.scripts) ? parsed.scripts : [];
   return stripEmDashesDeep(
-    scripts.map((script) => ({
+    scripts.map((script, i) => ({
       ...script,
+      commentKeyword:
+        typeof script.commentKeyword === "string" && commentKeywords.includes(script.commentKeyword)
+          ? script.commentKeyword
+          : commentKeywords[i % 3],
       bRollSuggestions: Array.isArray(script.bRollSuggestions) ? script.bRollSuggestions : [],
       estimatedLengthSeconds: estimateScriptSeconds(script),
     }))
@@ -938,10 +993,24 @@ Return JSON:
  */
 export async function generateCompetitorIntel(
   keyword: string,
-  brandVoice?: string
+  brandVoice?: string,
+  competitorUrls?: string[]
 ): Promise<CompetitorIntel | null> {
-  const scraped = await scrapeCompetitorsForKeyword(keyword);
-  if (scraped === "NO_SCRAPED_DATA") return null;
+  const [searchScraped, directScraped] = await Promise.all([
+    scrapeCompetitorsForKeyword(keyword),
+    competitorUrls?.length ? scrapeCompetitorUrls(competitorUrls) : Promise.resolve(""),
+  ]);
+  const hasSearchData = searchScraped !== "NO_SCRAPED_DATA";
+  if (!hasSearchData && !directScraped) return null;
+
+  const scraped = [
+    directScraped
+      ? `── DIRECT COMPETITOR PAGES (pasted by the user — analyse these FIRST and in the most depth) ──\n${directScraped}`
+      : "",
+    hasSearchData ? `── SEARCH & REVIEW DATA ──\n${searchScraped}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   const response = await invokeLLM({
     messages: [
@@ -975,6 +1044,7 @@ Return JSON:
 
 Rules:
 - 4-8 competitors, ranked by how prominent they are in the data
+- If DIRECT COMPETITOR PAGES are present, each one MUST appear as its own competitor entry, listed first, with the deepest analysis: quote their actual headline/bio language in "angle", and infer weakness from what their page does NOT address that the market complains about
 - marketGaps: 3-6 gaps NOBODY in the data is filling, each one line, each ownable by a coach/course creator
 - Weaknesses must be grounded in actual complaint language from the data
 - No em dashes. Use a full stop instead

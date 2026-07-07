@@ -1,4 +1,4 @@
-import { Instagram, Megaphone, Video } from "lucide-react";
+import { Instagram, Video } from "lucide-react";
 import type { AdCopyIdea } from "@shared/reportContent";
 import {
   AwarenessFunnel,
@@ -21,18 +21,6 @@ const FORMAT_META = {
     ctaText: "text-primary",
     hookLabel: "Hook / Opening Line",
     bodyLabel: "Script Body",
-  },
-  b_roll: {
-    label: "B-Roll Ads",
-    blurb: "Text-overlay ads. Bold on-screen text over B-roll footage. No voiceover needed.",
-    icon: Megaphone,
-    accent: "text-amber-400",
-    pill: "text-amber-400 bg-amber-400/10 border-amber-400/20",
-    cardBorder: "border-amber-400/10",
-    ctaBorder: "border-amber-400/20 bg-amber-400/5",
-    ctaText: "text-amber-400",
-    hookLabel: "Opening Hook (On-Screen Text)",
-    bodyLabel: "On-Screen Text Overlays",
   },
   instagram_story: {
     label: "Instagram Story Ads",
@@ -133,7 +121,7 @@ export function AdsTab({
   reportId: number;
   reportName: string;
 }) {
-  const formats: AdFormat[] = ["talking_head", "b_roll", "instagram_story"];
+  const formats: AdFormat[] = ["talking_head", "instagram_story"];
 
   const allText = () =>
     formats
@@ -162,7 +150,7 @@ export function AdsTab({
     <div className="space-y-8">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-muted-foreground">
-          Ads written using Hormozi's GOATed Ads method with your exact voice data. Talking Head, B-Roll, and Instagram Story formats across all 5 awareness levels.
+          Ads written using Hormozi's GOATed Ads method with your exact voice data. Talking Head scripts across all 5 awareness levels plus Instagram Story ads.
         </p>
         <div className="flex items-center gap-2">
           <CopyAllBtn getText={allText} />

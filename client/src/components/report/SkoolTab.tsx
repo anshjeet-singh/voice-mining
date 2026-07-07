@@ -29,16 +29,17 @@ export function SkoolTab({
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
         <p className="text-xs text-muted-foreground max-w-2xl">
-          Keyword trigger posts for your Skool community. Each post drives comments with a keyword, then an automated 6-DM sequence (ending with a 7-day re-open) converts commenters into buyers. Uses #NAME# as the Skool personalisation token.
+          6 Skool posts: 3 keyword posts (comment triggers a 5-DM follow-up) and 3 link posts (the link is the whole CTA).
         </p>
         <div className="flex items-center gap-2">
-          <CopyAllBtn getText={() => posts.map((p, i) => `POST ${i + 1} [${p.commentKeyword}]\n\n${p.postCopy}`).join("\n\n=====\n\n")} />
+          <CopyAllBtn getText={() => posts.map((p, i) => `POST ${i + 1} ${p.commentKeyword ? `[${p.commentKeyword}]` : "[Link CTA]"}\n\n${p.postCopy}`).join("\n\n=====\n\n")} />
           <RegenerateSectionBtn reportId={reportId} section="skoolPosts" />
         </div>
       </div>
 
       {posts.map((post, i) => {
         const formatCfg = post.postFormat ? POST_FORMAT_CONFIG[post.postFormat] : null;
+        const isKeywordPost = post.postType !== "link_cta" && !!post.commentKeyword;
         return (
           <div key={i} className="rounded-xl border border-border/40 bg-card/30 overflow-hidden">
             {/* Post Header */}
@@ -51,12 +52,7 @@ export function SkoolTab({
                 <div className="text-left">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-foreground">
-                      {(() => {
-                        const s = (post.style ?? "").toLowerCase();
-                        const isLink = s.includes("2") || s.includes("link") || s.includes("call");
-                        const ctaType = isLink ? "Link CTA" : "Keyword CTA";
-                        return `Post ${i + 1}: ${ctaType} [${post.commentKeyword}]`;
-                      })()}
+                      {isKeywordPost ? `Post ${i + 1}: Keyword CTA [${post.commentKeyword}]` : `Post ${i + 1}: Link CTA`}
                     </p>
                     {formatCfg && (
                       <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${formatCfg.color}`}>
@@ -65,7 +61,11 @@ export function SkoolTab({
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Comment keyword: <span className="text-primary font-mono font-bold">{post.commentKeyword}</span>
+                    {isKeywordPost ? (
+                      <>Comment keyword: <span className="text-primary font-mono font-bold">{post.commentKeyword}</span></>
+                    ) : (
+                      "The link is the CTA. No comment keyword, no DMs."
+                    )}
                   </p>
                 </div>
               </div>
@@ -83,7 +83,7 @@ export function SkoolTab({
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Post Copy</p>
                     <div className="flex items-center gap-1">
-                      <SaveBtn reportId={reportId} searchKeyword={reportName} contentType="skool_post" label={`Skool Post ${i + 1} [${post.commentKeyword}]`} content={post.postCopy} />
+                      <SaveBtn reportId={reportId} searchKeyword={reportName} contentType="skool_post" label={`Skool Post ${i + 1} ${post.commentKeyword ? `[${post.commentKeyword}]` : "[Link CTA]"}`} content={post.postCopy} />
                       <CopyBtn text={post.postCopy} />
                     </div>
                   </div>
@@ -92,7 +92,8 @@ export function SkoolTab({
                   </div>
                 </div>
 
-                {/* DM Workflow */}
+                {/* DM Workflow — keyword posts only */}
+                {isKeywordPost && (post.dmWorkflow?.length ?? 0) > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <MessageCircle className="w-3.5 h-3.5 text-primary" />
@@ -120,6 +121,7 @@ export function SkoolTab({
                     ))}
                   </div>
                 </div>
+                )}
               </div>
             )}
           </div>

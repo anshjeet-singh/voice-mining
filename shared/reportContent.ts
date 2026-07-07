@@ -125,7 +125,8 @@ export function normalizeHooks(list: ViralHook[] | string[] | null | undefined):
 
 // ─── Ads ─────────────────────────────────────────────────────────────────────
 
-export type AdFormat = "talking_head" | "b_roll" | "instagram_story";
+/** b_roll is legacy only — no longer generated, hidden in the UI. */
+export type AdFormat = "talking_head" | "instagram_story" | "b_roll";
 export type AwarenessLevel = "most_aware" | "product_aware" | "solution_aware" | "problem_aware" | "unaware";
 
 export interface AdCopyIdea {
@@ -204,12 +205,15 @@ export function estimateScriptSeconds(script: Pick<TalkingHeadScript, "patternIn
 export type SkoolPostFormat = "story" | "list" | "question" | "controversy" | "case_study";
 
 export interface SkoolPostWithDMWorkflow {
-  postType: "keyword_trigger";
+  /** keyword_trigger posts ask for a comment keyword; link_cta posts just send a link. */
+  postType: "keyword_trigger" | "link_cta";
   style?: string;
   /** Post format tag. Absent on legacy posts. */
   postFormat?: SkoolPostFormat;
   postCopy: string;
-  commentKeyword: string;
+  /** Only present on keyword_trigger posts. */
+  commentKeyword?: string;
+  /** Empty on link_cta posts — the link is the whole CTA. */
   dmWorkflow: DMMessage[];
 }
 
