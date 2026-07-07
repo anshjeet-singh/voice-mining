@@ -7,8 +7,10 @@ services:
     runtime: node
     plan: free
     # DB schema is applied out-of-band (pnpm db:push); the build just installs + builds.
-    buildCommand: corepack enable && pnpm install && pnpm build
-    startCommand: pnpm start
+    # `corepack pnpm` runs pnpm via the corepack shim without `corepack enable`,
+    # which fails on Render's read-only /usr/bin.
+    buildCommand: corepack pnpm@10.4.1 install && corepack pnpm@10.4.1 build
+    startCommand: node dist/index.js
     healthCheckPath: /
     envVars:
       - key: NODE_ENV
