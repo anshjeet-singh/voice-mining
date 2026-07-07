@@ -30,6 +30,7 @@ export function SkoolTab({
       <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
         <p className="text-xs text-muted-foreground max-w-2xl">
           6 Skool posts: 3 keyword posts (comment triggers a 5-DM follow-up) and 3 link posts (the link is the whole CTA).
+          Swap <span className="font-mono text-primary">[LEAD MAGNET LINK]</span> and <span className="font-mono text-primary">[BOOKING LINK]</span> for your real links.
         </p>
         <div className="flex items-center gap-2">
           <CopyAllBtn getText={() => posts.map((p, i) => `POST ${i + 1} ${p.commentKeyword ? `[${p.commentKeyword}]` : "[Link CTA]"}\n\n${p.postCopy}`).join("\n\n=====\n\n")} />

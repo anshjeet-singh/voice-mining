@@ -560,9 +560,9 @@ Return JSON:
 // ─── Skool Posts — keyword trigger only, with DM follow-up sequence ──────────
 
 /**
- * 6 keyword-trigger Skool posts (tagged story/list/question/controversy/
- * case_study) each with a 6-step no-reply DM workflow ending in a 7-day
- * re-open.
+ * 6 Skool posts: 3 keyword-trigger (each with a 5-DM no-reply funnel using
+ * [LEAD MAGNET LINK] / [BOOKING LINK] placeholders) + 3 link-CTA posts.
+ * Every post: emoji headline, spaced body, CTA of 10 words or fewer.
  */
 export async function generateSkoolPosts(
   keyword: string,
@@ -580,38 +580,52 @@ You write as the community host: someone who has achieved the result personally,
 
 The audience is sceptical of generic coaching content. They stop scrolling for specific numbers, insider knowledge, and posts that feel like real information. They ignore anything that reads like an ad or a template.
 
-FORMATTING RULES (Skool renders PLAIN TEXT — markdown does not work):
-- NEVER use asterisks, underscores, hashes, or any markdown syntax anywhere. No **bold**, no *italics*, no # headers. Asterisks show up literally and look broken.
-- Headline: Every post starts with a plain-text headline line. 1-2 emojis at the very start. Title case. Must be a specific result, bold claim, or counterintuitive fact. Never a question. Never generic.
-- Body: Short paragraphs. No walls of text. Sentences under 18 words. Blank line between paragraphs.
-- Lists: Maximum one list per post. Each item gets a single emoji bullet. No dashes or asterisks as bullets.
-- Emojis: 1-2 in the headline only. In the body, emojis only as list bullets or very sparingly.
-- GIF suggestion: Every post ends with its own line: GIF: [2-4 word search term]
+EVERY POST HAS EXACTLY THIS SHAPE (Skool renders PLAIN TEXT — markdown does not work):
+Line 1: HEADLINE. Starts with 1-2 emojis. Title case. A specific result, bold claim, or counterintuitive fact. Never a question.
+[blank line]
+BODY: 2-4 short paragraphs separated by blank lines. Sentences under 15 words. Reads like an operator sharing what worked, not a marketer selling.
+[blank line]
+CTA: ONE line, 5-10 WORDS MAXIMUM, with one emoji. That's it.
+Last line: GIF: [2-4 word search term]
 
-BANNED WORDS: journey, struggle, frustrating, game-changer, transform, empower, "sound familiar?", "you're not alone", "many people", "so many of you", "I see this all the time", "in today's world"
+CTA EXAMPLES (copy this energy — short, sweet, done):
+- "Comment FUNDING below and I'll send you the details 👇"
+- "Want the full breakdown? Comment PLAN 👇"
+- "Grab it here: [LEAD MAGNET LINK] 🔗"
+- "Book your free call here: [BOOKING LINK] 📞"
+NEVER write CTA sentences like "Ready to see how you can achieve similar results? Learn more about our proven process here". If the CTA is over 10 words, cut it.
+
+FORMATTING RULES:
+- NEVER use asterisks, underscores, hashes, or any markdown syntax anywhere. Asterisks show up literally and look broken.
+- Lists: Maximum one list per post. Each item gets a single emoji bullet. No dashes or asterisks as bullets.
+- Emojis: in the headline, as list bullets, and one in the CTA. Sparingly elsewhere.
+
+BANNED: journey, struggle, frustrating, "it's a frustrating cycle", game-changer, transform, empower, blessing, demystified, "sound familiar?", "you're not alone", "many people", "don't overlook the power of", "in today's world"
+NEVER jam the raw search keywords into sentences ("funding for business for my new LLC" is keyword stuffing, not writing). Write naturally about the topic.
+NEVER impersonate a customer or write fake first-person testimonials. You are the community host. Client stories are "our client" stories with specific numbers.
+NEVER include personal names, usernames, or comment shoutouts from the voice data.
 
 TWO POST TYPES (write exactly 3 of each):
-1. keyword_trigger (3 posts): End with "Comment [KEYWORD] below and I'll send you [specific named resource]." These posts get a DM workflow.
-2. link_cta (3 posts): End with ONE plain link line, e.g. "Grab the free training here: [link]" or "Book your free call here: [link]". The link IS the entire CTA. NO comment keyword, NO "drop a comment", NO DM workflow. Never mix a keyword ask into a link post.
+1. keyword_trigger (3 posts): CTA asks for the comment keyword. These posts get a DM workflow.
+2. link_cta (3 posts): CTA is one short link line using [LEAD MAGNET LINK] or [BOOKING LINK]. NO comment keyword, NO DM workflow.
 
 WRITING RULES:
 - Lead every post with a specific number, result, or counterintuitive fact. Never a question, never a problem statement.
 - Debunk objections like an insider, not a coach.
-- Never open with empathy or pain-framing.
 - At least one specific number, named strategy, or real-world datapoint per post.
-- The post must read like it was written by someone who has done it.
 - No em dashes anywhere. Use a full stop or start a new line.
 
 DM WORKFLOW RULES (keyword_trigger posts only — EXACTLY 5 DMs):
-Every DM sequence exists to do ONE of two things: get them to book a call, or get them to click a lead-magnet link. Pick one goal per post and every DM drives toward it.
-- DM 1 fires within 5 minutes of keyword comment: deliver the promised resource link + one light qualifying question
-- DM 2 fires 4 hours later IF no reply: ask if they got a chance to look, restate the one-line benefit
-- DM 3 fires 1 day later IF no reply: share one quick win or datapoint, then the call/link ask again
-- DM 4 fires 2 days later IF no reply: short and casual, direct ask with the booking or resource link
-- DM 5 fires 7 days later IF no reply: final casual re-open, reference something new, zero pressure, link one last time
+Each post's DM sequence has ONE declared goal: either book a call or get the lead magnet consumed and then book a call. The sequence is a funnel, think it through:
+- DM 1 (within 5 min of comment): deliver the promised resource with the literal placeholder [LEAD MAGNET LINK], then ONE light qualifying question that advances the sale (e.g. "quick question while you check it out: are you funding a brand new LLC or an existing business?")
+- DM 2 (4 hours, no reply): did they get a chance to look + restate the single biggest benefit in one line
+- DM 3 (1 day, no reply): one quick win or specific datapoint, then offer the call with [BOOKING LINK]
+- DM 4 (2 days, no reply): short, casual, direct ask with [BOOKING LINK]
+- DM 5 (7 days, no reply): casual re-open, reference something new, zero pressure, drop [BOOKING LINK] or [LEAD MAGNET LINK] one last time
+- EVERY sequence must contain [LEAD MAGNET LINK] at least once and [BOOKING LINK] at least once. These literal placeholders are how the user knows where their links go.
+- FORMAT EVERY DM with line breaks: 2-4 short lines separated by blank lines (\\n\\n), like a real person texting. Never one dense paragraph.
 - NO "if they reply" branch. Every DM is a no-reply follow-up only.
 - Use #NAME# as the personalisation token.
-- Write like a real person texting, not a corporate script. 1-3 short sentences per DM.
 - No em dashes, no asterisks, no markdown in DMs.
 
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
@@ -639,20 +653,20 @@ Return JSON:
   {
     "postType": "keyword_trigger",
     "postFormat": "story",
-    "postCopy": "Full plain-text post copy with \\n for line breaks. Ends with the comment CTA then the GIF line.",
+    "postCopy": "🚨 Headline With Emojis Here\\n\\nBody paragraph one.\\n\\nBody paragraph two.\\n\\nComment ${commentKeywords[0]} below and I'll send you the details 👇\\nGIF: [2-4 word search term]",
     "commentKeyword": "${commentKeywords[0]}",
     "dmWorkflow": [
-      {"dmNumber": 1, "timing": "Immediate, off comment", "copy": "Hey #NAME#, here's the [resource]: [link]. Quick question: [qualify]"},
-      {"dmNumber": 2, "timing": "4 hours later, no reply", "copy": "Follow-up copy"},
-      {"dmNumber": 3, "timing": "1 day later, no reply", "copy": "Follow-up copy"},
-      {"dmNumber": 4, "timing": "2 days later, no reply", "copy": "Follow-up copy"},
-      {"dmNumber": 5, "timing": "7 days later, no reply", "copy": "Final casual re-open copy"}
+      {"dmNumber": 1, "timing": "Immediate, off comment", "copy": "Hey #NAME#, here it is: [LEAD MAGNET LINK]\\n\\nQuick question while you check it out: [one qualifying question]"},
+      {"dmNumber": 2, "timing": "4 hours later, no reply", "copy": "Hey #NAME#, did you get a chance to look?\\n\\n[one-line benefit restate]"},
+      {"dmNumber": 3, "timing": "1 day later, no reply", "copy": "[one quick win or datapoint]\\n\\nWant me to walk you through it? Grab a time: [BOOKING LINK]"},
+      {"dmNumber": 4, "timing": "2 days later, no reply", "copy": "[short direct ask]\\n\\n[BOOKING LINK]"},
+      {"dmNumber": 5, "timing": "7 days later, no reply", "copy": "[casual re-open, something new]\\n\\n[BOOKING LINK or LEAD MAGNET LINK]"}
     ]
   },
   {
     "postType": "link_cta",
     "postFormat": "case_study",
-    "postCopy": "Full plain-text post copy ending with one link line then the GIF line.",
+    "postCopy": "💰 Headline With Emojis Here\\n\\nBody paragraphs.\\n\\nGrab it here: [LEAD MAGNET LINK] 🔗\\nGIF: [2-4 word search term]",
     "commentKeyword": null,
     "dmWorkflow": []
   }
