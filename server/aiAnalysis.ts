@@ -22,6 +22,7 @@ import {
   GOATED_ADS_FRAMEWORK,
   BRANDING_FRAMEWORK,
   YOUTUBE_FRAMEWORK,
+  CONTENT_PSYCHOLOGY_FRAMEWORK,
   FACEBOOK_AD_FRAMEWORKS,
   SKOOL_POST_FRAMEWORKS,
   EMAIL_SEQUENCE_FRAMEWORKS,
@@ -400,6 +401,10 @@ export async function generateViralHooks(
         content: `You are a world-class copywriter trained on proven viral hook frameworks.
 You create scroll-stopping hooks using real human language extracted from voice-of-customer research.
 You MUST model your hooks on the proven templates provided. No generic marketing language.
+
+${CONTENT_PSYCHOLOGY_FRAMEWORK}
+
+Apply the psychology above to hooks specifically: use the PROVEN-HOOK SWAP (borrow shapes proven in other verticals and swap in this market's element), open TAM-wide before narrowing to the niche, and write at a third-grade reading level for one person.
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {
@@ -480,6 +485,10 @@ export async function generateAdCopy(
 You write Facebook and Instagram ads ONLY. You understand the 5 levels of audience awareness and match copy to each level.
 You use the customer's exact language. Never polished marketing speak.
 You produce ONE format: Talking Head, a full script for a person speaking directly to camera.
+
+${CONTENT_PSYCHOLOGY_FRAMEWORK}
+
+Apply the psychology above to ads specifically: SAY WHAT ONLY THIS BUSINESS CAN SAY (specific numbers, specific proof — "state the facts and tell the truth"), write at a third-grade reading level, use the PROVEN-HOOK SWAP for unaware-level hooks, and make at least one ad a COST OF INACTION ad.
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {
@@ -578,6 +587,13 @@ export async function generateSkoolPosts(
         content: `You are a Skool community post writer. Your job is to write posts for a free online community that drive one of two outcomes: keyword comments that trigger a DM sequence, or direct clicks on a link.
 
 You write as the community host: someone who has achieved the result personally, not someone who teaches theory.
+
+CONVERSION PSYCHOLOGY (apply to every post):
+- Belief-shift without the how: each post shifts ONE belief and shows WHAT works. The step-by-step how is what the DM funnel and the offer deliver
+- At least one post is an OBJECTION-CRUSHER: take the market's biggest objection and debunk it as an insider
+- At least one post uses COST OF INACTION: what staying stuck costs in real dollars over 12 months
+- Say what only this operator can say: specific numbers and results, never claims anyone could make
+- Third-grade reading level, written to one person
 
 The audience is sceptical of generic coaching content. They stop scrolling for specific numbers, insider knowledge, and posts that feel like real information. They ignore anything that reads like an ad or a template.
 
@@ -734,6 +750,13 @@ You use voice-of-customer data to pick topics and REAL top-performing videos in 
 
 ${YOUTUBE_FRAMEWORK}
 
+${CONTENT_PSYCHOLOGY_FRAMEWORK}
+
+Apply the psychology above to YouTube specifically:
+- Education content, not edutainment: VAGUE-TO-CLEAR packaging (the title says exactly what the video is; deliver exactly that). Judge ideas by whether the RIGHT person would watch, never raw view potential
+- Hooks follow PROOF-PROMISE-PLAN on top of the 4-beat structure
+- Across the 5 ideas cover these conversion jobs: at least one OBJECTION-CRUSHER (the market's biggest objection packaged as broad value), one CLIENT-JOURNEY/proof video (struggle then process then result, with numbers), and one COST OF INACTION concept
+- Belief-shift without the how: the video shows WHAT works and why; the step-by-step how is what the viewer pays for
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {
@@ -812,6 +835,10 @@ export async function generateTalkingHeadScripts(
         role: "system",
         content: `You are a viral content scriptwriter trained on the Steak Method (Cost Narration) and authority sales conversion frameworks.
 You write short-form talking head scripts that stop the scroll, build curiosity, and convert viewers into leads.
+
+${CONTENT_PSYCHOLOGY_FRAMEWORK}
+
+Apply the psychology above to scripts specifically: structure every script TAM-to-ICP (open with the wide-appeal layer, narrow to the niche mid-script), shift ONE belief without teaching the step-by-step how, and make at least one script a COST OF INACTION script (map what staying stuck costs in dollars over 12 months) and one an OBJECTION-CRUSHER (answer the market's biggest objection packaged as broad value).
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {

@@ -693,3 +693,51 @@ CTA: lead-magnet trigger is highest leverage for B2C ("Comment [KEYWORD] and I'l
 
 FORMATS THAT WORK (rotate): case study, industry mistakes, mechanism breakdown, full-course video, origin story, raw sit-down, tier list / X vs Y, community Q&A.
 `;
+
+/**
+ * CONTENT_PSYCHOLOGY_FRAMEWORK — distilled from ~10 transcripts of top
+ * personal-brand operators ($400k/mo consulting via pure organic + Hormozi's
+ * 21M-follower playbook). This is the psychology layer: why content converts,
+ * not just what to post. Injected into every content generator.
+ */
+export const CONTENT_PSYCHOLOGY_FRAMEWORK = `
+CONTENT PSYCHOLOGY (how content attracts eyeballs, nurtures, and converts):
+
+THE 4-PILLAR TRUST SEQUENCE (in this exact order — skipping ahead is why content flops):
+1. ADMIRABLE: give people a reason to care before teaching anything. "No one wants to watch a loser." Lead with what's been done, not what to do.
+2. LIKABLE: be a real person. Show the trait people like in real life. Specific beats generic: relating to everyone connects with no one.
+3. CREDIBLE: only NOW share value and expertise. Value-first content without pillars 1-2 builds a "value brand" that AI can replace.
+4. TRUSTABLE: accumulated kept promises. When trust lands, people pay without a sales call.
+Most content fails because it starts at pillar 3. Diagnose every piece: which pillar is it building?
+
+SPCL — THE 4 LEVERS OF INFLUENCE (influence = likelihood people comply with your CTA, NOT views):
+- Status: show you control something scarce that they want (results, access, systems)
+- Power: give directions that work. When someone follows your advice and wins, they obey the next ask
+- Credibility: third-party, observable proof. Say what only YOU can say, show what only YOU can show
+- Likeness: sound like them, share their values
+A grandma slapping you gets views; it gets zero buyers. Optimize for the right 1,000 people, not a million wrong ones.
+
+ONE-OF-ONE MECHANISM: stack 3 traits that are each replicable alone but one-of-one together (e.g. "$40k/mo + at 20 + while in university"). Every brand statement should make the viewer unable to name a second person who fits.
+
+TAM-TO-ICP STRUCTURE (why niche videos die): never open with the niche mechanism. Open with the wide-appeal character/curiosity layer (the thing a broad audience cares about), THEN funnel to the niche specifics mid-piece. "I spent $8M on ads. Here's what the algorithm does that nobody tells you" beats "How to run Facebook ads for coaches".
+
+PROOF-PROMISE-PLAN INTROS (education content): (1) PROOF — why listen to you, stated with numbers, (2) PROMISE — exactly what they'll get, (3) PLAN — how you'll deliver it. Lead with whichever is strongest, usually proof.
+
+VAGUE-TO-CLEAR PACKAGING: for education, curiosity-gap advice is WRONG. Say exactly what the thing is and deliver exactly that. Clickbait is fine only when backed by literal truth ("state the facts and tell the truth").
+
+PROVEN-HOOK SWAP: take a hook already proven in a DIFFERENT vertical and swap the applicable element ("Amazon FBA is dropshipping 2016" → "Posting content in 2026 is Bitcoin 2013"). Never invent from scratch when a proven shape exists.
+
+BELIEF-SHIFT, DON'T TEACH THE HOW: nurture content shifts ONE belief and shows the WHAT without the step-by-step HOW. The how is what they pay for. Free content solves problems 1-3 exceptionally; problems 4-6 are the offer. "This information won't change your life. But if you're ready to change your life..."
+
+OBJECTION-DRIVEN IDEAS: the best-converting content answers the exact objections heard in sales conversations, packaged as broad value so it never feels salesy. If an objection appears 3+ times, it's a marketing problem — make the piece.
+
+CLIENT JOURNEYS BEAT CLIENT INTERVIEWS: show the struggle, then the process, then the result, with timestamps and numbers. Straight win-parading tanks; the documented journey converts.
+
+COST OF INACTION: the single most reliable conversion concept — map out exactly what staying stuck costs in dollars over 12 months versus acting.
+
+WRITE FOR ONE PERSON at a third-grade reading level. If you can describe their problem better than they can, they assume you have the solution. Simple language isn't dumbing down, it's removing friction for everyone including smart people.
+
+REMINDED MORE THAN TAUGHT: audiences need reminding more than teaching. Re-run winning concepts in new formats, new stories, new names. You get sick of your content long before the audience remembers your name.
+
+POLARIZING POSITIONING: never be in the middle. Lean into the extreme version of what makes the brand different. Loved by a select few beats liked by everyone — the select few pay.
+`;
