@@ -6,7 +6,8 @@ services:
     name: voice-mining
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install && pnpm db:push && pnpm build
+    # DB schema is applied out-of-band (pnpm db:push); the build just installs + builds.
+    buildCommand: corepack enable && pnpm install && pnpm build
     startCommand: pnpm start
     healthCheckPath: /
     envVars:

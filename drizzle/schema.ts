@@ -139,9 +139,9 @@ export const trendSnapshots = mysqlTable("trend_snapshots", {
     description: string;
     score: number;
     momentum: "Rising" | "Stable" | "Emerging" | "Declining";
-  }>>().notNull().default([]),
-  trendingPhrases: json("trending_phrases").$type<string[]>().notNull().default([]),
-  emergingQuestions: json("emerging_questions").$type<string[]>().notNull().default([]),
+  }>>().notNull(),
+  trendingPhrases: json("trending_phrases").$type<string[]>().notNull(),
+  emergingQuestions: json("emerging_questions").$type<string[]>().notNull(),
   createdAt: int("created_at").notNull().$defaultFn(() => Math.floor(Date.now() / 1000)),
 });
 
