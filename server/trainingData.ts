@@ -661,3 +661,35 @@ MISTAKE RECOVERY: never try to delete a bad pairing. Overwhelm it with good pair
 
 QUALITY BAR FOR BRAND ADVICE: every recommendation must name a specific pairing (a person, proof style, experience, or outcome to associate with) and the behavior it changes. "Improve your brand image" is banned.
 `;
+
+/**
+ * YOUTUBE_FRAMEWORK — distilled from the agency's B2C YouTube Scripting SOP
+ * and Hook Framework. Drives the YouTube ideas generator: outlier-as-scaffold
+ * packaging, the 4-beat hook, TOF/MOF/BOF spread, and story-led bodies.
+ */
+export const YOUTUBE_FRAMEWORK = `
+B2C YOUTUBE METHOD:
+
+PACKAGING IS 80% OF THE VIDEO. Title + thumbnail + first 30 seconds decide everything. Lock packaging first, script second.
+
+OUTLIER-AS-SCAFFOLD: never invent titles from scratch. Take the title PATTERN a proven top-performing video in this niche already validated, and adapt it with sharper specificity for this audience. Same shape, sharper numbers. Take the pacing and shape. Never copy exact words.
+
+THE 4-BEAT HOOK (first 30-60 seconds, in this exact order):
+1. Reinforce the packaging: first sentence restates the title in a slightly expanded way. Never "hey guys welcome back".
+2. Lead with the problem: concrete pain inside the viewer's actual week, with at least one real number.
+3. Authority anchor: the biggest outcome produced (the rise) OR the time/money it cost to figure out (the price paid). For B2C, price-paid usually lands harder.
+4. Two-part promise: the specific before-to-after jump AND the mechanism they'll learn, with the obvious objection pre-empted ("without X", "even if Y").
+
+DELETE ON SIGHT: "hey guys welcome back", "in today's video", "smash that like button", "a lot of people ask me", vague proof, promises with no numbers.
+
+FUNNEL STAGES (spread ideas across all three):
+- TOF (broad pull): biggest mistakes, X vs Y, tier lists, lifestyle/journey. Goal: new eyeballs.
+- MOF (value-dense): mechanism breakdowns, full mini-course videos, "how to think about X". The channel's main job.
+- BOF (proof-dense): case studies, client interviews, model breakdowns. Converts watchers into buyers.
+
+THE BODY IS STORY ARCS, NOT STACKED TIPS: 3-5 beats, each = open a story (specific person, moment, stakes) > tension > teaching payoff > move on. Every beat carries value (the teaching) + lifestyle (where it happened in a real day) + connection (vulnerability, specificity, proof).
+
+CTA: lead-magnet trigger is highest leverage for B2C ("Comment [KEYWORD] and I'll send you X"). Woven into the body, never bolted onto the end.
+
+FORMATS THAT WORK (rotate): case study, industry mistakes, mechanism breakdown, full-course video, origin story, raw sit-down, tier list / X vs Y, community Q&A.
+`;

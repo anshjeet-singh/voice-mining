@@ -9,6 +9,12 @@ const VOLUME_TIER_CONFIG: Record<string, { label: string; color: string }> = {
   low: { label: "Low Search Volume", color: "text-muted-foreground bg-card/60 border-border/40" },
 };
 
+const FUNNEL_STAGE_CONFIG: Record<string, { label: string; color: string }> = {
+  TOF: { label: "TOF · New Eyeballs", color: "text-sky-400 bg-sky-400/10 border-sky-400/20" },
+  MOF: { label: "MOF · Nurture", color: "text-violet-400 bg-violet-400/10 border-violet-400/20" },
+  BOF: { label: "BOF · Converts", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
+};
+
 function formatLength(seconds?: number): string | null {
   if (!seconds) return null;
   if (seconds < 60) return `~${seconds}s`;
@@ -60,7 +66,7 @@ export function ScriptsTab({
           </div>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-xs text-muted-foreground">
-              Fully-packaged video ideas: title, 30-second hook script, thumbnail concept, and SEO tags.
+              Packaged like the niche's proven winners: each idea is modeled on a real top-performing video, with the outline in 5-6 bullets and a 30-second hook.
             </p>
             <RegenerateSectionBtn reportId={reportId} section="youtubeIdeas" />
           </div>
@@ -68,10 +74,14 @@ export function ScriptsTab({
             {youtubeIdeas.map((idea, i) => {
               const tier = VOLUME_TIER_CONFIG[idea.searchVolumeTier ?? ""] ?? null;
               const isOpen = expandedIdea === i;
+              const stage = FUNNEL_STAGE_CONFIG[idea.funnelStage ?? ""] ?? null;
               const fullText = [
                 `TITLE: ${idea.title}`,
+                idea.basedOn ? `MODELED ON: ${idea.basedOn}` : null,
                 `DESCRIPTION: ${idea.description}`,
+                idea.contentBullets?.length ? `WHAT THE VIDEO COVERS:\n${idea.contentBullets.map((b, j) => `${j + 1}. ${b}`).join("\n")}` : null,
                 idea.hook ? `FIRST 30 SECONDS:\n${idea.hook}` : null,
+                idea.ctaIdea ? `CTA: ${idea.ctaIdea}` : null,
                 idea.thumbnailConcept ? `THUMBNAIL: ${idea.thumbnailConcept}` : null,
                 idea.tags?.length ? `TAGS: ${idea.tags.join(", ")}` : null,
               ]
@@ -89,6 +99,11 @@ export function ScriptsTab({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <p className="text-sm font-semibold text-foreground">{idea.title}</p>
+                        {stage && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${stage.color}`}>
+                            {stage.label}
+                          </span>
+                        )}
                         {tier && (
                           <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${tier.color}`}>
                             {tier.label}
@@ -96,6 +111,9 @@ export function ScriptsTab({
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed">{idea.description}</p>
+                      {idea.basedOn && (
+                        <p className="text-xs text-rose-300/70 mt-1">Modeled on: {idea.basedOn}</p>
+                      )}
                     </div>
                     {isOpen ? (
                       <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
@@ -109,12 +127,34 @@ export function ScriptsTab({
                         <SaveBtn reportId={reportId} searchKeyword={reportName} contentType="youtube_idea" label={idea.title.slice(0, 80)} content={fullText} />
                         <CopyBtn text={fullText} />
                       </div>
+                      {idea.whyItWorks && (
+                        <p className="text-xs text-muted-foreground italic">Why this packaging works: {idea.whyItWorks}</p>
+                      )}
+                      {(idea.contentBullets?.length ?? 0) > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">What The Video Covers</p>
+                          <ol className="space-y-1.5">
+                            {(idea.contentBullets ?? []).map((b, j) => (
+                              <li key={j} className="flex gap-2.5 text-sm text-foreground/90 leading-relaxed">
+                                <span className="text-xs font-mono text-rose-300/60 mt-0.5 flex-shrink-0">{j + 1}.</span>
+                                <span>{b}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
                       {idea.hook && (
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">First 30 Seconds (Hook Script)</p>
                           <div className="p-4 rounded-lg border border-border/30 bg-card/20">
                             <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">{idea.hook}</p>
                           </div>
+                        </div>
+                      )}
+                      {idea.ctaIdea && (
+                        <div className="p-3 rounded-lg border border-primary/20 bg-primary/5">
+                          <p className="text-xs text-primary font-semibold uppercase tracking-wider mb-0.5">CTA</p>
+                          <p className="text-sm text-foreground/90">{idea.ctaIdea}</p>
                         </div>
                       )}
                       {idea.thumbnailConcept && (

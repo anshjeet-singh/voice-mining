@@ -21,6 +21,7 @@ import {
   USER_HOOK_BANK,
   GOATED_ADS_FRAMEWORK,
   BRANDING_FRAMEWORK,
+  YOUTUBE_FRAMEWORK,
   FACEBOOK_AD_FRAMEWORKS,
   SKOOL_POST_FRAMEWORKS,
   EMAIL_SEQUENCE_FRAMEWORKS,
@@ -28,7 +29,7 @@ import {
 } from "./trainingData";
 
 // Real internet scraping — imported from realScraper.ts
-import { scrapeCompetitorDeep, scrapeCompetitorsForKeyword, scrapeInternetForKeyword } from "./realScraper";
+import { scrapeCompetitorDeep, scrapeCompetitorsForKeyword, scrapeInternetForKeyword, scrapeYouTubeOutliers } from "./realScraper";
 
 // ─── Helper to extract string content from LLM response ─────────────────────
 
@@ -710,48 +711,67 @@ Return JSON:
 // ─── YouTube Ideas + Talking Head Scripts ────────────────────────────────────
 
 /**
- * 5 fully-packaged YouTube ideas: title, description, first-30-seconds hook
- * script, thumbnail concept, 10 SEO tags, and a search volume tier.
+ * 5 fully-packaged YouTube ideas built on REAL outliers: the top-performing
+ * videos in the niche are scraped first (titles + view counts), and every
+ * idea's packaging is adapted from a proven pattern. Hook follows the 4-beat
+ * framework; body is 5-6 content bullets; ideas spread across TOF/MOF/BOF.
  */
 export async function generateYouTubeIdeas(
   keyword: string,
   analysis: AnalysisInput,
   brandVoice?: string
 ): Promise<YouTubeIdea[]> {
+  const commentKeywords = deriveCommentKeywords(keyword);
+  const primaryKeyword = keyword.split(",")[0]?.trim() ?? keyword;
+  const outliers = await scrapeYouTubeOutliers(primaryKeyword).catch(() => "");
+
   const response = await invokeLLM({
     messages: [
       {
         role: "system",
-        content: `You are a YouTube content strategist who creates viral video ideas for educational/business channels.
-You use voice-of-customer data to identify exactly what the audience wants to watch.
-You understand YouTube packaging: title, thumbnail, and first 30 seconds decide everything.
+        content: `You are a YouTube strategist for coaching/education channels that feed a webinar or call funnel.
+You use voice-of-customer data to pick topics and REAL top-performing videos in the niche as packaging scaffolds.
+
+${YOUTUBE_FRAMEWORK}
+
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {
         role: "user",
         content: `Create 5 fully-packaged YouTube video ideas for "${keyword}".
 
-Voice mining data (use this to identify what they want to learn):
+Voice mining data (what this audience is desperate to learn):
 Pain Points: ${topInsights(analysis.painPoints, 5)}
 Desires: ${topInsights(analysis.desires, 5)}
 Trending Phrases: ${analysis.trendingPhrases.slice(0, 5).join(" | ")}
 Top Themes: ${analysis.topThemes.slice(0, 5).map((t) => t.name).join(" | ")}
 
+${outliers ? `PROVEN OUTLIERS IN THIS NICHE (real videos, real view counts — these title patterns are already validated by the market):
+${outliers}
+
+Model every idea's packaging on one of these outliers: same PATTERN, sharper specificity for this exact audience. Never copy words.` : "No outlier data available. Fall back to proven B2C education title patterns (mistakes, X vs Y, case study, mechanism breakdown)."}
+
 Each idea needs:
-- title: specific, curiosity-driven, searchable. Use their exact language
-- description: 1-2 lines on what the video covers and why it matters to this audience
-- hook: the spoken script for the FIRST 30 SECONDS of the video (roughly 65-75 words). Must open a loop, tease the payoff, and give them a reason to stay. Written to be read aloud
-- thumbnailConcept: one line describing the thumbnail (facial expression, text overlay of 3-5 words max, visual element). Think MrBeast-level clarity
-- tags: exactly 10 SEO tags, lowercase, mixing broad and long-tail terms people actually search
-- searchVolumeTier: your honest estimate of search demand for this topic. Exactly one of high, medium, low. Base it on how often the topic appears in the voice data and how mainstream the search phrasing is
+- title: adapted from an outlier's proven pattern with this market's specifics. Under 60 characters where possible
+- basedOn: which outlier pattern it's modeled on, quoted with its view count${outliers ? "" : " (write 'proven pattern: [pattern name]')"}
+- whyItWorks: ONE line of packaging logic (what makes this title clickable for THIS audience)
+- funnelStage: exactly one of TOF, MOF, BOF. Spread the 5 ideas: 2 TOF, 2 MOF, 1 BOF
+- description: 1-2 lines on what the video is and why this audience cares
+- contentBullets: EXACTLY 5-6 bullets covering what the video teaches, in order. Each bullet is one concrete beat (a step, a mistake, a story, a mechanism). Together they ARE the video outline
+- hook: the spoken FIRST 30 SECONDS following the 4-beat framework exactly: (1) restate the title, (2) the problem with a real number from the voice data, (3) authority anchor (price paid or the rise), (4) two-part promise with the objection pre-empted. 70-90 words, written to read aloud
+- ctaIdea: ONE line lead-magnet CTA using one of these comment keywords: ${commentKeywords.join(", ")}. E.g. "Comment ${commentKeywords[0]} and I'll send you the full checklist"
+- thumbnailConcept: one line (facial expression, text overlay of 3-5 words max, one visual element)
+- tags: exactly 10 SEO tags, lowercase, mixing broad and long-tail
+- searchVolumeTier: honest estimate, exactly one of high, medium, low
 
 Rules:
 - No em dashes. Use a colon or full stop instead
-- Think: what question are they Googling that leads to this video?
+- No hype words. Their verbatim language, real numbers
+- Never open a hook with "hey guys" or "in today's video"
 
 Return JSON:
 {"ideas": [
-  {"title": "...", "description": "...", "hook": "...", "thumbnailConcept": "...", "tags": ["tag1"], "searchVolumeTier": "high"},
+  {"title": "...", "basedOn": "...", "whyItWorks": "...", "funnelStage": "MOF", "description": "...", "contentBullets": ["...", "..."], "hook": "...", "ctaIdea": "...", "thumbnailConcept": "...", "tags": ["tag1"], "searchVolumeTier": "high"},
   ...
 ]}`,
       },
@@ -766,6 +786,8 @@ Return JSON:
     ideas.map((idea) => ({
       ...idea,
       tags: Array.isArray(idea.tags) ? idea.tags.slice(0, 10) : [],
+      contentBullets: Array.isArray(idea.contentBullets) ? idea.contentBullets.slice(0, 6) : [],
+      funnelStage: ["TOF", "MOF", "BOF"].includes(idea.funnelStage ?? "") ? idea.funnelStage : "MOF",
       searchVolumeTier: ["high", "medium", "low"].includes(idea.searchVolumeTier ?? "")
         ? idea.searchVolumeTier
         : "medium",

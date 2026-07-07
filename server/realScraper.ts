@@ -892,6 +892,67 @@ async function scrapeYouTubeChannel(handle: string): Promise<string> {
   }
 }
 
+/**
+ * Outlier mining: the top-performing YouTube videos for a niche, ranked by
+ * real view counts. Their titles ARE the niche's proven packaging — the same
+ * signal paid tools like VidIQ surface, pulled free from the Data API.
+ */
+export async function scrapeYouTubeOutliers(keyword: string): Promise<string> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) return "";
+  try {
+    // Two searches: all-time most viewed + most viewed in the last 18 months
+    // videoDuration=medium (4-20 min) filters out shorts noise; region/language
+    // filters keep the outliers in the client's actual market.
+    const base = `part=snippet&type=video&order=viewCount&maxResults=12&videoDuration=medium&regionCode=US&relevanceLanguage=en&q=${encodeURIComponent(keyword)}&key=${apiKey}`;
+    const recentCutoff = new Date(Date.now() - 548 * 24 * 3600 * 1000).toISOString();
+    const searches = await Promise.allSettled([
+      fetchWithRetry(`https://www.googleapis.com/youtube/v3/search?${base}`, undefined, 1),
+      fetchWithRetry(`https://www.googleapis.com/youtube/v3/search?${base}&publishedAfter=${recentCutoff}`, undefined, 1),
+    ]);
+
+    const ids = new Set<string>();
+    for (const s of searches) {
+      if (s.status !== "fulfilled" || !s.value.ok) continue;
+      const data = (await s.value.json()) as { items?: Array<{ id?: { videoId?: string } }> };
+      for (const item of data.items ?? []) {
+        if (item.id?.videoId) ids.add(item.id.videoId);
+      }
+    }
+    if (ids.size === 0) return "";
+
+    const statsResp = await fetchWithRetry(
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${Array.from(ids).slice(0, 40).join(",")}&key=${apiKey}`,
+      undefined,
+      1
+    );
+    if (!statsResp.ok) return "";
+    const statsData = (await statsResp.json()) as {
+      items?: Array<{
+        snippet?: { title?: string; channelTitle?: string; publishedAt?: string };
+        statistics?: { viewCount?: string };
+      }>;
+    };
+
+    const videos = (statsData.items ?? [])
+      .map((v) => ({
+        title: v.snippet?.title ?? "",
+        channel: v.snippet?.channelTitle ?? "",
+        year: (v.snippet?.publishedAt ?? "").slice(0, 4),
+        views: Number(v.statistics?.viewCount ?? 0),
+      }))
+      .filter((v) => v.title && v.views > 1000);
+    videos.sort((a, b) => b.views - a.views);
+
+    return videos
+      .slice(0, 15)
+      .map((v) => `OUTLIER (${v.views.toLocaleString()} views, ${v.year}): "${v.title}" by ${v.channel}`)
+      .join("\n");
+  } catch {
+    return "";
+  }
+}
+
 /** Extract a searchable identity (handle or slug) from a competitor URL. */
 function competitorIdentity(url: string): string {
   const m = url.match(/(?:instagram\.com|youtube\.com|facebook\.com|tiktok\.com|skool\.com)\/(@?[A-Za-z0-9._-]+)/i);

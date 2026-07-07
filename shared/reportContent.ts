@@ -145,7 +145,7 @@ export interface AdCopyIdea {
 export interface YouTubeIdea {
   title: string;
   description: string;
-  /** Script for the first 30 seconds. Absent on legacy ideas. */
+  /** First-30-seconds hook script (4-beat framework). Absent on legacy ideas. */
   hook?: string;
   /** What the thumbnail should show. Absent on legacy ideas. */
   thumbnailConcept?: string;
@@ -153,6 +153,16 @@ export interface YouTubeIdea {
   tags?: string[];
   /** Estimated search volume tier. Absent on legacy ideas. */
   searchVolumeTier?: "high" | "medium" | "low";
+  /** The real outlier video this packaging is modeled on. Absent on legacy ideas. */
+  basedOn?: string;
+  /** One line: why this packaging works. Absent on legacy ideas. */
+  whyItWorks?: string;
+  /** 5-6 bullets: exactly what the video covers, in order. Absent on legacy ideas. */
+  contentBullets?: string[];
+  /** Funnel stage this video serves. Absent on legacy ideas. */
+  funnelStage?: "TOF" | "MOF" | "BOF";
+  /** One-line lead-magnet CTA with the comment keyword. Absent on legacy ideas. */
+  ctaIdea?: string;
 }
 
 // ─── Video scripts ───────────────────────────────────────────────────────────
