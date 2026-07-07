@@ -276,6 +276,8 @@ export const activityLog = mysqlTable("activity_log", {
     "vault_saved",
     "report_shared",
     "trend_refreshed",
+    "client_created",
+    "foundation_approved",
   ]).notNull(),
   detail: text("detail").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

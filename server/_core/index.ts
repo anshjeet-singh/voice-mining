@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { trendRefreshHandler } from "../scheduledHandlers";
+import { registerWorkerRoutes } from "../workerRoutes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -37,6 +38,8 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Scheduled endpoints (must be mounted before Vite/static fallthrough)
   app.post("/api/scheduled/trend-refresh", trendRefreshHandler);
+  // Client OS: endpoints polled by the local Mac worker
+  registerWorkerRoutes(app);
 
   // tRPC API
   app.use(

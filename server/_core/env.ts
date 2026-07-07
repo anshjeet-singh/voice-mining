@@ -15,6 +15,8 @@ export const ENV = {
   anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8",
   /** Shared secret the external cron service sends as `Authorization: Bearer <secret>`. */
   cronSecret: process.env.CRON_SECRET ?? "",
+  /** Shared secret the local Mac worker uses to claim and complete jobs. */
+  workerSecret: process.env.WORKER_SECRET ?? "",
   /** Email that gets the admin role on sign-in (replaces Manus OWNER_OPEN_ID). */
   adminEmail: process.env.ADMIN_EMAIL ?? "",
   isProduction: process.env.NODE_ENV === "production",

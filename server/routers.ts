@@ -4,12 +4,17 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 import {
   createCalendarEntry,
+  createClient,
+  createClientDocument,
+  createJob,
   createMiningSearch,
   createReport,
   createSharedReport,
   createVaultCollection,
   createVaultItem,
   deleteCalendarEntry,
+  deleteClient,
+  deleteClientDocument,
   deleteReport,
   deleteMiningSearch,
   deleteVaultCollection,
@@ -19,6 +24,12 @@ import {
   getActiveShareForReport,
   getAnalysisResultBySearchId,
   getCalendarEntriesByUser,
+  getClientById,
+  getClientDocumentById,
+  getClientDocuments,
+  getClientsByUser,
+  getLatestJobForClient,
+  getSearchesByClient,
   getMiningSearchById,
   getMiningSearchesByUser,
   getRecentActivity,
@@ -32,7 +43,9 @@ import {
   getVaultItemsByUser,
   logActivity,
   revokeSharedReport,
+  setJobStatus,
   updateCalendarEntry,
+  updateClientDocument,
   updateMiningSearchStatus,
   updateReport,
   updateVaultItem,
@@ -105,8 +118,212 @@ const REPORT_SECTIONS = [
   "competitorIntel",
 ] as const;
 
+/** Guard: fetch a client and confirm it belongs to the caller. */
+async function requireClient(clientId: number, userId: number) {
+  const client = await getClientById(clientId);
+  if (!client || client.userId !== userId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+  }
+  return client;
+}
+
 export const appRouter = router({
   system: systemRouter,
+
+  // ─── Clients (Client OS) ────────────────────────────────────────────────────
+
+  clients: router({
+    create: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().min(1).max(200),
+          niche: z.string().min(1).max(300),
+          funnelType: z.enum(["webinar", "call"]),
+          pricePoint: z.string().max(200).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const id = await createClient({
+          userId: ctx.user.id,
+          name: input.name.trim(),
+          niche: input.niche.trim(),
+          funnelType: input.funnelType,
+          pricePoint: input.pricePoint?.trim() || null,
+        });
+        await logActivity(ctx.user.id, "client_created", input.name);
+        return { id };
+      }),
+
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const list = await getClientsByUser(ctx.user.id);
+      return Promise.all(
+        list.map(async (c) => {
+          const [docs, searches, job] = await Promise.all([
+            getClientDocuments(c.id),
+            getSearchesByClient(c.id),
+            getLatestJobForClient(c.id, "foundation"),
+          ]);
+          return {
+            ...c,
+            onboardingCount: docs.filter((d) => d.kind === "onboarding").length,
+            reportCount: searches.filter((s) => s.status === "complete").length,
+            foundationStatus: job?.status ?? null,
+          };
+        })
+      );
+    }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const client = await requireClient(input.id, ctx.user.id);
+        const [documents, searches, foundationJob] = await Promise.all([
+          getClientDocuments(input.id),
+          getSearchesByClient(input.id),
+          getLatestJobForClient(input.id, "foundation"),
+        ]);
+        return { client, documents, searches, foundationJob: foundationJob ?? null };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.id, ctx.user.id);
+        await deleteClient(input.id);
+        return { ok: true };
+      }),
+
+    addTextDocument: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          docType: z.enum(["voice_transcript", "competitors", "intake", "other"]),
+          title: z.string().min(1).max(300),
+          content: z.string().min(1).max(2_000_000),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const id = await createClientDocument({
+          clientId: input.clientId,
+          kind: "onboarding",
+          docType: input.docType,
+          title: input.title.trim(),
+          content: input.content,
+        });
+        return { id };
+      }),
+
+    addPdfDocument: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          docType: z.enum(["voice_transcript", "competitors", "intake", "other"]),
+          filename: z.string().min(1).max(300),
+          base64: z.string().min(1).max(30_000_000),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const { PDFParse } = await import("pdf-parse");
+        let text = "";
+        try {
+          const buf = Buffer.from(input.base64, "base64");
+          const parser = new PDFParse({ data: new Uint8Array(buf) });
+          const parsed = await parser.getText();
+          text = parsed.text?.trim() ?? "";
+        } catch (err) {
+          console.error("[clients.addPdfDocument] parse failed:", err);
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Could not read that PDF. If it is a scan, export it as text first." });
+        }
+        if (text.length < 100) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "That PDF has no extractable text. If it is a scan, export it as text first." });
+        }
+        const id = await createClientDocument({
+          clientId: input.clientId,
+          kind: "onboarding",
+          docType: input.docType,
+          title: input.filename.replace(/\.pdf$/i, ""),
+          content: text,
+          source: input.filename,
+        });
+        return { id, chars: text.length };
+      }),
+
+    updateDocument: protectedProcedure
+      .input(z.object({ id: z.number(), content: z.string().min(1).max(2_000_000) }))
+      .mutation(async ({ ctx, input }) => {
+        const doc = await getClientDocumentById(input.id);
+        if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireClient(doc.clientId, ctx.user.id);
+        await updateClientDocument(input.id, input.content);
+        return { ok: true };
+      }),
+
+    deleteDocument: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const doc = await getClientDocumentById(input.id);
+        if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireClient(doc.clientId, ctx.user.id);
+        await deleteClientDocument(input.id);
+        return { ok: true };
+      }),
+
+    /** Queue (or requeue) the foundation-docs job for the Mac worker. */
+    generateFoundation: protectedProcedure
+      .input(z.object({ clientId: z.number(), feedback: z.string().max(10000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const docs = await getClientDocuments(input.clientId);
+        if (!docs.some((d) => d.kind === "onboarding")) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Add onboarding material first" });
+        }
+        const existing = await getLatestJobForClient(input.clientId, "foundation");
+        if (existing && (existing.status === "queued" || existing.status === "running")) {
+          throw new TRPCError({ code: "CONFLICT", message: "A foundation job is already in progress" });
+        }
+        const id = await createJob({
+          clientId: input.clientId,
+          userId: ctx.user.id,
+          type: "foundation",
+          status: "queued",
+          payload: input.feedback ? { feedback: input.feedback } : {},
+        });
+        return { jobId: id };
+      }),
+
+    /** Approve the foundation docs, or reject with feedback (requeues). */
+    reviewFoundation: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          action: z.enum(["approve", "reject"]),
+          feedback: z.string().max(10000).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const job = await getLatestJobForClient(input.clientId, "foundation");
+        if (!job || job.status !== "review") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No foundation docs waiting for review" });
+        }
+        if (input.action === "approve") {
+          await setJobStatus(job.id, "approved");
+          await logActivity(ctx.user.id, "foundation_approved", `client ${input.clientId}`);
+          return { status: "approved" as const };
+        }
+        await setJobStatus(job.id, "failed", "Rejected by owner with feedback");
+        const id = await createJob({
+          clientId: input.clientId,
+          userId: ctx.user.id,
+          type: "foundation",
+          status: "queued",
+          payload: { feedback: input.feedback ?? "" },
+        });
+        return { status: "requeued" as const, jobId: id };
+      }),
+  }),
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
@@ -133,6 +350,8 @@ export const appRouter = router({
           brandVoice: z.string().max(100000).optional(),
           /** Raw competitor paste — URLs get extracted server-side, notes kept as context. */
           competitors: z.string().max(20000).optional(),
+          /** Client OS: attach this research to a client workspace. */
+          clientId: z.number().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -140,6 +359,7 @@ export const appRouter = router({
         if (keywords.length === 0) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "No valid keywords provided" });
         }
+        if (input.clientId) await requireClient(input.clientId, ctx.user.id);
         const competitorPaste = (input.competitors ?? "").trim();
         const competitorUrls = competitorPaste ? extractCompetitorUrls(competitorPaste) : [];
 
@@ -153,6 +373,7 @@ export const appRouter = router({
           brandVoice: input.brandVoice ?? null,
           competitorUrls: competitorUrls.length ? competitorUrls : null,
           competitorNotes: competitorPaste || null,
+          clientId: input.clientId ?? null,
         });
 
         const search = await getMiningSearchById(insertId);

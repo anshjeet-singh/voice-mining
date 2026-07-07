@@ -497,7 +497,14 @@ export async function saveCachedScrape(keyword: string, result: string) {
 
 export async function logActivity(
   userId: number,
-  action: "search_created" | "report_generated" | "vault_saved" | "report_shared" | "trend_refreshed",
+  action:
+    | "search_created"
+    | "report_generated"
+    | "vault_saved"
+    | "report_shared"
+    | "trend_refreshed"
+    | "client_created"
+    | "foundation_approved",
   detail: string
 ) {
   const db = await getDb();
