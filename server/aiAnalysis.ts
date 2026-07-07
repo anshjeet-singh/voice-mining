@@ -18,7 +18,9 @@ import { estimateScriptSeconds, insightTexts } from "../shared/reportContent";
 import {
   HOOK_TEMPLATES,
   HORMOZI_HOOK_BANK,
+  USER_HOOK_BANK,
   GOATED_ADS_FRAMEWORK,
+  BRANDING_FRAMEWORK,
   FACEBOOK_AD_FRAMEWORKS,
   SKOOL_POST_FRAMEWORKS,
   EMAIL_SEQUENCE_FRAMEWORKS,
@@ -26,7 +28,7 @@ import {
 } from "./trainingData";
 
 // Real internet scraping — imported from realScraper.ts
-import { scrapeCompetitorsForKeyword, scrapeCompetitorUrls, scrapeInternetForKeyword } from "./realScraper";
+import { scrapeCompetitorDeep, scrapeCompetitorsForKeyword, scrapeInternetForKeyword } from "./realScraper";
 
 // ─── Helper to extract string content from LLM response ─────────────────────
 
@@ -248,6 +250,8 @@ export async function runAnalysis(
     "- theme: a 2-4 word cluster name. Reuse the same theme name across insights that belong together so they can be grouped (e.g. all cost complaints share one theme)",
     "- Sort each list by frequency, highest first",
     "",
+    "NEVER include personal names, usernames, creator shoutouts, or fan comments (e.g. 'LOVE YOU [name]', '@handle') anywhere in the output. That is noise, not market language.",
+    "",
     "Counts: painPoints 8-12, desires 8-12, objections 6-10, fears 6-10, buyingTriggers 6-10, emotionalLanguage 10-15, trendingPhrases 8-12, verbatimQuotes 10-15, topThemes 5-8, sentimentBreakdown sums to 100.",
   ].join("\n");
 
@@ -407,25 +411,29 @@ Trending Phrases: ${analysis.trendingPhrases.slice(0, 6).join(" | ")}
 Desires: ${topInsights(analysis.desires, 5)}
 Fears: ${topInsights(analysis.fears, 4)}
 
+${USER_HOOK_BANK}
+
 ${HORMOZI_HOOK_BANK}
 
 MORE PROVEN TEMPLATES:
 ${HOOK_TEMPLATES}
 
-Write EXACTLY 20 hooks. One style, one quality bar:
-- Each hook is a bold, standalone statement or command a real person would say out loud. The kind of first line that works as a video opener, a carousel slide 1, or an ad opener interchangeably
-- Model them on the $100M patterns above, filled with THIS market's verbatim language from the voice data
-- Follow the winning distribution: mostly statements and commands, a couple of questions, one or two lists or stories
-- Every hook must pass the QUALITY BAR above. If a hook would not stop this exact market's scroll, replace it before answering
+Write EXACTLY 20 hooks with real VARIETY:
+- Roughly 10 fuller video openers (2-3 sentences) built from the VIDEO HOOK TEMPLATES, filled with this market's numbers, timeframes, and pains. These should feel like the first 8 seconds of a video someone actually recorded
+- Roughly 10 punchy one-liners built from the CAROUSEL/TITLE PATTERNS and $100M patterns
+- Every hook filled with THIS market's verbatim language, real dollar amounts, and timeframes from the voice data
+- If a hook would not stop this exact market's scroll, replace it before answering
 
 Each hook also gets:
 - hookType: exactly one of curiosity, pain, desire, social_proof, pattern_interrupt (used internally, spread them)
 - whyThisWorks: ONE short line, plain English
 
 Hard rules:
-- THEIR exact words, never industry jargon or polished marketing speak
+- THEIR exact words for pains and desires, never industry jargon or polished marketing speak
 - Specific beats vague: "$147K" not "six figures", "18 months" not "quickly"
-- No hype words. No em dashes. No compound sentences. One idea per hook
+- NEVER use personal names, usernames, or shoutouts from the voice data (no "Noelle", no "@user"). Verbatim language means their pain and desire phrases, not people
+- Do not bolt raw exclamations like "Ughhhh" onto a sentence. Only use an emotional word where a person would naturally say it
+- No hype words. No em dashes
 
 Return JSON: {"hooks": [{"category": "short_form_video", "hook": "...", "hookType": "pain", "whyThisWorks": "..."}, ...]}`,
       },
@@ -452,11 +460,11 @@ Return JSON: {"hooks": [{"category": "short_form_video", "hook": "...", "hookTyp
   );
 }
 
-// ─── Facebook Ad Copy — Talking Head + Instagram Story formats ───────────────
+// ─── Facebook Ad Copy — Talking Head only ────────────────────────────────────
 
 /**
- * 8 ads across two formats (5 Talking Head, 3 Instagram Story) with a 1-10
- * pain agitation score per ad.
+ * 10 Talking Head ads (two per awareness level, varied meat formats) with a
+ * 1-10 pain agitation score per ad.
  */
 export async function generateAdCopy(
   keyword: string,
@@ -470,12 +478,12 @@ export async function generateAdCopy(
         content: `You are a direct response copywriter trained on Alex Hormozi's GOATed Ads method and $100M Leads.
 You write Facebook and Instagram ads ONLY. You understand the 5 levels of audience awareness and match copy to each level.
 You use the customer's exact language. Never polished marketing speak.
-You produce two formats: Talking Head (full script for a person speaking to camera) and Instagram Story (vertical full-screen story frames with a link-sticker CTA).
+You produce ONE format: Talking Head, a full script for a person speaking directly to camera.
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {
         role: "user",
-        content: `Write 8 ads for "${keyword}" — 5 Talking Head (one per awareness level) + 3 Instagram Story (most_aware, solution_aware, problem_aware).
+        content: `Write 10 Talking Head ads for "${keyword}": two per awareness level, and the two must attack that level from DIFFERENT angles with DIFFERENT meat formats.
 
 Voice mining data (use this exact language):
 Pain Points: ${topInsights(analysis.painPoints, 5)}
@@ -489,9 +497,9 @@ ${GOATED_ADS_FRAMEWORK}
 FACEBOOK AD FRAMEWORKS (follow these exactly):
 ${FACEBOOK_AD_FRAMEWORKS}
 
-TALKING HEAD FORMAT (5 ads — one per awareness level):
+TALKING HEAD FORMAT (10 ads — two per awareness level):
 Each Talking Head ad is a full script for someone speaking directly to camera.
-Vary the MEAT format across the 5 ads: use at least one testimonial-style, one education-style, and one story-style script. Do not write 5 identical pitch scripts.
+Vary the MEAT format across the 10 ads: cover testimonial, education, story, demonstration, and faceless-style (reading real customer messages) at least once each. Do not write 10 identical pitch scripts.
 Structure:
 HOOK (1-2 lines. MUST match the awareness level per the GOATed method above: offer-driven for most_aware, proof for product_aware, promise for solution_aware, pain for problem_aware, curiosity for unaware)
 [blank line]
@@ -505,16 +513,7 @@ SOCIAL PROOF (1-2 lines, specific client result)
 [blank line]
 CTA (1-2 natural-language lines that spell out what to do, how, when, what they get, and what happens next — e.g. "Click the link below, drop your email, and the full playbook lands in your inbox in the next two minutes")
 
-INSTAGRAM STORY FORMAT (3 ads — most_aware, solution_aware, problem_aware):
-Story ads are full-screen vertical frames the viewer taps through. Each frame is ONE short text block on screen.
-Write EXACTLY 4 frames per story ad:
-FRAME 1 (Hook — 5-10 words. Verbatim pain, fear, or desire from the voice data. Must stop the tap-through)
-FRAME 2 (Agitate or contrast — 8-14 words. Their exact language)
-FRAME 3 (Promise or proof — 8-14 words. A specific outcome or number)
-FRAME 4 (CTA — 4-8 words paired with a link sticker, e.g. "Tap the link for the free training")
-Story ads feel native: casual, personal, like a friend talking. NOT polished ad speak.
-
-Awareness levels for Talking Head (one each):
+Awareness levels (two ads each):
 1. most_aware
 2. product_aware
 3. solution_aware
@@ -539,15 +538,6 @@ Return JSON:
     "body": "Full ad body copy with \\n for line breaks",
     "cta": "Single CTA line",
     "painAgitationScore": 4
-  },
-  {
-    "type": "facebook",
-    "format": "instagram_story",
-    "awarenessLevel": "most_aware",
-    "headline": "Frame 1 text (hook)",
-    "body": "Frame 2 text\\nFrame 3 text",
-    "cta": "Frame 4 CTA text",
-    "painAgitationScore": 5
   },
   ...
 ]}`,
@@ -1030,7 +1020,14 @@ export async function generateCompetitorIntel(
 ): Promise<CompetitorIntel | null> {
   const [searchScraped, directScraped] = await Promise.all([
     scrapeCompetitorsForKeyword(keyword),
-    competitorUrls?.length ? scrapeCompetitorUrls(competitorUrls) : Promise.resolve(""),
+    competitorUrls?.length
+      ? Promise.allSettled(competitorUrls.map((u) => scrapeCompetitorDeep(u))).then((rs) =>
+          rs
+            .map((r) => (r.status === "fulfilled" ? r.value : ""))
+            .filter(Boolean)
+            .join("\n\n")
+        )
+      : Promise.resolve(""),
   ]);
   const hasSearchData = searchScraped !== "NO_SCRAPED_DATA";
   const notes = competitorNotes?.trim().slice(0, 8000) ?? "";
@@ -1052,8 +1049,11 @@ export async function generateCompetitorIntel(
     messages: [
       {
         role: "system",
-        content: `You are a competitive intelligence analyst for direct response marketers.
+        content: `You are a competitive intelligence analyst for direct response marketers, trained on the $100M Branding method.
 You analyse real search results about competitors in a market and extract who the players are, how they position themselves, where they are weak, and what gaps a new entrant can own.
+
+${BRANDING_FRAMEWORK}
+
 CRITICAL RULE: Every competitor, angle, weakness, and pricing signal MUST come from the COMPETITOR DATA in the user message. Never invent companies or facts. If the data does not name real competitors, describe competitor TYPES instead (e.g. "traditional brokers", "DIY course sellers").
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
@@ -1069,21 +1069,29 @@ Return JSON:
   "competitors": [
     {
       "name": "Competitor or competitor-type name",
-      "angle": "Their core messaging angle in one line",
-      "weakness": "Their biggest weakness, pulled from complaints/reviews in the data",
+      "angle": "Their core messaging angle, quoting their actual bio/headline/video-title language",
+      "weakness": "Their biggest weakness, pulled from complaints/reviews/what their content never covers",
       "gap": "The specific gap this weakness opens that you can own",
-      "pricingSignals": "What the data says about their pricing (or 'No pricing signals found')"
+      "pricingSignals": "What the data says about their pricing (or 'No pricing signals found')",
+      "contentPlaybook": "What they post, which formats/titles perform best (cite actual video titles + view counts when present), and how often",
+      "offer": "What they actually sell and how they monetise (community, mentorship, DFY, courses)",
+      "steal": ["2-3 specific tactics of theirs worth copying, each concrete enough to execute this week"],
+      "counter": "The single concrete move that beats them, stated as a command"
     }
   ],
-  "marketGaps": ["gap 1", "gap 2", ...]
+  "marketGaps": ["gap 1", "gap 2", ...],
+  "actionPlan": ["5-7 concrete moves"]
 }
 
-Rules:
+RULES ON SPECIFICITY (this is the whole game):
+- BANNED: consultant-speak like "offer truly unbiased education", "focus on transparent client-centric strategies", "provide comprehensive guidance". If a line could apply to any business in any market, delete it and write what to actually DO
+- Every actionPlan item is a command with a format, a number, or a deadline: "Film 3 client-interview clips per week like [competitor] does, but end each with a step-by-step breakdown they never give" not "create more educational content"
+- Every "steal" item names the exact tactic from the data: a video title pattern, a posting format, a proof style, a pricing move
 - 4-8 competitors, ranked by how prominent they are in the data
-- If the USER'S OWN COMPETITOR NOTES name specific competitors, every one of them MUST appear as its own entry, listed first with the deepest analysis. Combine the user's first-hand observations with the scraped page data for these
-- If DIRECT COMPETITOR PAGES are present, each one MUST appear as its own competitor entry with deep analysis: quote their actual headline/bio language in "angle", and infer weakness from what their page does NOT address that the market complains about
+- If the USER'S OWN COMPETITOR NOTES name specific competitors, every one of them MUST appear as its own entry, listed first with the deepest analysis. Combine the user's first-hand observations with the scraped channel/page data
+- If YOUTUBE CHANNEL data is present for a competitor, cite their real video titles and view counts in contentPlaybook. Their top-viewed titles ARE their winning hooks
 - marketGaps: 3-6 gaps NOBODY in the data is filling, each one line, each ownable by a coach/course creator
-- Weaknesses must be grounded in actual complaint language from the data
+- Weaknesses must be grounded in actual complaint language or provable content holes, never vibes
 - No em dashes. Use a full stop instead
 - Plain confident language a non-technical marketer understands`,
       },
@@ -1098,6 +1106,7 @@ Rules:
   return stripEmDashesDeep({
     competitors: parsed.competitors,
     marketGaps: Array.isArray(parsed.marketGaps) ? parsed.marketGaps : [],
+    actionPlan: Array.isArray(parsed.actionPlan) ? parsed.actionPlan : [],
     generatedAt: new Date().toISOString(),
   });
 }
@@ -1115,8 +1124,11 @@ export async function generatePositioningStatement(
     messages: [
       {
         role: "system",
-        content: `You are a positioning strategist trained on April Dunford's Obviously Awesome and Alex Hormozi's offer frameworks.
+        content: `You are a positioning strategist trained on April Dunford's Obviously Awesome, Alex Hormozi's offer frameworks, and the $100M Branding method below.
 You write ONE positioning statement that plants a flag in the exact gap competitors leave open.
+
+${BRANDING_FRAMEWORK}
+
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {
@@ -1131,8 +1143,9 @@ ${intel.marketGaps.map((g) => `- ${g}`).join("\n")}
 
 Rules:
 - 2-3 sentences maximum
-- Structure: who it's for + the mechanism/approach that exploits the biggest gap + why the alternatives fail them
-- Specific and confident. No hedging, no "we believe"
+- Structure: who it's for + a NAMED mechanism (invent a specific name like "the EIN-Only Stack" or "the 14-Day Funding Sprint", built from this market's language) + the named competitor behaviour it beats
+- BANNED: generic positioning like "transparent, step-by-step curriculum", "unbiased education", "empower you with guidance". If it could be any coach's website headline, rewrite it
+- Must contain at least one specific number, timeframe, or dollar figure from the gaps
 - Use plain language the market itself uses
 - No em dashes. Use a full stop instead
 

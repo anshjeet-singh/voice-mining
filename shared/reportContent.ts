@@ -252,11 +252,21 @@ export interface CompetitorEntry {
   weakness: string;
   gap: string;
   pricingSignals: string;
+  /** What they post, what performs, how often. Absent on legacy intel. */
+  contentPlaybook?: string;
+  /** What they actually sell and how they monetise. Absent on legacy intel. */
+  offer?: string;
+  /** 2-3 specific tactics of theirs worth copying. Absent on legacy intel. */
+  steal?: string[];
+  /** The concrete move that beats them. Absent on legacy intel. */
+  counter?: string;
 }
 
 export interface CompetitorIntel {
   competitors: CompetitorEntry[];
   marketGaps: string[];
+  /** 5-7 concrete do-this-now moves built from the gaps. Absent on legacy intel. */
+  actionPlan?: string[];
   positioningStatement?: string;
   generatedAt: string; // ISO date
 }

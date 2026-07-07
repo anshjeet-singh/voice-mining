@@ -816,6 +816,121 @@ export async function scrapeCompetitorUrls(urls: string[]): Promise<string> {
     .join("\n\n");
 }
 
+// ─── Deep competitor mining: YouTube channels + Skool/review searches ────────
+
+/**
+ * Mine a competitor's YouTube channel via the Data API: channel stats plus
+ * their most recent and most viewed uploads (titles are their hooks, view
+ * counts show what actually performs).
+ */
+async function scrapeYouTubeChannel(handle: string): Promise<string> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) return "";
+  try {
+    const chResp = await fetchWithRetry(
+      `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&forHandle=${encodeURIComponent(handle)}&key=${apiKey}`,
+      undefined,
+      1
+    );
+    if (!chResp.ok) return "";
+    const chData = (await chResp.json()) as {
+      items?: Array<{
+        snippet?: { title?: string; description?: string };
+        statistics?: { subscriberCount?: string; videoCount?: string; viewCount?: string };
+        contentDetails?: { relatedPlaylists?: { uploads?: string } };
+      }>;
+    };
+    const ch = chData.items?.[0];
+    if (!ch) return "";
+
+    const lines: string[] = [];
+    lines.push(`YOUTUBE CHANNEL: ${ch.snippet?.title ?? handle} | ${ch.statistics?.subscriberCount ?? "?"} subscribers | ${ch.statistics?.videoCount ?? "?"} videos | ${ch.statistics?.viewCount ?? "?"} total views`);
+    if (ch.snippet?.description) lines.push(`CHANNEL BIO: ${ch.snippet.description.slice(0, 500)}`);
+
+    const uploads = ch.contentDetails?.relatedPlaylists?.uploads;
+    if (uploads) {
+      const plResp = await fetchWithRetry(
+        `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploads}&maxResults=15&key=${apiKey}`,
+        undefined,
+        1
+      );
+      if (plResp.ok) {
+        const plData = (await plResp.json()) as {
+          items?: Array<{ snippet?: { title?: string; resourceId?: { videoId?: string } } }>;
+        };
+        const videoIds = (plData.items ?? [])
+          .map((i) => i.snippet?.resourceId?.videoId)
+          .filter((v): v is string => !!v);
+
+        if (videoIds.length) {
+          const statsResp = await fetchWithRetry(
+            `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoIds.join(",")}&key=${apiKey}`,
+            undefined,
+            1
+          );
+          if (statsResp.ok) {
+            const statsData = (await statsResp.json()) as {
+              items?: Array<{ snippet?: { title?: string }; statistics?: { viewCount?: string; commentCount?: string } }>;
+            };
+            const videos = (statsData.items ?? [])
+              .map((v) => ({
+                title: v.snippet?.title ?? "",
+                views: Number(v.statistics?.viewCount ?? 0),
+              }))
+              .filter((v) => v.title);
+            videos.sort((a, b) => b.views - a.views);
+            for (const v of videos) {
+              lines.push(`VIDEO (${v.views.toLocaleString()} views): ${v.title}`);
+            }
+          }
+        }
+      }
+    }
+    return lines.join("\n");
+  } catch {
+    return "";
+  }
+}
+
+/** Extract a searchable identity (handle or slug) from a competitor URL. */
+function competitorIdentity(url: string): string {
+  const m = url.match(/(?:instagram\.com|youtube\.com|facebook\.com|tiktok\.com|skool\.com)\/(@?[A-Za-z0-9._-]+)/i);
+  return (m?.[1] ?? "").replace(/^@/, "");
+}
+
+/**
+ * Deep sweep of one competitor: their page content, their YouTube channel
+ * (if any), and web searches for their Skool community, reviews, and offer.
+ */
+export async function scrapeCompetitorDeep(url: string): Promise<string> {
+  const identity = competitorIdentity(url);
+  const sections: string[] = [];
+
+  const [page, channel, searches] = await Promise.all([
+    scrapeCompetitorUrls([url]),
+    /youtube\.com\/@/i.test(url)
+      ? scrapeYouTubeChannel(url.match(/youtube\.com\/(@[A-Za-z0-9._-]+)/i)?.[1] ?? "")
+      : Promise.resolve(""),
+    identity
+      ? Promise.allSettled([
+          ddgSearch(`"${identity}" skool community`),
+          ddgSearch(`"${identity}" reviews OR scam OR legit`),
+        ]).then((rs) =>
+          rs
+            .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
+            .slice(0, 10)
+            .map((r) => `WEB: ${r.title} | ${r.snippet}`)
+            .join("\n")
+        )
+      : Promise.resolve(""),
+  ]);
+
+  if (page) sections.push(page);
+  if (channel) sections.push(channel);
+  if (searches) sections.push(`SEARCH RESULTS ABOUT ${identity}:\n${searches}`);
+  return sections.join("\n");
+}
+
 // ─── Related Keyword Suggestions (Google Suggest — FREE, no key) ─────────────
 
 // ─── Google Trends (free, no key — unofficial endpoints) ─────────────────────

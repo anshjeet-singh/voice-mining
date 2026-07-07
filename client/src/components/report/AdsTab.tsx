@@ -1,4 +1,4 @@
-import { Instagram, Video } from "lucide-react";
+import { Video } from "lucide-react";
 import type { AdCopyIdea } from "@shared/reportContent";
 import {
   AwarenessFunnel,
@@ -21,18 +21,6 @@ const FORMAT_META = {
     ctaText: "text-primary",
     hookLabel: "Hook / Opening Line",
     bodyLabel: "Script Body",
-  },
-  instagram_story: {
-    label: "Instagram Story Ads",
-    blurb: "Full-screen vertical story frames with a link-sticker CTA. Casual and native, like a friend talking.",
-    icon: Instagram,
-    accent: "text-rose-400",
-    pill: "text-rose-400 bg-rose-400/10 border-rose-400/20",
-    cardBorder: "border-rose-400/10",
-    ctaBorder: "border-rose-400/20 bg-rose-400/5",
-    ctaText: "text-rose-400",
-    hookLabel: "Frame 1 (Hook)",
-    bodyLabel: "Frames 2-3",
   },
 } as const;
 
@@ -121,7 +109,7 @@ export function AdsTab({
   reportId: number;
   reportName: string;
 }) {
-  const formats: AdFormat[] = ["talking_head", "instagram_story"];
+  const formats: AdFormat[] = ["talking_head"];
 
   const allText = () =>
     formats
@@ -150,7 +138,7 @@ export function AdsTab({
     <div className="space-y-8">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-muted-foreground">
-          Ads written using Hormozi's GOATed Ads method with your exact voice data. Talking Head scripts across all 5 awareness levels plus Instagram Story ads.
+          10 talking head scripts built with Hormozi's GOATed Ads method: two per awareness level, each from a different angle.
         </p>
         <div className="flex items-center gap-2">
           <CopyAllBtn getText={allText} />

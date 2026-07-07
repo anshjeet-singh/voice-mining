@@ -2,7 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Crosshair, Loader2, Sparkles, Swords } from "lucide-react";
+import { ClipboardList, Crosshair, Loader2, Sparkles, Swords } from "lucide-react";
 import type { CompetitorIntel } from "@shared/reportContent";
 import { BulletList, CopyBtn, RegenerateSectionBtn } from "./reportShared";
 
@@ -72,33 +72,82 @@ export function CompetitorTab({
         <RegenerateSectionBtn reportId={reportId} section="competitorIntel" />
       </div>
 
-      {/* Comparison table */}
-      <div className="rounded-xl border border-border/40 bg-card/30 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border/40 text-left">
-                <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Competitor</th>
-                <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Their Angle</th>
-                <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Their Weakness</th>
-                <th className="px-4 py-3 text-xs font-semibold text-primary uppercase tracking-wider">Gap You Can Own</th>
-                <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pricing Signals</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/20">
-              {intel.competitors.map((c, i) => (
-                <tr key={i} className="hover:bg-card/40 transition-colors align-top">
-                  <td className="px-4 py-3.5 font-semibold text-foreground whitespace-nowrap">{c.name}</td>
-                  <td className="px-4 py-3.5 text-muted-foreground leading-relaxed min-w-[160px]">{c.angle}</td>
-                  <td className="px-4 py-3.5 text-red-300/90 leading-relaxed min-w-[160px]">{c.weakness}</td>
-                  <td className="px-4 py-3.5 text-emerald-300/90 leading-relaxed min-w-[160px]">{c.gap}</td>
-                  <td className="px-4 py-3.5 text-muted-foreground/70 leading-relaxed min-w-[120px]">{c.pricingSignals}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Competitor deep-dive cards */}
+      <div className="space-y-4">
+        {intel.competitors.map((c, i) => (
+          <div key={i} className="rounded-xl border border-border/40 bg-card/30 p-5 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-foreground">{c.name}</h3>
+              {c.pricingSignals && c.pricingSignals !== "No pricing signals found" && (
+                <span className="text-xs px-2 py-0.5 rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-300">{c.pricingSignals}</span>
+              )}
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Their Angle</p>
+                <p className="text-muted-foreground leading-relaxed">{c.angle}</p>
+              </div>
+              {c.offer && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">What They Sell</p>
+                  <p className="text-muted-foreground leading-relaxed">{c.offer}</p>
+                </div>
+              )}
+              {c.contentPlaybook && (
+                <div className="sm:col-span-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Their Content Playbook</p>
+                  <p className="text-muted-foreground leading-relaxed">{c.contentPlaybook}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-semibold text-red-400/90 uppercase tracking-wider mb-1">Their Weakness</p>
+                <p className="text-red-300/90 leading-relaxed">{c.weakness}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-emerald-400/90 uppercase tracking-wider mb-1">Gap You Can Own</p>
+                <p className="text-emerald-300/90 leading-relaxed">{c.gap}</p>
+              </div>
+              {(c.steal?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Worth Stealing</p>
+                  <ul className="space-y-1">
+                    {(c.steal ?? []).map((s, j) => (
+                      <li key={j} className="text-muted-foreground leading-relaxed flex gap-2">
+                        <span className="text-primary flex-shrink-0">+</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {c.counter && (
+                <div>
+                  <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">How You Beat Them</p>
+                  <p className="text-foreground/90 leading-relaxed font-medium">{c.counter}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
+
+      {/* Action plan */}
+      {(intel.actionPlan?.length ?? 0) > 0 && (
+        <div className="p-5 rounded-xl border border-primary/25 bg-primary/5">
+          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-primary" />
+            Your Action Plan
+          </h3>
+          <ol className="space-y-2.5">
+            {(intel.actionPlan ?? []).map((a, i) => (
+              <li key={i} className="flex gap-3 text-sm">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">{i + 1}</span>
+                <span className="text-foreground/90 leading-relaxed">{a}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       {/* Market gaps */}
       {intel.marketGaps.length > 0 && (

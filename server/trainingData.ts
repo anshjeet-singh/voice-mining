@@ -575,3 +575,89 @@ QUALITY BAR:
 - One CTA per ad, spelled out
 - Meet the audience at their awareness level, never pitch product to the unaware
 `;
+
+/**
+ * USER_HOOK_BANK — the owner's own proven hook templates (video + carousel).
+ * These are fill-in-the-blank patterns; the generator fills them with the
+ * market's verbatim voice data, real numbers, and timeframes.
+ */
+export const USER_HOOK_BANK = `
+VIDEO HOOK TEMPLATES (fill the blanks with THIS market's data — many are multi-sentence openers, keep them that length):
+1. "My name is [name], and as a [authority figure], I charge my clients anywhere from [$X-$X] per year. And in 60 seconds, I'm going to share my favorite [niche] strategy so you can steal it."
+2. "This strategy helped me [niche win] in just [time period]. And I'm about to let you steal it."
+3. "I'm [X] years old, and I made [$X] in [time period] with [niche tool]. Today I'm going to teach you exactly how to make [same amount] a month with [niche]."
+4. "This week, I made [$X] from [niche tool] using this method. Luckily for you, I'm giving the full method for free. If you don't care about [broad benefit], go ahead and scroll. It's called the [X] method. It has [X] main components."
+5. "I promise you this will be the most valuable video you'll ever watch. Here's the exact system that took my [niche thing] from zero to [goal] in only [time frame]. Welcome to the [catchy name] system."
+6. "This is how [niche thing] works in [niche]. Once you learn it, you know the rules of the game, and then you know how to win the game."
+7. "Here's how to turn one shitty [niche thing] into [desirable outcome]. And if you're questioning my competence, I [social proof + timeframe] using this exact strategy."
+8. "You know whenever your favorite [niche authority] says [recognizable niche saying]? And then you [niche action]?"
+9. "Here's how to double, triple, or even 10x your [niche result] in [X] simple steps. Do this for your next [thing] and I promise you'll see your [result] skyrocket."
+10. "If you had [starting point] and you hired me to get you to [dream outcome] in just [time frame], we'd start by..."
+11. "Right now, I'm not [what you think I'm doing]. It's actually [what I'm really doing]. And you probably didn't notice because of the free [tool] I'm using. Don't worry, I'm not going to gatekeep."
+12. "I'm going to teach you how to hack [niche thing] in [tiny time frame]. So here's two tips to [dream outcome]."
+13. "I'm going to show you how I [created dream outcome] for my client in less than [time frame]. The first thing we did was..."
+14. "Here's a [niche] hack that most people don't know about."
+15. "Have you ever wondered how to get [niche achievement]? Don't worry, I'll put you on game."
+16. "I was gonna gatekeep this [niche] hack, but I'm feeling generous."
+17. "[Niche thing] [does positive thing] that [dream outcome]. So here's how to [dream outcome]."
+18. "This is for when you want to [dream outcome] but you just don't [have what you need]."
+19. "Here's a secret [tool] that gives you [ideal niche info]. Oh, and did I mention it's free?"
+20. "These are the top five cheat codes that'll make you [dream outcome]."
+21. "These are the [number] [niche] essentials that start [dream outcome]. Number one..."
+
+CAROUSEL/TITLE HOOK PATTERNS (short, punchy, list-friendly):
+- "Stop using [common thing everyone uses]"
+- "Don't [common action] ([context])"
+- "Never [common mistake]"
+- "Avoid [thing they do daily]"
+- "Secret [niche] trick"
+- "Copy my [system/hack]"
+- "Steal my [tricks/templates]"
+- "How to [outcome] in [X] days"
+- "[X] ways to [outcome]"
+- "[Outcome] in [X] mins/hours/days"
+- "[Big number] [niche] tips"
+- "Top [X] tools for [task]"
+- "[X] terms you need to know"
+- "[X] tips I wish I knew when I was [age/stage]"
+- "[X] must-know [niche] tips"
+
+VARIETY RULE: a great set of 20 hooks mixes lengths. Roughly half should be one punchy line from the carousel patterns; the other half should be fuller 2-3 sentence video openers from the templates above. Never 20 hooks of the same shape.
+`;
+
+/**
+ * BRANDING_FRAMEWORK — distilled from Alex Hormozi's $100M Branding playbook.
+ * Used by positioning and market-intelligence generators so brand advice is
+ * pairing-based and measurable, never "logo and colors" fluff.
+ */
+export const BRANDING_FRAMEWORK = `
+$100M BRANDING METHOD (Hormozi):
+
+CORE DEFINITION: Branding = deliberately PAIRING your business with things your ideal audience already likes.
+Good branding = pairing with what they like (they buy). Bad branding = pairing with what they dislike (they avoid). No branding = invisible.
+Measure it with money: good branding means your audience likes it AND buys.
+
+BRAND = REACH x INFLUENCE x DIRECTION:
+- Reach: how many people know about you (advertising's job)
+- Influence: how strongly seeing you changes behavior
+- Direction: toward you (buy) or away (avoid)
+
+WHY IT PAYS: strong brand converts colder traffic (scale past the warm audience), charges 2-10x for the same thing, and keeps customers buying without considering competitors. Branded returns compound; direct response alone caps out.
+
+THE 4-STEP BRAND BUILD:
+1. Pick the ideal customer: growing market + has money + easy to target + in pain
+2. List what THEY like and want (their dream outcomes, their trusted authorities, their favorite proof)
+3. Associate relentlessly: make content/offers/experiences that deliver those things, so when their life improves they think of you
+4. Optimize pairings for profit: double down on associations that make money, cut the ones that don't
+
+THE BRANDING CYCLE (levels of authority, weakest to strongest):
+1. What YOU say (content, ads, outreach) - least influence
+2. What OTHERS say (testimonials, affiliates, word of mouth) - much more
+3. What they EXPERIENCE themselves - most. Deliver on the promise or the brand compounds negatively
+
+BRAND MOVES (5 ways to grow the market): up-market, down-market, adjacent, broader, narrower. Every move is a bet: gain more audience than you lose. Talk ONLY about what the target avatar cares about; every off-topic pairing muddies the bouquet.
+
+MISTAKE RECOVERY: never try to delete a bad pairing. Overwhelm it with good pairings until it shrinks into irrelevance.
+
+QUALITY BAR FOR BRAND ADVICE: every recommendation must name a specific pairing (a person, proof style, experience, or outcome to associate with) and the behavior it changes. "Improve your brand image" is banned.
+`;
