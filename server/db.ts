@@ -1,6 +1,9 @@
 import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
+  InsertClient,
+  InsertClientDocument,
+  InsertJob,
   InsertMiningSearch,
   InsertReport,
   InsertUser,
@@ -8,6 +11,9 @@ import {
   activityLog,
   analysisResults,
   calendarEntries,
+  clientDocuments,
+  clients,
+  jobs,
   miningSearches,
   reports,
   scrapeCache,
@@ -565,4 +571,157 @@ export async function getReportsThisWeek(userId: number): Promise<number> {
     .where(and(eq(reports.userId, userId), sql`${reports.createdAt} >= ${weekStart}`));
 
   return Number(result[0]?.count ?? 0);
+}
+
+// ─── Clients (Client OS) ─────────────────────────────────────────────────────
+
+export async function createClient(data: InsertClient): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(clients).values(data);
+  return result[0].insertId;
+}
+
+export async function getClientsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(clients).where(eq(clients.userId, userId)).orderBy(desc(clients.updatedAt));
+}
+
+export async function getClientById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(clients).where(eq(clients.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function updateClient(id: number, data: Partial<InsertClient>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clients).set(data).where(eq(clients.id, id));
+}
+
+export async function deleteClient(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(clientDocuments).where(eq(clientDocuments.clientId, id));
+  await db.delete(jobs).where(eq(jobs.clientId, id));
+  await db.delete(clients).where(eq(clients.id, id));
+}
+
+// ─── Client documents ────────────────────────────────────────────────────────
+
+export async function createClientDocument(data: InsertClientDocument): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(clientDocuments).values(data);
+  return result[0].insertId;
+}
+
+export async function getClientDocuments(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(clientDocuments)
+    .where(eq(clientDocuments.clientId, clientId))
+    .orderBy(clientDocuments.kind, clientDocuments.createdAt);
+}
+
+export async function getClientDocumentById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(clientDocuments).where(eq(clientDocuments.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function updateClientDocument(id: number, content: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clientDocuments).set({ content }).where(eq(clientDocuments.id, id));
+}
+
+export async function deleteClientDocument(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(clientDocuments).where(eq(clientDocuments.id, id));
+}
+
+/** Replace a generated foundation doc (regenerations overwrite by docType). */
+export async function upsertFoundationDocument(clientId: number, docType: string, title: string, content: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db
+    .select({ id: clientDocuments.id })
+    .from(clientDocuments)
+    .where(and(eq(clientDocuments.clientId, clientId), eq(clientDocuments.kind, "foundation"), eq(clientDocuments.docType, docType)))
+    .limit(1);
+  if (existing[0]) {
+    await db.update(clientDocuments).set({ content, title }).where(eq(clientDocuments.id, existing[0].id));
+  } else {
+    await db.insert(clientDocuments).values({ clientId, kind: "foundation", docType, title, content });
+  }
+}
+
+// ─── Jobs (worker queue) ─────────────────────────────────────────────────────
+
+export async function createJob(data: InsertJob): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(jobs).values(data);
+  return result[0].insertId;
+}
+
+export async function getJobById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function getLatestJobForClient(clientId: number, type: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.clientId, clientId), eq(jobs.type, type)))
+    .orderBy(desc(jobs.id))
+    .limit(1);
+  return rows[0];
+}
+
+/**
+ * Atomically claim the oldest queued job: UPDATE ... LIMIT 1 marks it running,
+ * then read it back. Safe for a single worker; good enough if a second worker
+ * ever runs because the UPDATE is the lock.
+ */
+export async function claimNextQueuedJob() {
+  const db = await getDb();
+  if (!db) return undefined;
+  await db.execute(
+    sql`UPDATE jobs SET status = 'running', startedAt = NOW() WHERE status = 'queued' ORDER BY id ASC LIMIT 1`
+  );
+  const rows = await db
+    .select()
+    .from(jobs)
+    .where(eq(jobs.status, "running"))
+    .orderBy(desc(jobs.startedAt))
+    .limit(1);
+  return rows[0];
+}
+
+export async function setJobStatus(id: number, status: "queued" | "running" | "review" | "approved" | "failed", error?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const patch: Record<string, unknown> = { status };
+  if (error !== undefined) patch.error = error;
+  if (status === "review" || status === "approved" || status === "failed") patch.finishedAt = new Date();
+  await db.update(jobs).set(patch).where(eq(jobs.id, id));
+}
+
+export async function getSearchesByClient(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(miningSearches).where(eq(miningSearches.clientId, clientId)).orderBy(desc(miningSearches.createdAt));
 }

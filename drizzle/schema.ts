@@ -65,10 +65,65 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+// Clients — DFY agency client workspaces (Client OS)
+export const clients = mysqlTable("clients", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  niche: varchar("niche", { length: 300 }).notNull(),
+  funnelType: mysqlEnum("funnelType", ["webinar", "call"]).notNull(),
+  pricePoint: varchar("pricePoint", { length: 200 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = typeof clients.$inferInsert;
+
+// Client documents — onboarding material (extracted text), generated foundation
+// docs, and client-level lessons from the learning loop. Text only, no binaries.
+export const clientDocuments = mysqlTable("client_documents", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  kind: mysqlEnum("kind", ["onboarding", "foundation", "lesson"]).notNull(),
+  docType: varchar("docType", { length: 50 }).notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  content: longtext("content").notNull(),
+  source: varchar("source", { length: 300 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ClientDocument = typeof clientDocuments.$inferSelect;
+export type InsertClientDocument = typeof clientDocuments.$inferInsert;
+
+// Jobs — the queue the local Mac worker polls. Status flow:
+// queued -> running -> review -> approved (or failed; reject requeues a new job).
+export const jobs = mysqlTable("jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  userId: int("userId").notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  status: mysqlEnum("status", ["queued", "running", "review", "approved", "failed"])
+    .default("queued")
+    .notNull(),
+  // No .default() — TiDB rejects literal DEFAULT on JSON columns.
+  payload: json("payload").$type<{ feedback?: string }>(),
+  error: text("error"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  startedAt: timestamp("startedAt"),
+  finishedAt: timestamp("finishedAt"),
+});
+
+export type Job = typeof jobs.$inferSelect;
+export type InsertJob = typeof jobs.$inferInsert;
+
 // Mining searches — each represents a keyword + platform scope
 export const miningSearches = mysqlTable("mining_searches", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  // Set when the research was run from inside a client workspace
+  clientId: int("clientId"),
   keyword: text("keyword").notNull(),
   niche: text("niche"),
   platforms: json("platforms").$type<string[]>().notNull(),
