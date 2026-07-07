@@ -1,12 +1,18 @@
 /**
- * LLM layer backed directly by the Anthropic API (official SDK).
+ * Provider-agnostic LLM layer for report generation.
  *
- * Keeps the same `invokeLLM(params) -> InvokeResult` interface the report
- * generators were written against, so callers don't change. JSON-mode
- * requests (`response_format: {type: "json_object"}`) are honoured by
- * instructing the model and stripping any markdown fences from the output.
+ * Selected by LLM_PROVIDER:
+ *   - "gemini" (default): Google Gemini via its OpenAI-compatible endpoint.
+ *     Uses your existing Gemini API key; the free tier covers real usage.
+ *   - "anthropic": Anthropic Claude via the official SDK.
  *
- * Model is configurable via ANTHROPIC_MODEL (default: claude-opus-4-8).
+ * Both paths honour the same `invokeLLM(params) -> InvokeResult` interface the
+ * report generators are written against, and both honour JSON mode
+ * (`response_format: {type: "json_object"}`) by instructing the model and
+ * stripping any markdown fences from the output.
+ *
+ * Switching Gemini -> Claude later is a one-variable change: set
+ * LLM_PROVIDER=anthropic and ANTHROPIC_API_KEY.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { ENV } from "./env";
@@ -46,18 +52,6 @@ export type InvokeResult = {
   };
 };
 
-let _client: Anthropic | null = null;
-
-function getClient(): Anthropic {
-  if (!ENV.anthropicApiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not configured");
-  }
-  if (!_client) {
-    _client = new Anthropic({ apiKey: ENV.anthropicApiKey });
-  }
-  return _client;
-}
-
 /** Strip markdown code fences the model may wrap around JSON output. */
 function stripCodeFences(text: string): string {
   const trimmed = text.trim();
@@ -65,13 +59,105 @@ function stripCodeFences(text: string): string {
   return fenceMatch ? fenceMatch[1] : trimmed;
 }
 
+function wantsJson(params: InvokeParams): boolean {
+  return (params.responseFormat ?? params.response_format)?.type === "json_object";
+}
+
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
-  const client = getClient();
+  if (ENV.llmProvider === "anthropic") {
+    return invokeAnthropic(params);
+  }
+  return invokeGemini(params);
+}
 
-  const wantsJson =
-    (params.responseFormat ?? params.response_format)?.type === "json_object";
+// ─── Gemini (OpenAI-compatible endpoint) ─────────────────────────────────────
 
-  // Anthropic separates the system prompt from the message list.
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+
+async function invokeGemini(params: InvokeParams): Promise<InvokeResult> {
+  if (!ENV.geminiApiKey) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
+  const json = wantsJson(params);
+
+  const messages = params.messages.map((m) => ({ role: m.role, content: m.content }));
+  if (json) {
+    messages.push({
+      role: "system",
+      content:
+        "Respond with a single valid JSON object and nothing else. No markdown fences, no commentary.",
+    });
+  }
+
+  const payload: Record<string, unknown> = {
+    model: ENV.geminiModel,
+    messages,
+    max_tokens: params.maxTokens ?? params.max_tokens ?? 32000,
+  };
+  if (json) {
+    payload.response_format = { type: "json_object" };
+  }
+
+  const resp = await fetch(GEMINI_URL, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${ENV.geminiApiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => "");
+    throw new Error(`Gemini request failed (${resp.status} ${resp.statusText}): ${detail.slice(0, 300)}`);
+  }
+
+  const data = (await resp.json()) as {
+    id?: string;
+    model?: string;
+    choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+  };
+
+  let text = data.choices?.[0]?.message?.content ?? "";
+  if (json) text = stripCodeFences(text);
+
+  return {
+    id: data.id ?? "gemini",
+    model: data.model ?? ENV.geminiModel,
+    choices: [
+      {
+        index: 0,
+        message: { role: "assistant", content: text },
+        finish_reason: data.choices?.[0]?.finish_reason ?? "stop",
+      },
+    ],
+    usage: {
+      prompt_tokens: data.usage?.prompt_tokens ?? 0,
+      completion_tokens: data.usage?.completion_tokens ?? 0,
+      total_tokens: data.usage?.total_tokens ?? 0,
+    },
+  };
+}
+
+// ─── Anthropic (official SDK) ────────────────────────────────────────────────
+
+let _anthropic: Anthropic | null = null;
+
+function getAnthropic(): Anthropic {
+  if (!ENV.anthropicApiKey) {
+    throw new Error("ANTHROPIC_API_KEY is not configured");
+  }
+  if (!_anthropic) {
+    _anthropic = new Anthropic({ apiKey: ENV.anthropicApiKey });
+  }
+  return _anthropic;
+}
+
+async function invokeAnthropic(params: InvokeParams): Promise<InvokeResult> {
+  const client = getAnthropic();
+  const json = wantsJson(params);
+
   const systemParts: string[] = [];
   const messages: Anthropic.MessageParam[] = [];
   for (const message of params.messages) {
@@ -81,7 +167,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
       messages.push({ role: message.role, content: message.content });
     }
   }
-  if (wantsJson) {
+  if (json) {
     systemParts.push(
       "Respond with a single valid JSON object and nothing else. No markdown fences, no commentary before or after the JSON."
     );
@@ -92,8 +178,6 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   const maxTokens = params.maxTokens ?? params.max_tokens ?? 32000;
 
-  // Stream so large generations don't hit HTTP timeouts, then collect the
-  // final message.
   const stream = client.messages.stream({
     model: ENV.anthropicModel,
     max_tokens: maxTokens,
@@ -112,10 +196,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     .filter((block): block is Anthropic.TextBlock => block.type === "text")
     .map((block) => block.text)
     .join("");
-
-  if (wantsJson) {
-    text = stripCodeFences(text);
-  }
+  if (json) text = stripCodeFences(text);
 
   return {
     id: response.id,
