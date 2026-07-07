@@ -31,6 +31,16 @@ const PLATFORMS = [
 
 export default function NewSearch() {
   const [, navigate] = useLocation();
+  // Client OS: ?client=ID attaches this research to a client workspace
+  const clientId = (() => {
+    const raw = new URLSearchParams(window.location.search).get("client");
+    const n = raw ? Number(raw) : NaN;
+    return Number.isInteger(n) && n > 0 ? n : undefined;
+  })();
+  const { data: clientData } = trpc.clients.get.useQuery(
+    { id: clientId ?? 0 },
+    { enabled: !!clientId }
+  );
   const [keywordsText, setKeywordsText] = useState("");
   const [context, setContext] = useState("");
   const [competitorsText, setCompetitorsText] = useState("");
@@ -118,6 +128,7 @@ export default function NewSearch() {
       platforms: selectedPlatforms,
       brandVoice: context.trim() || undefined,
       competitors: competitorsText.trim() || undefined,
+      clientId,
     });
   };
 
@@ -139,6 +150,11 @@ export default function NewSearch() {
           <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-2">
             New Voice Mining Search
           </h1>
+          {clientId && clientData && (
+            <span className="inline-flex items-center px-2 py-0.5 mb-2 rounded-full border border-primary/20 bg-primary/10 text-[11px] font-medium text-primary">
+              For client: {clientData.client.name}
+            </span>
+          )}
           <p className="text-sm text-muted-foreground">
             Add your keywords and we'll mine real conversations into one report.
           </p>

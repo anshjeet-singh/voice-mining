@@ -8,6 +8,8 @@ import { CommandPaletteProvider } from "./components/CommandPalette";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
+import Clients from "./pages/Clients";
+import ClientDetail from "./pages/ClientDetail";
 import NewSearch from "./pages/NewSearch";
 import SearchResults from "./pages/SearchResults";
 import ReportView from "./pages/ReportView";
@@ -33,6 +35,8 @@ function Router() {
           <Switch>
             <Route path="/" component={Home} />
             <Route path="/dashboard" component={Dashboard} />
+            <Route path="/clients" component={Clients} />
+            <Route path="/clients/:id" component={ClientDetail} />
             <Route path="/search/new" component={NewSearch} />
             <Route path="/search/:id" component={SearchResults} />
             <Route path="/report/:id" component={ReportView} />

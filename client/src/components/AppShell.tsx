@@ -11,6 +11,7 @@ import {
   Plus,
   Sparkles,
   TrendingUp,
+  Users,
   Vault,
 } from "lucide-react";
 import { useCommandPalette } from "@/components/CommandPalette";
@@ -97,6 +98,7 @@ export function AppShell({ children }: AppShellProps) {
 
   const navItems = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+    { label: "Clients", icon: Users, path: "/clients" },
     { label: "Reports", icon: FileText, path: "/reports" },
     { label: "Vault", icon: Vault, path: "/vault" },
     { label: "Calendar", icon: Calendar, path: "/calendar" },
