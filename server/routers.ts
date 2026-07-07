@@ -354,7 +354,7 @@ export const appRouter = router({
         }
         const analysisResult = await getAnalysisResultBySearchId(report.searchId);
         if (!analysisResult) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Analysis results not found — please re-run the search first" });
+          throw new TRPCError({ code: "NOT_FOUND", message: "Analysis results not found. Please re-run the search first" });
         }
         const search = await getMiningSearchById(report.searchId);
         if (!search) throw new TRPCError({ code: "NOT_FOUND" });
@@ -378,7 +378,7 @@ export const appRouter = router({
         if (!search) throw new TRPCError({ code: "NOT_FOUND" });
         const analysisResult = await getAnalysisResultBySearchId(report.searchId);
         if (!analysisResult && input.section !== "competitorIntel") {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Analysis results not found — please re-run the search first" });
+          throw new TRPCError({ code: "NOT_FOUND", message: "Analysis results not found. Please re-run the search first" });
         }
 
         const brandVoice = search.brandVoice ?? undefined;

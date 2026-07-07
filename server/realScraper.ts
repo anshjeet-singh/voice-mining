@@ -572,6 +572,7 @@ const SOURCE_CAPS: Record<string, number> = {
   forums: 40,
   google: 20,
   google_questions: 20,
+  google_trends: 20,
   duckduckgo: 20,
   twitter: 40,
   news: 30,
@@ -637,6 +638,7 @@ async function doScrape(
     youtubeResults,
     twitterResults,
     newsResults,
+    googleTrends,
   ] = await Promise.all([
     scrapeRedditConversations(keyword),
     scrapeHackerNews(keyword),
@@ -647,7 +649,13 @@ async function doScrape(
     scrapeYouTube(keyword),
     scrapeTwitter(keyword),
     scrapeNews(keyword),
+    fetchGoogleTrends(keyword),
   ]);
+
+  const trendResults: ScrapedConversation[] = [
+    ...googleTrends.rising.map((q) => ({ platform: "google_trends", text: `RISING SEARCH: ${q}` })),
+    ...googleTrends.top.map((q) => ({ platform: "google_trends", text: `TOP SEARCH: ${q}` })),
+  ];
 
   // Priority order: raw comments and reviews first (richest verbatim voice),
   // then discussion snippets, then titles/headlines.
@@ -658,6 +666,7 @@ async function doScrape(
     ...trustpilotResults,
     ...discussionResults,
     ...googleResults,
+    ...trendResults,
     ...ddgResults,
     ...twitterResults,
     ...newsResults,
@@ -690,7 +699,7 @@ async function doScrape(
     .sort((a, b) => b[1] - a[1])
     .map(([source, n]) => `${source} ${n}`)
     .join(", ");
-  onProgress?.(`Collected ${lines.length} real snippets — ${summary}`);
+  onProgress?.(`Collected ${lines.length} real snippets: ${summary}`);
   console.log(`[realScraper] "${keyword}": ${lines.length} snippets (${summary})`);
 
   return lines.join("\n");
@@ -809,30 +818,107 @@ export async function scrapeCompetitorUrls(urls: string[]): Promise<string> {
 
 // ─── Related Keyword Suggestions (Google Suggest — FREE, no key) ─────────────
 
+// ─── Google Trends (free, no key — unofficial endpoints) ─────────────────────
+
+/** Strip Google's anti-JSON prefix ()]}' or similar) before parsing. */
+function parseGoogleJson(text: string): unknown {
+  return JSON.parse(text.slice(text.indexOf("\n") + 1));
+}
+
+export interface GoogleTrendsQueries {
+  top: string[];
+  rising: string[];
+}
+
 /**
- * Related search phrases via Google's public suggest endpoint. Free and
- * unmetered — replaces the old SerpAPI-based lookup.
+ * Related + rising queries from Google Trends for a keyword (last 3 months).
+ * Two-step dance: /explore issues widget tokens, /widgetdata/relatedsearches
+ * returns the ranked queries. Fails soft — Trends throttles cloud IPs.
+ */
+let _trendsCookie: string | null = null;
+
+export async function fetchGoogleTrends(keyword: string): Promise<GoogleTrendsQueries> {
+  const empty: GoogleTrendsQueries = { top: [], rising: [] };
+  try {
+    const exploreReq = JSON.stringify({
+      comparisonItem: [{ keyword, geo: "US", time: "today 3-m" }],
+      category: 0,
+      property: "",
+    });
+    const exploreUrl = `https://trends.google.com/trends/api/explore?hl=en-US&tz=0&req=${encodeURIComponent(exploreReq)}`;
+    const baseHeaders: Record<string, string> = { "user-agent": BROWSER_UA, accept: "application/json" };
+
+    // Google 429s the first anonymous /explore call but hands out a NID
+    // cookie with it. Retry once with that cookie — the standard handshake.
+    let exploreResp = await fetch(exploreUrl, {
+      headers: _trendsCookie ? { ...baseHeaders, cookie: _trendsCookie } : baseHeaders,
+    });
+    if (exploreResp.status === 429) {
+      const setCookie = exploreResp.headers.get("set-cookie");
+      const nid = setCookie?.match(/NID=[^;]+/)?.[0];
+      if (!nid) return empty;
+      _trendsCookie = nid;
+      exploreResp = await fetch(exploreUrl, { headers: { ...baseHeaders, cookie: _trendsCookie } });
+    }
+    if (!exploreResp.ok) return empty;
+    const explore = parseGoogleJson(await exploreResp.text()) as {
+      widgets?: Array<{ id?: string; token?: string; request?: unknown }>;
+    };
+    const widget = explore.widgets?.find((w) => w.id === "RELATED_QUERIES");
+    if (!widget?.token || !widget.request) return empty;
+
+    const dataResp = await fetchWithRetry(
+      `https://trends.google.com/trends/api/widgetdata/relatedsearches?hl=en-US&tz=0&req=${encodeURIComponent(JSON.stringify(widget.request))}&token=${widget.token}`,
+      { headers: { ...baseHeaders, ...(_trendsCookie ? { cookie: _trendsCookie } : {}) } },
+      1
+    );
+    if (!dataResp.ok) return empty;
+    const data = parseGoogleJson(await dataResp.text()) as {
+      default?: { rankedList?: Array<{ rankedKeyword?: Array<{ query?: string }> }> };
+    };
+    const [topList, risingList] = data.default?.rankedList ?? [];
+    return {
+      top: (topList?.rankedKeyword ?? []).map((k) => k.query ?? "").filter(Boolean).slice(0, 10),
+      rising: (risingList?.rankedKeyword ?? []).map((k) => k.query ?? "").filter(Boolean).slice(0, 10),
+    };
+  } catch {
+    return empty;
+  }
+}
+
+/**
+ * Related search phrases: Google Trends rising/top queries first (real demand
+ * signal), padded with Google Suggest autocomplete. Free and unmetered.
  */
 export async function fetchRelatedSearches(keyword: string): Promise<string[]> {
   const suggestions: string[] = [];
   const variants = [keyword, `${keyword} for `, `why ${keyword}`, `${keyword} vs`];
 
-  await Promise.allSettled(
-    variants.map(async (v) => {
-      try {
-        const resp = await fetchWithRetry(
-          `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(v)}`,
-          { headers: { "user-agent": BROWSER_UA } },
-          1
-        );
-        if (!resp.ok) return;
-        const data = (await resp.json()) as [string, string[]];
-        for (const s of data[1] ?? []) {
-          if (s && s.toLowerCase() !== keyword.toLowerCase()) suggestions.push(s);
-        }
-      } catch { /* skip */ }
-    })
-  );
+  const [trends] = await Promise.all([
+    fetchGoogleTrends(keyword),
+    Promise.allSettled(
+      variants.map(async (v) => {
+        try {
+          const resp = await fetchWithRetry(
+            `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(v)}`,
+            { headers: { "user-agent": BROWSER_UA } },
+            1
+          );
+          if (!resp.ok) return;
+          const data = (await resp.json()) as [string, string[]];
+          for (const s of data[1] ?? []) {
+            if (s && s.toLowerCase() !== keyword.toLowerCase()) suggestions.push(s);
+          }
+        } catch { /* skip */ }
+      })
+    ),
+  ]);
 
-  return Array.from(new Set(suggestions)).slice(0, 5);
+  const merged = [
+    ...trends.rising,
+    ...trends.top,
+    ...suggestions,
+  ].filter((s) => s.toLowerCase() !== keyword.toLowerCase());
+
+  return Array.from(new Set(merged)).slice(0, 8);
 }

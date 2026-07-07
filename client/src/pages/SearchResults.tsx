@@ -252,7 +252,7 @@ export default function SearchResults() {
             <div className="flex items-center gap-3">
               <Loader2 className="w-4 h-4 text-primary animate-spin" />
               <span className="text-sm font-medium text-foreground">
-                Finalising your report — redirecting shortly...
+                Finalising your report, redirecting shortly...
               </span>
             </div>
           </div>

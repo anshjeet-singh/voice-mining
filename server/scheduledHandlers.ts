@@ -22,7 +22,7 @@ import { ENV } from "./_core/env";
 import { saveTrendSnapshot, getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
-import { scrapeHackerNews, scrapeRedditConversations, searchYouTubeVideos } from "./realScraper";
+import { fetchGoogleTrends, scrapeHackerNews, scrapeRedditConversations, searchYouTubeVideos } from "./realScraper";
 import { miningSearches } from "../drizzle/schema";
 
 // ─── /api/scheduled/trend-refresh ────────────────────────────────────────────
@@ -133,6 +133,13 @@ async function scrapeForTrends(keyword: string): Promise<string> {
 
   // Run all scrapers in parallel
   await Promise.allSettled([
+    // Google Trends — rising + top related queries (free, real demand signal)
+    (async () => {
+      const trends = await fetchGoogleTrends(keyword);
+      for (const q of trends.rising) addLine("google_trends", `RISING SEARCH: ${q}`);
+      for (const q of trends.top) addLine("google_trends", `TOP SEARCH: ${q}`);
+    })(),
+
     // Reddit — posts + live comment threads (free)
     (async () => {
       for (const r of await scrapeRedditConversations(keyword)) {

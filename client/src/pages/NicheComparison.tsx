@@ -120,7 +120,7 @@ export default function NicheComparison() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-foreground">
               Select searches to compare{" "}
-              <span className="text-muted-foreground font-normal">(2–4)</span>
+              <span className="text-muted-foreground font-normal">(2 to 4)</span>
             </h2>
             {selectedIds.length > 0 && (
               <button

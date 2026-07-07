@@ -77,7 +77,7 @@ export default function Home() {
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    document.title = "VoiceMining — AI Market Research & Copy Generator";
+    document.title = "VoiceMining: AI Market Research & Copy Generator";
   }, []);
 
   const handleCTA = () => {
@@ -163,7 +163,7 @@ export default function Home() {
 
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed font-light">
             Continuously scrape and analyze public conversations across the internet.
-            Extract pain points, desires, viral hooks, and buying triggers — then turn
+            Extract pain points, desires, viral hooks, and buying triggers, then turn
             them into high-converting copy and content automatically.
           </p>
 
@@ -215,7 +215,7 @@ export default function Home() {
               <span className="font-semibold text-foreground">your market deeply</span>
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto font-light">
-              From raw conversation data to polished marketing assets — the complete
+              From raw conversation data to polished marketing assets. The complete
               voice-of-customer intelligence platform.
             </p>
           </div>

@@ -150,7 +150,7 @@ export default function NewSearch() {
             <div className="flex items-center justify-between">
               <Label htmlFor="keywords" className="text-sm font-medium text-foreground">
                 Keywords <span className="text-destructive">*</span>
-                <span className="text-muted-foreground font-normal ml-2">one per line, up to 10 — all feed one report</span>
+                <span className="text-muted-foreground font-normal ml-2">one per line, up to 10, all in one report</span>
               </Label>
               <span className={`text-xs ${keywordList.length >= 10 ? "text-destructive" : "text-muted-foreground"}`}>
                 {keywordList.length} / 10
@@ -172,7 +172,7 @@ export default function NewSearch() {
               <div className="space-y-1.5">
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <Lightbulb className="w-3 h-3 text-amber-400" />
-                  People also search for — click to add
+                  People also search for. Click to add
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {(suggestions ?? []).map((s) => (
