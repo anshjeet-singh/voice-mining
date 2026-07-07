@@ -22,7 +22,7 @@ import { ENV } from "./_core/env";
 import { saveTrendSnapshot, getDb } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
-import { searchYouTubeVideos } from "./realScraper";
+import { scrapeHackerNews, scrapeRedditConversations, searchYouTubeVideos } from "./realScraper";
 import { miningSearches } from "../drizzle/schema";
 
 // ─── /api/scheduled/trend-refresh ────────────────────────────────────────────
@@ -133,16 +133,27 @@ async function scrapeForTrends(keyword: string): Promise<string> {
 
   // Run all scrapers in parallel
   await Promise.allSettled([
-    // SerpAPI — 5 targeted queries for deep coverage
+    // Reddit — posts + live comment threads (free)
+    (async () => {
+      for (const r of await scrapeRedditConversations(keyword)) {
+        addLine(r.platform, r.text);
+      }
+    })(),
+
+    // Hacker News — stories + comments (free)
+    (async () => {
+      for (const r of await scrapeHackerNews(keyword)) {
+        addLine(r.platform, r.text);
+      }
+    })(),
+
+    // SerpAPI — 2 targeted trend queries (metered, spent sparingly)
     (async () => {
       const apiKey = process.env.SERP_API_KEY;
       if (!apiKey) return;
       const queries = [
-        `${keyword} site:reddit.com`,
         `${keyword} trending 2025 OR 2026`,
         `${keyword} "what's working" OR "what works" OR "best way"`,
-        `${keyword} "I've been" OR "I finally" OR "anyone else" OR "has anyone"`,
-        `${keyword} news OR update OR announcement`,
       ];
       await Promise.allSettled(
         queries.map(async (q) => {
@@ -220,7 +231,7 @@ async function scrapeForTrends(keyword: string): Promise<string> {
   }
 
   // Cap to 200 lines for deep analysis (more than the 150 used in regular reports)
-  return lines.slice(0, 200).join("\n");
+  return lines.slice(0, 400).join("\n");
 }
 
 async function generateTrendSnapshot(keyword: string, date: string) {

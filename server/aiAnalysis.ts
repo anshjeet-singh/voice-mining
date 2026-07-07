@@ -120,15 +120,17 @@ function coerceInsights(raw: unknown): InsightItem[] {
  * Scrape the internet for a keyword and extract structured voice-of-customer
  * insights (pain points, desires, objections, fears — each with frequency,
  * verbatim example, platform, and theme). Skips the LLM entirely and returns
- * empty results when no real data could be scraped.
+ * empty results when no real data could be scraped. `onProgress` surfaces
+ * live scraping activity (per-source counts) to the UI.
  */
 export async function runAnalysis(
   keyword: string,
   platforms: string[],
-  brandVoice?: string
+  brandVoice?: string,
+  onProgress?: (message: string) => void
 ): Promise<AnalysisOutput> {
   // Fetch real internet conversations for this keyword
-  const conversations = await scrapeInternetForKeyword(keyword, platforms);
+  const conversations = await scrapeInternetForKeyword(keyword, platforms, onProgress);
 
   // If no scraped data came back, skip LLM entirely — never generate from niche context
   const hasRealData = conversations !== "NO_SCRAPED_DATA" && conversations.trim().length > 0;

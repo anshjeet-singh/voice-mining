@@ -24,16 +24,16 @@ import {
 } from "lucide-react";
 
 const PLATFORMS = [
-  { id: "reddit", label: "Reddit", description: "Posts & comments" },
-  { id: "twitter", label: "Twitter/X", description: "Tweets & threads" },
-  { id: "youtube", label: "YouTube", description: "Video comments" },
-  { id: "forums", label: "Forums", description: "Niche communities" },
-  { id: "amazon", label: "Amazon Reviews", description: "Product reviews" },
-  { id: "trustpilot", label: "Trustpilot", description: "Business reviews" },
+  { id: "reddit", label: "Reddit", description: "Threads + comment mining" },
+  { id: "youtube", label: "YouTube", description: "Deep comment mining" },
+  { id: "hackernews", label: "Hacker News", description: "Stories & comments" },
+  { id: "trustpilot", label: "Trustpilot", description: "Real review text" },
   { id: "quora", label: "Quora", description: "Q&A discussions" },
-  { id: "linkedin", label: "LinkedIn", description: "Professional posts" },
+  { id: "forums", label: "Forums", description: "Niche communities" },
+  { id: "google", label: "Google", description: "Organic + questions" },
+  { id: "duckduckgo", label: "DuckDuckGo", description: "Alt index coverage" },
+  { id: "twitter", label: "Twitter/X", description: "Tweets & threads" },
   { id: "news", label: "News", description: "Headlines & articles" },
-  { id: "blogs", label: "Blogs", description: "Industry content" },
 ];
 
 const NICHE_SUGGESTIONS = [

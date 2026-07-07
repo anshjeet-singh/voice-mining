@@ -943,9 +943,14 @@ async function generateAllSections(
 
 async function processAnalysis(searchId: number, keyword: string, platforms: string[], brandVoice?: string, userId?: number) {
   try {
-    await updateMiningSearchStatus(searchId, "mining", 10, "Scraping 10 live sources: Google, Bing, DuckDuckGo, YouTube, Yelp, Amazon, Twitter, news...");
+    await updateMiningSearchStatus(searchId, "mining", 10, "Warming up the scrapers...");
 
-    const analysisOutput = await runAnalysis(keyword, platforms, brandVoice);
+    // Live per-source progress from the scraper (Reddit counts, YouTube counts, ...)
+    const onScrapeProgress = (message: string) => {
+      updateMiningSearchStatus(searchId, "mining", 25, message).catch(() => {});
+    };
+
+    const analysisOutput = await runAnalysis(keyword, platforms, brandVoice, onScrapeProgress);
 
     await updateMiningSearchStatus(searchId, "analyzing", 45, "Extracting pain points, desires, fears, and buying triggers from real conversations...");
 

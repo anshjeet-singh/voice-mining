@@ -221,7 +221,7 @@ export default function SearchResults() {
             <div className="flex justify-between mt-2">
               <span className="text-xs text-muted-foreground">
                 {search.status === "mining"
-                  ? "Scraping 10 sources (Google, YouTube, Yelp, Amazon, Reddit, forums, news...)"
+                  ? "Deep-scraping Reddit threads, YouTube comments, Hacker News, Trustpilot reviews, Google, DuckDuckGo, Quora, forums, news..."
                   : "AI generating market intelligence + viral hooks + ads + scripts + emails"}
               </span>
               <span className="text-xs text-primary font-medium">{search.progress}%</span>
