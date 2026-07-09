@@ -7,3 +7,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-09 · job 90003 · client: Trent Kus -->
 - The 9-beat arc opens with a Headline, and BIG_IDEA mode surfaces the through-line, but neither cross-references the copy-quality-bar rule that a diagnosis-of-failure line is an anti-pattern as a page headline. A strong Big Idea is very often a diagnosis reframe ("you're not getting denied because of your credit, you're getting denied because of how you apply"). That line is an excellent spoken VSL hook and body reframe, but a losing page headline because it promises nothing. Add one line: the Big Idea leads the VIDEO hook; the PAGE headline leads with the dream outcome and a real number, and the diagnosis moves to the subhead or body.
+
+<!-- 2026-07-09 · job 120003 · client: Trent Kus -->
+- The opt-in headline helper and the arc's Headline step should carry the explicit warning that the subheadline must NOT use the "Watch the short video below to see how..." shape. That shape is filler that promises nothing; the converting subheadline is "[dream outcome] in [timeframe], without [top 2-3 objections]". The funnel-structure framework's own subheadline template still models the watch-the-video shape and should be corrected to the outcome-without-objections shape to match the copy-quality-bar.

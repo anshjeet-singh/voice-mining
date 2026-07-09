@@ -8,3 +8,7 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-09 · job 90003 · client: Trent Kus -->
 - Confirmed the existing learning: there is still no VSL_PAGE mode, yet every call funnel needs one and the funnel-structure framework already specifies its anatomy. The two should cross-reference each other so the writer builds the VSL page from the framework's 14-section spec rather than improvising, and treats POST_CALL_PAGE / PRE_CALL_HUB as the pages downstream of it.
+
+<!-- 2026-07-09 · job 120003 · client: Trent Kus -->
+- There is still no VSL_PAGE mode, yet a Branch B call funnel always needs one and the funnel-structure framework already specifies its 14-section anatomy. Add an explicit VSL_PAGE mode that points the writer to the framework's spec, so the top-of-funnel VSL landing page is built to structure instead of improvised. LEAD_MAGNET, POST_CALL_PAGE, PRE_CALL_HUB, and CALENDLY all assume the lead is already past the VSL.
+- The CALENDLY mode defines the four booking questions but the funnel-structure framework's Page 2 (booking page) anatomy does not reference them, so a writer building the booking page from the framework alone can miss them. Cross-reference the two: the booking page's four questions ARE the CALENDLY set, and they belong on Page 2, not on a separate step.
