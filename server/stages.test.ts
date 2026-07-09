@@ -16,8 +16,8 @@ describe("stage registry", () => {
     // Call funnel: 2 docs. Funnel Structure (both pages) + Video Scripts (10 scripts)
     expect(call.outputs.map((o) => o.docType)).toEqual(["funnel_structure", "video_scripts"]);
     expect(call.outputs[1].description).toContain("EXACTLY 10");
-    expect(call.outputs[1].description).toContain("1 VSL script");
-    expect(call.outputs[1].description).toContain("8 breakout");
+    expect(call.outputs[1].description).toContain("script 1 the VSL");
+    expect(call.outputs[1].description).toContain("YOU choose the 8 breakout topics");
     // Webinar funnel: deck + structure + scripts
     expect(webinar.outputs.map((o) => o.docType)).toEqual(["funnel_core", "funnel_structure", "video_scripts"]);
     expect(webinar.outputs[0].filename).toBe("01_webinar_deck.md");

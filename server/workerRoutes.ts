@@ -12,6 +12,7 @@ import { ENV } from "./_core/env";
 import {
   claimNextQueuedJob,
   createClientDocument,
+  deleteClientDocumentsByTypes,
   getAnalysisResultBySearchId,
   getClientById,
   getClientDocuments,
@@ -22,7 +23,7 @@ import {
 } from "./db";
 import { normalizeInsights } from "@shared/reportContent";
 import type { InsightList } from "../drizzle/schema";
-import { stageContract, stagePromptSpec, STAGES, type FunnelType } from "./stages";
+import { stageAllDocTypes, stageContract, stagePromptSpec, type FunnelType } from "./stages";
 
 /** True when the request carries the correct worker bearer token. */
 export function isWorkerAuthorized(authHeader: string | undefined, secret: string): boolean {
@@ -189,6 +190,11 @@ export function registerWorkerRoutes(app: Express) {
         }
         await upsertClientDocumentByType(job.clientId, kind, docType, title, content.trim());
       }
+
+      // Sweep stale docs whose docType left this stage's contract (contract
+      // changes or funnel-type switches otherwise leave orphans in review)
+      const stale = stageAllDocTypes(job.type).filter((t) => !(t in contract));
+      await deleteClientDocumentsByTypes(job.clientId, stale);
 
       for (const lesson of clientLessons ?? []) {
         if (lesson.trim().length > 5) {

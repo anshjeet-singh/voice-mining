@@ -17,10 +17,11 @@ import path from "node:path";
 import os from "node:os";
 import "dotenv/config";
 import {
-  buildStagePrompt,
+  buildDocPrompt,
   parseCraftLessons,
-  parseStageOutputs,
+  parseDocOutput,
   type ClaimedJob,
+  type StageOutputSpec,
 } from "./workerLib";
 
 const exec = promisify(execFile);
@@ -31,8 +32,10 @@ const SKILLS_DIR = process.env.SKILLS_DIR ?? "";
 const REPO_ROOT = path.resolve(import.meta.dirname, "..");
 const LEARNINGS_DIR = process.env.LEARNINGS_DIR ?? path.join(REPO_ROOT, "worker", "learnings");
 const FRAMEWORKS_DIR = process.env.FRAMEWORKS_DIR ?? path.join(REPO_ROOT, "worker", "frameworks");
-const POLL_MS = 15_000;
-const CLAUDE_TIMEOUT_MS = 30 * 60 * 1000; // foundation docs are a long run
+// Pin the model: headless CLI defaults can silently downgrade quality
+const WORKER_MODEL = process.env.WORKER_MODEL ?? "opus";
+const POLL_MS = 5_000;
+const CLAUDE_TIMEOUT_MS = 30 * 60 * 1000; // deliverables are long runs
 
 if (!WORKER_SECRET) {
   console.error("WORKER_SECRET is not set. Add it to .env or export it, matching Render.");
@@ -95,10 +98,10 @@ async function saveCraftLessons(raw: string, jobId: number, clientName: string) 
   }
 }
 
-async function runJob(job: ClaimedJob) {
-  console.log(`[job ${job.id}] claimed — ${job.stage.label} for ${job.client.name} (${job.client.niche})`);
-  const jobDir = await fs.mkdtemp(path.join(os.tmpdir(), `${job.type}-${job.id}-`));
-  const prompt = buildStagePrompt(job, {
+/** Run ONE deliverable in its own temp dir with its own headless Claude Code. */
+async function runDeliverable(job: ClaimedJob, output: StageOutputSpec) {
+  const jobDir = await fs.mkdtemp(path.join(os.tmpdir(), `${job.type}-${job.id}-${output.docType}-`));
+  const prompt = buildDocPrompt(job, output, {
     skillsDir: SKILLS_DIR,
     learningsDir: LEARNINGS_DIR,
     frameworksDir: FRAMEWORKS_DIR,
@@ -106,24 +109,41 @@ async function runJob(job: ClaimedJob) {
   const promptFile = path.join(jobDir, "PROMPT.md");
   await fs.writeFile(promptFile, prompt);
 
-  console.log(`[job ${job.id}] running headless Claude Code in ${jobDir} ...`);
-  await exec("claude", ["-p", `Follow the instructions in ${promptFile} exactly.`, "--dangerously-skip-permissions"], {
-    cwd: jobDir,
-    timeout: CLAUDE_TIMEOUT_MS,
-    maxBuffer: 64 * 1024 * 1024,
-  });
-
-  const files = await readJobDir(jobDir);
-  delete files["PROMPT.md"];
-  const outputs = parseStageOutputs(files, job.stage.outputs);
-
-  await api("complete", { jobId: job.id, docs: outputs.docs, clientLessons: outputs.clientLessons });
-  console.log(
-    `[job ${job.id}] complete — ${Object.keys(outputs.docs).length} docs posted, ${outputs.clientLessons.length} client lessons`
+  console.log(`[job ${job.id}] ${output.title}: running headless Claude Code (${WORKER_MODEL}) ...`);
+  await exec(
+    "claude",
+    ["-p", `Follow the instructions in ${promptFile} exactly.`, "--model", WORKER_MODEL, "--dangerously-skip-permissions"],
+    { cwd: jobDir, timeout: CLAUDE_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 }
   );
 
-  await saveCraftLessons(outputs.craftLessonsRaw, job.id, job.client.name);
+  const files = await readJobDir(jobDir);
+  const parsed = parseDocOutput(files, output);
   await fs.rm(jobDir, { recursive: true, force: true });
+  console.log(`[job ${job.id}] ${output.title}: done (${parsed.content.length.toLocaleString()} chars)`);
+  return { docType: output.docType, ...parsed };
+}
+
+async function runJob(job: ClaimedJob) {
+  console.log(
+    `[job ${job.id}] claimed — ${job.stage.label} for ${job.client.name} (${job.client.niche}), ${job.stage.outputs.length} deliverables in parallel`
+  );
+  const started = Date.now();
+
+  // All deliverables run CONCURRENTLY: separate Claude Code sessions, each
+  // focused on one document. Cuts wall time by the number of deliverables.
+  const results = await Promise.all(job.stage.outputs.map((output) => runDeliverable(job, output)));
+
+  const docs = Object.fromEntries(results.map((r) => [r.docType, r.content]));
+  const clientLessons = Array.from(new Set(results.flatMap((r) => r.clientLessons)));
+
+  await api("complete", { jobId: job.id, docs, clientLessons });
+  console.log(
+    `[job ${job.id}] complete in ${Math.round((Date.now() - started) / 60000)}m — ${results.length} docs posted, ${clientLessons.length} client lessons`
+  );
+
+  for (const r of results) {
+    await saveCraftLessons(r.craftLessonsRaw, job.id, job.client.name);
+  }
 }
 
 async function tick() {

@@ -654,6 +654,16 @@ export async function deleteClientDocument(id: number) {
   await db.delete(clientDocuments).where(eq(clientDocuments.id, id));
 }
 
+/** Remove stale generated docs whose docType left the stage's contract. */
+export async function deleteClientDocumentsByTypes(clientId: number, docTypes: string[]) {
+  if (!docTypes.length) return;
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .delete(clientDocuments)
+    .where(and(eq(clientDocuments.clientId, clientId), inArray(clientDocuments.docType, docTypes)));
+}
+
 /** Replace a generated foundation doc (regenerations overwrite by docType). */
 /** Replace-on-regenerate upsert keyed by (clientId, kind, docType). */
 export async function upsertClientDocumentByType(

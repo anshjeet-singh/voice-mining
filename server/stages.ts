@@ -91,11 +91,11 @@ export const STAGES: Record<string, StageDef> = {
             { docType: "video_scripts", filename: "03_video_scripts.md", title: "Video Scripts", description: "EXACTLY 10 full scripts, numbered: 1 thank-you page video, 1 offer-breakdown video, and 8 breakout objection/FAQ videos (60-90s each). Every script written word for word" },
           ]
         : [
-            { docType: "funnel_structure", filename: "01_funnel_structure.md", title: "Funnel Structure", description: "COMPLETE page-by-page copy per the funnel-structure framework: Page 1 the VSL page (eyebrow ATTENTION line, headline, subheadline, CTA button text, proof strip, pain block, mechanism reveal, offer stack, testimonial specs, FAQ, all three CTA blocks) and Page 2 the booking page (header, calendar rules, what-happens bullets, proof). Every section's actual copy plus a one-line layout note" },
-            { docType: "video_scripts", filename: "02_video_scripts.md", title: "Video Scripts", description: "EXACTLY 10 full scripts, numbered: 1 VSL script (big idea and core promise flagged at the top), 1 call-confirmed video, and 8 breakout objection/FAQ videos (60-90s each). Every script written word for word" },
+            { docType: "funnel_structure", filename: "01_funnel_structure.md", title: "Funnel Structure", description: "COMPLETE FINAL page-by-page copy per the funnel-structure framework: Page 1 the VSL page (eyebrow ATTENTION line, headline, subheadline, CTA button text, proof strip, pain block, mechanism reveal, offer stack, testimonial specs, FAQ, all three CTA blocks) and Page 2 the booking page (header, calendar rules, what-happens bullets, proof). The HEADLINE section alone gives 5-7 ranked options with the chosen one first; every other section is single, final, shipped copy" },
+            { docType: "video_scripts", filename: "02_video_scripts.md", title: "Video Scripts", description: "EXACTLY 10 full scripts, numbered: script 1 the VSL (big idea and core promise flagged at the top), script 2 the call-confirmed video, scripts 3-10 the eight breakout objection/FAQ videos (60-90s each). YOU choose the 8 breakout topics from the market's top objections; never present topic options. Every script written word for word" },
           ],
     extraInstructions: (ft) =>
-      `This client runs a ${ft === "webinar" ? "WEBINAR funnel (Branch A)" : "CALL funnel (Branch B, VSL into booked call)"}. Flag the BIG IDEA and CORE PROMISE explicitly at the top of the first document so the owner can pressure-test them. Every page and script must pass the copy-quality-bar framework: eyebrow ATTENTION line calling out the exact ICP, headline with a specific number/timeframe/named mechanism promising the dream outcome (NEVER a diagnosis-of-their-failure headline), proof next to every claim, one repeated CTA, their verbatim language from the research. Pages echo the ${ft === "webinar" ? "deck's" : "VSL's"} language exactly, never a paraphrase. Use [BOOKING LINK], [COMMUNITY LINK], [VSL LINK], and [PROOF: ...] placeholders wherever a real URL or client asset goes.`,
+      `This client runs a ${ft === "webinar" ? "WEBINAR funnel (Branch A)" : "CALL funnel (Branch B, VSL into booked call)"}. Every page and script must pass the copy-quality-bar framework and model the 2-3 closest funnels in the vsl-swipe-file. Non-negotiable formulas: the eyebrow line is ONLY a pure callout, "ATTENTION [EXACT ICP]:" with nothing bolted onto it. The headline promises the dream outcome with a specific number/timeframe/named mechanism (NEVER a diagnosis-of-their-failure line, NEVER a rambling multi-clause sentence; if it cannot be said out loud in one breath, cut it). The subheadline follows "[Dream outcome] in [timeframe], without [top 2-3 objections from the research]", grammatical and punchy, never "watch the video below and I will show you..." filler. Proof next to every claim, one repeated CTA. Pages echo the ${ft === "webinar" ? "deck's" : "VSL's"} language exactly. Use [BOOKING LINK], [COMMUNITY LINK], [VSL LINK], and [PROOF: ...] placeholders wherever a real URL or client asset goes.`,
   },
 
   emails: {
@@ -124,6 +124,16 @@ export function stageContract(stageType: string, funnelType: FunnelType): Record
   const stage = STAGES[stageType];
   if (!stage) return {};
   return Object.fromEntries(stage.docs(funnelType).map((d) => [d.docType, d.title]));
+}
+
+/**
+ * Every docType this stage can produce across ALL branches. Used to clean up
+ * stale documents when a contract changes or a client switches funnel type.
+ */
+export function stageAllDocTypes(stageType: string): string[] {
+  const stage = STAGES[stageType];
+  if (!stage) return [];
+  return Array.from(new Set([...stage.docs("call"), ...stage.docs("webinar")].map((d) => d.docType)));
 }
 
 /** Everything the worker needs to run a stage, shipped in the claim payload. */
