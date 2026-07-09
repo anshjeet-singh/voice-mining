@@ -74,8 +74,9 @@ export function buildStagePrompt(job: ClaimedJob, opts: PromptOptions): string {
 You MUST read, in full, in this order:
 1. The mother skill: ${opts.skillsDir}/client-onboarding-orchestrator/SKILL.md
 2. EVERY child skill for this stage: ${stage.childSkills.join(", ")} (each lives in its own folder under ${opts.skillsDir}/ as SKILL.md; strip any parenthetical mode note to get the folder name)
-3. EVERY file in ${opts.frameworksDir ?? "the frameworks directory"}/ (distilled from the $100M playbooks, Scientific Advertising, Sell Like Crazy, and top-converting funnel teardowns; these set the QUALITY BAR)
-4. EVERY file in ${opts.learningsDir}/ (lessons from past client work)
+3. THEN list the full skills directory (ls ${opts.skillsDir}) and read ANY OTHER skill whose name matches a deliverable you are about to write. The agency has 90+ skills covering VSLs, confirmation pages, copy polish, offers, emails, and more. The child skills listed above are the MINIMUM, not the ceiling: if you write a VSL without reading every VSL-related skill in that directory, you have failed.
+4. EVERY file in ${opts.frameworksDir ?? "the frameworks directory"}/ (distilled from the $100M playbooks, Scientific Advertising, Sell Like Crazy, winning Skool about-page VSLs, and top-converting funnel teardowns; these set the QUALITY BAR)
+5. EVERY file in ${opts.learningsDir}/ (lessons from past client work)
 
 This is not optional. The deliverables must VISIBLY follow the skill templates and pass the framework quality bars. If your draft would read the same without having read these files, you have failed the task. Skill files and framework files are READ-ONLY. Never modify anything under ${opts.skillsDir}.
 

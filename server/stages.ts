@@ -59,13 +59,19 @@ export const STAGES: Record<string, StageDef> = {
     label: "Skool Setup",
     requires: "foundation",
     motherStep: "Step 2 (Skool community build)",
-    childSkills: () => ["skool-community-builder", "free-community-pipeline"],
+    childSkills: () => [
+      "skool-community-builder",
+      "free-community-pipeline",
+      "vsl-and-sales-page-writer (for the About-page VSL scripts)",
+      "hidden-vssl-framework",
+      "generic-language-killer (polish pass)",
+    ],
     docs: () => [
-      { docType: "skool_free_community", filename: "01_free_community.md", title: "Free Community", description: "The free Skool community: name options, tagline, About page copy, About-page VSL script, categories, level names, plugins config, three pinned posts, Start Here module key" },
-      { docType: "skool_paid_community", filename: "02_paid_community.md", title: "Paid Community", description: "The paid Skool community: same full asset set, with the offer, pricing, and promise pulled from the approved Offers document" },
+      { docType: "skool_free_community", filename: "01_free_community.md", title: "Free Community", description: "The free Skool community: name options, tagline, About page copy, a ~3-minute word-for-word About-page VSL script, categories, gamification level names, plugins config, three pinned posts, Start Here module key" },
+      { docType: "skool_paid_community", filename: "02_paid_community.md", title: "Paid Community", description: "The paid Skool community: same full asset set including its own ~3-minute About-page VSL (with value stack, price anchor, named guarantee), selling the exact offer from the approved Offers document" },
     ],
     extraInstructions: () =>
-      "Build BOTH communities: the free community (top of funnel, feeds the booking pipeline) and the paid community (the delivery vehicle for the offer in the Offers doc). The paid community's copy must sell the exact offer, price, and mechanism from the approved Offers document, never a variant.",
+      "Build BOTH communities: the free community (top of funnel, feeds the booking pipeline) and the paid community (the delivery vehicle for the offer in the Offers doc). The paid community's copy must sell the exact offer, price, and mechanism from the approved Offers document, never a variant. Both About-page VSL scripts are word-for-word, ~3 minutes spoken (420-480 words), following the skool-about-vsl framework's beat sequence. GAMIFICATION LEVEL NAMES MUST BE IDENTICAL across the free and paid communities: one ladder, derived from the client's brand language.",
   },
 
   funnel: {
@@ -75,8 +81,8 @@ export const STAGES: Record<string, StageDef> = {
     motherStep: "Steps 3 and 4 (Funnel core + pages & videos)",
     childSkills: (ft) =>
       ft === "webinar"
-        ? ["webinar-deck-builder (BUILD mode)", "funnel-page-builder (LEAD_MAGNET + relevant modes)", "funnel-video-scripts (THANK_YOU)", "breakout-video-writer"]
-        : ["vsl-and-sales-page-writer (BIG_IDEA then VSL)", "funnel-page-builder (POST_CALL_PAGE, PRE_CALL_HUB, CALENDLY)", "funnel-video-scripts (CALL_CONFIRMED + OFFER_BREAKDOWN)", "breakout-video-writer"],
+        ? ["webinar-deck-builder (BUILD mode)", "funnel-page-builder (LEAD_MAGNET + relevant modes)", "funnel-video-scripts (THANK_YOU)", "breakout-video-writer", "confirmation-page-that-converts", "generic-language-killer (polish pass)"]
+        : ["vsl-and-sales-page-writer (BIG_IDEA then VSL)", "vsl-that-converts", "hidden-vssl-framework", "funnel-page-builder (POST_CALL_PAGE, PRE_CALL_HUB, CALENDLY)", "confirmation-page-that-converts", "funnel-video-scripts (CALL_CONFIRMED + OFFER_BREAKDOWN)", "breakout-video-writer", "generic-language-killer (polish pass)"],
     docs: (ft) =>
       ft === "webinar"
         ? [
