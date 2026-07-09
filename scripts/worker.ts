@@ -32,8 +32,9 @@ const SKILLS_DIR = process.env.SKILLS_DIR ?? "";
 const REPO_ROOT = path.resolve(import.meta.dirname, "..");
 const LEARNINGS_DIR = process.env.LEARNINGS_DIR ?? path.join(REPO_ROOT, "worker", "learnings");
 const FRAMEWORKS_DIR = process.env.FRAMEWORKS_DIR ?? path.join(REPO_ROOT, "worker", "frameworks");
-// Pin the model: headless CLI defaults can silently downgrade quality
+// Pin model AND effort: headless CLI defaults can silently downgrade quality
 const WORKER_MODEL = process.env.WORKER_MODEL ?? "opus";
+const WORKER_EFFORT = process.env.WORKER_EFFORT ?? "high";
 const POLL_MS = 5_000;
 const CLAUDE_TIMEOUT_MS = 30 * 60 * 1000; // deliverables are long runs
 
@@ -109,10 +110,18 @@ async function runDeliverable(job: ClaimedJob, output: StageOutputSpec) {
   const promptFile = path.join(jobDir, "PROMPT.md");
   await fs.writeFile(promptFile, prompt);
 
-  console.log(`[job ${job.id}] ${output.title}: running headless Claude Code (${WORKER_MODEL}) ...`);
+  console.log(`[job ${job.id}] ${output.title}: running headless Claude Code (${WORKER_MODEL}, effort ${WORKER_EFFORT}) ...`);
   await exec(
     "claude",
-    ["-p", `Follow the instructions in ${promptFile} exactly.`, "--model", WORKER_MODEL, "--dangerously-skip-permissions"],
+    [
+      "-p",
+      `Follow the instructions in ${promptFile} exactly.`,
+      "--model",
+      WORKER_MODEL,
+      "--effort",
+      WORKER_EFFORT,
+      "--dangerously-skip-permissions",
+    ],
     { cwd: jobDir, timeout: CLAUDE_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 }
   );
 
