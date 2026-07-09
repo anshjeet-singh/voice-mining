@@ -32,9 +32,59 @@ const DOC_TYPES = [
   { id: "other", label: "Other" },
 ] as const;
 
-const FOUNDATION_ORDER = ["icp_snapshot", "offers", "brand_positioning", "course_outline"];
+type StageId = "foundation" | "skool" | "funnel" | "emails";
 
-const FUTURE_STAGES = ["Skool Setup", "Funnel Copy", "Email Sequences", "Ad Creatives"];
+/**
+ * Worker-run pipeline stages, in mother-skill order. docTypes mirror the
+ * server's stage registry (funnel docTypes are branch-independent).
+ */
+const WORKER_STAGES: Array<{
+  id: StageId;
+  label: string;
+  blurb: string;
+  docTypes: string[];
+  runningNote: string;
+}> = [
+  {
+    id: "foundation",
+    label: "Foundation Documents",
+    blurb: "ICP, offers, positioning, course outline. Built from onboarding + research",
+    docTypes: ["icp_snapshot", "offers", "brand_positioning", "course_outline"],
+    runningNote: "Claude Code is running the mother skill. This takes a few minutes",
+  },
+  {
+    id: "skool",
+    label: "Skool Setup",
+    blurb: "Free + paid community copy: names, About pages, categories, pinned posts",
+    docTypes: ["skool_free_community", "skool_paid_community"],
+    runningNote: "Building both communities from the approved foundation docs",
+  },
+  {
+    id: "funnel",
+    label: "Funnel Copy",
+    blurb: "The conversion engine: core asset, page copy, and funnel video scripts",
+    docTypes: ["funnel_core", "funnel_pages", "funnel_videos"],
+    runningNote: "Writing the funnel core, pages, and videos. This is the longest stage",
+  },
+  {
+    id: "emails",
+    label: "Email Sequences",
+    blurb: "The 14-day free-community sequence that books calls, plus the SMS set",
+    docTypes: ["email_sequence_14day", "sms_set"],
+    runningNote: "Writing the 14-day sequence and SMS set from the approved funnel",
+  },
+];
+
+/** Structural types for what the stage card needs (matches clients.get rows). */
+interface ClientDoc {
+  id: number;
+  kind: string;
+  docType: string;
+  title: string;
+  content: string;
+  updatedAt: string | Date;
+}
+type StageJob = { status: "queued" | "running" | "review" | "approved" | "failed"; error?: string | null } | null;
 
 /** Numbered circle for each pipeline stage: done, active, or upcoming. */
 function StageMarker({ n, state }: { n: number; state: "done" | "active" | "upcoming" }) {
@@ -58,6 +108,255 @@ function StageMarker({ n, state }: { n: number; state: "done" | "active" | "upco
   );
 }
 
+/** One worker-run pipeline stage: generate, wait, review with editable docs, approve or reject. */
+function WorkerStageCard({
+  n,
+  stage,
+  job,
+  docs,
+  unlocked,
+  unlockHint,
+  clientId,
+  invalidate,
+}: {
+  n: number;
+  stage: (typeof WORKER_STAGES)[number];
+  job: StageJob;
+  docs: ClientDoc[];
+  unlocked: boolean;
+  unlockHint: string;
+  clientId: number;
+  invalidate: () => void;
+}) {
+  const [expandedDoc, setExpandedDoc] = useState<number | null>(null);
+  const [editingDoc, setEditingDoc] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectFeedback, setRejectFeedback] = useState("");
+
+  const status = job?.status ?? null;
+  const done = status === "approved";
+
+  const updateDoc = trpc.clients.updateDocument.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setEditingDoc(null);
+      toast.success("Saved");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const generate = trpc.clients.generateStage.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success(`${stage.label} queued. Your Mac worker will pick it up`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const review = trpc.clients.reviewStage.useMutation({
+    onSuccess: ({ status: result }) => {
+      invalidate();
+      setRejecting(false);
+      setRejectFeedback("");
+      toast.success(result === "approved" ? `${stage.label} approved` : "Changes requested, job requeued");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  return (
+    <div
+      className={`rounded-xl border p-5 ${
+        unlocked ? "border-border/50 bg-card/30" : "border-border/30 bg-card/10 opacity-60"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <StageMarker n={n} state={done ? "done" : unlocked ? "active" : "upcoming"} />
+        <div className="flex-1">
+          <h2 className={`text-sm font-semibold ${unlocked ? "text-foreground" : "text-muted-foreground"}`}>
+            {stage.label}
+          </h2>
+          <p className="text-xs text-muted-foreground">{unlocked ? stage.blurb : unlockHint}</p>
+        </div>
+
+        {unlocked && (!status || status === "failed") && (
+          <Button
+            size="sm"
+            disabled={generate.isPending}
+            onClick={() => generate.mutate({ clientId, stage: stage.id })}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 text-xs"
+          >
+            {generate.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+            Generate
+          </Button>
+        )}
+        {status === "approved" && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={generate.isPending}
+            onClick={() => {
+              if (confirm(`Regenerate ${stage.label}? Current versions get replaced when the new run completes.`)) {
+                generate.mutate({ clientId, stage: stage.id });
+              }
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground h-8"
+          >
+            <RefreshCw className="w-3 h-3 mr-1.5" />
+            Regenerate
+          </Button>
+        )}
+      </div>
+
+      {status === "failed" && job?.error && (
+        <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+          <p className="text-xs text-destructive">Last run failed: {job.error}</p>
+        </div>
+      )}
+
+      {(status === "queued" || status === "running") && (
+        <div className="mt-4 flex items-center gap-3 rounded-lg border border-border/50 bg-background/40 p-4">
+          <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
+          <div>
+            <p className="text-xs font-medium text-foreground">
+              {status === "queued" ? "Waiting for your Mac" : `Building ${stage.label.toLowerCase()}`}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {status === "queued" ? "Make sure the worker is running: npm run worker" : stage.runningNote}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {(status === "review" || status === "approved") && docs.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {docs.map((doc) => (
+            <div key={doc.id} className="rounded-lg border border-border/50 bg-card/30">
+              <div className="group flex items-center gap-3 p-3">
+                <FileText className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                <button
+                  onClick={() => setExpandedDoc(expandedDoc === doc.id ? null : doc.id)}
+                  className="flex-1 min-w-0 text-left"
+                >
+                  <p className="text-xs font-medium text-foreground truncate">{doc.title}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {doc.content.length.toLocaleString()} chars ·{" "}
+                    {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+                  </p>
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingDoc(doc.id);
+                    setEditContent(doc.content);
+                    setExpandedDoc(doc.id);
+                  }}
+                  className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-card/80 text-muted-foreground hover:text-foreground transition-all"
+                  title="Edit"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+                {expandedDoc === doc.id ? (
+                  <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+              </div>
+              {expandedDoc === doc.id && (
+                <div className="px-3 pb-3">
+                  {editingDoc === doc.id ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="min-h-64 text-xs font-mono"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          disabled={updateDoc.isPending}
+                          onClick={() => updateDoc.mutate({ id: doc.id, content: editContent })}
+                          className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 text-xs"
+                        >
+                          {updateDoc.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingDoc(null)}
+                          className="h-7 text-xs"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="max-h-[32rem] overflow-y-auto rounded-lg bg-background/40 p-4">
+                      <MarkdownDoc content={doc.content} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {status === "review" && (
+            <div className="pt-2">
+              {!rejecting ? (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    disabled={review.isPending}
+                    onClick={() => review.mutate({ clientId, stage: stage.id, action: "approve" })}
+                    className="bg-emerald-600 text-white hover:bg-emerald-600/90 h-8 text-xs"
+                  >
+                    {review.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+                    <Check className="w-3 h-3 mr-1.5" />
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setRejecting(true)}
+                    className="text-xs text-muted-foreground hover:text-foreground h-8"
+                  >
+                    <X className="w-3 h-3 mr-1.5" />
+                    Request changes
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Textarea
+                    autoFocus
+                    placeholder="What should change? Be specific. This goes straight to the worker."
+                    value={rejectFeedback}
+                    onChange={(e) => setRejectFeedback(e.target.value)}
+                    className="min-h-20 text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={review.isPending || !rejectFeedback.trim()}
+                      onClick={() =>
+                        review.mutate({ clientId, stage: stage.id, action: "reject", feedback: rejectFeedback })
+                      }
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 text-xs"
+                    >
+                      {review.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+                      Send back for revision
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setRejecting(false)} className="h-8 text-xs">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ClientDetail() {
   const params = useParams<{ id: string }>();
   const clientId = Number(params.id);
@@ -69,24 +368,22 @@ export default function ClientDetail() {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [expandedDoc, setExpandedDoc] = useState<number | null>(null);
-  const [editingDoc, setEditingDoc] = useState<number | null>(null);
-  const [editContent, setEditContent] = useState("");
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectFeedback, setRejectFeedback] = useState("");
 
   const { data, isLoading } = trpc.clients.get.useQuery(
     { id: clientId },
     { enabled: Number.isInteger(clientId) && clientId > 0 }
   );
 
-  const jobStatus = data?.foundationJob?.status ?? null;
+  const hasActiveJob = data
+    ? Object.values(data.jobs).some((j) => j?.status === "queued" || j?.status === "running")
+    : false;
 
-  // Poll while the Mac worker has the job
+  // Poll while the Mac worker has any stage's job
   useEffect(() => {
-    if (jobStatus !== "queued" && jobStatus !== "running") return;
+    if (!hasActiveJob) return;
     const t = setInterval(() => utils.clients.get.invalidate({ id: clientId }), 5000);
     return () => clearInterval(t);
-  }, [jobStatus, clientId, utils]);
+  }, [hasActiveJob, clientId, utils]);
 
   const invalidate = () => utils.clients.get.invalidate({ id: clientId });
 
@@ -107,36 +404,12 @@ export default function ClientDetail() {
     onError: (err) => toast.error(err.message),
     onSettled: () => setUploading(false),
   });
-  const updateDoc = trpc.clients.updateDocument.useMutation({
-    onSuccess: () => {
-      invalidate();
-      setEditingDoc(null);
-      toast.success("Saved");
-    },
-    onError: (err) => toast.error(err.message),
-  });
   const deleteDoc = trpc.clients.deleteDocument.useMutation({
     onSuccess: () => invalidate(),
     onError: (err) => toast.error(err.message),
   });
   const deleteClient = trpc.clients.delete.useMutation({
     onSuccess: () => navigate("/clients"),
-    onError: (err) => toast.error(err.message),
-  });
-  const generate = trpc.clients.generateFoundation.useMutation({
-    onSuccess: () => {
-      invalidate();
-      toast.success("Foundation job queued. Your Mac worker will pick it up");
-    },
-    onError: (err) => toast.error(err.message),
-  });
-  const review = trpc.clients.reviewFoundation.useMutation({
-    onSuccess: ({ status }) => {
-      invalidate();
-      setRejecting(false);
-      setRejectFeedback("");
-      toast.success(status === "approved" ? "Foundation approved" : "Changes requested, job requeued");
-    },
     onError: (err) => toast.error(err.message),
   });
 
@@ -177,16 +450,18 @@ export default function ClientDetail() {
     );
   }
 
-  const { client, documents, searches } = data;
+  const { client, documents, searches, jobs } = data;
   const onboardingDocs = documents.filter((d) => d.kind === "onboarding");
-  const foundationDocs = FOUNDATION_ORDER.map((t) =>
-    documents.find((d) => d.kind === "foundation" && d.docType === t)
-  ).filter((d): d is NonNullable<typeof d> => !!d);
   const completeSearches = searches.filter((s) => s.status === "complete");
 
   const onboardingDone = onboardingDocs.length > 0;
   const researchDone = completeSearches.length > 0;
-  const foundationDone = jobStatus === "approved";
+
+  /** Stage docs in contract order, from foundation or deliverable kinds. */
+  const stageDocs = (docTypes: string[]) =>
+    docTypes
+      .map((t) => documents.find((d) => (d.kind === "foundation" || d.kind === "deliverable") && d.docType === t))
+      .filter((d): d is NonNullable<typeof d> => !!d);
 
   const stageState = (done: boolean, prevDone: boolean): "done" | "active" | "upcoming" =>
     done ? "done" : prevDone ? "active" : "upcoming";
@@ -206,9 +481,7 @@ export default function ClientDetail() {
 
         <div className="flex items-start justify-between mb-10">
           <div>
-            <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-1">
-              {client.name}
-            </h1>
+            <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-1">{client.name}</h1>
             <p className="text-sm text-muted-foreground">
               {client.niche} · {client.funnelType} funnel
               {client.pricePoint ? ` · ${client.pricePoint}` : ""}
@@ -445,224 +718,42 @@ export default function ClientDetail() {
             )}
           </div>
 
-          {/* ─── Stage 3: Foundation Docs ─── */}
-          <div className="rounded-xl border border-border/50 bg-card/30 p-5">
+          {/* ─── Stages 3-6: worker pipeline (foundation, skool, funnel, emails) ─── */}
+          {WORKER_STAGES.map((stage, i) => {
+            const prevStage = i > 0 ? WORKER_STAGES[i - 1] : null;
+            const unlocked = prevStage
+              ? jobs[prevStage.id]?.status === "approved"
+              : onboardingDone;
+            const unlockHint = prevStage
+              ? `Approve ${prevStage.label} first`
+              : "Add onboarding material first";
+            return (
+              <WorkerStageCard
+                key={stage.id}
+                n={i + 3}
+                stage={stage}
+                job={jobs[stage.id] ?? null}
+                docs={stageDocs(stage.docTypes)}
+                unlocked={unlocked}
+                unlockHint={unlockHint}
+                clientId={clientId}
+                invalidate={invalidate}
+              />
+            );
+          })}
+
+          {/* ─── Future stage ─── */}
+          <div className="rounded-xl border border-border/30 bg-card/10 p-5 opacity-50">
             <div className="flex items-center gap-3">
-              <StageMarker n={3} state={stageState(foundationDone, onboardingDone && researchDone)} />
+              <div className="w-7 h-7 rounded-full border border-border/40 bg-card/20 flex items-center justify-center flex-shrink-0">
+                <Lock className="w-3 h-3 text-muted-foreground" />
+              </div>
               <div className="flex-1">
-                <h2 className="text-sm font-semibold text-foreground">Foundation Documents</h2>
-                <p className="text-xs text-muted-foreground">
-                  ICP, offers, positioning, course outline. Built from onboarding + research
-                </p>
+                <h2 className="text-sm font-semibold text-muted-foreground">Ad Creatives</h2>
               </div>
-
-              {(!jobStatus || jobStatus === "failed") && (
-                <Button
-                  size="sm"
-                  disabled={!onboardingDone || generate.isPending}
-                  onClick={() => generate.mutate({ clientId })}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 text-xs"
-                  title={onboardingDone ? undefined : "Add onboarding material first"}
-                >
-                  {generate.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
-                  Generate
-                </Button>
-              )}
-              {jobStatus === "approved" && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled={generate.isPending}
-                  onClick={() => {
-                    if (confirm("Regenerate the foundation docs? Current versions get replaced when the new run completes.")) {
-                      generate.mutate({ clientId });
-                    }
-                  }}
-                  className="text-xs text-muted-foreground hover:text-foreground h-8"
-                >
-                  <RefreshCw className="w-3 h-3 mr-1.5" />
-                  Regenerate
-                </Button>
-              )}
+              <span className="text-[11px] text-muted-foreground">Coming next</span>
             </div>
-
-            {jobStatus === "failed" && data.foundationJob?.error && (
-              <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
-                <p className="text-xs text-destructive">
-                  Last run failed: {data.foundationJob.error}
-                </p>
-              </div>
-            )}
-
-            {(jobStatus === "queued" || jobStatus === "running") && (
-              <div className="mt-4 flex items-center gap-3 rounded-lg border border-border/50 bg-background/40 p-4">
-                <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
-                <div>
-                  <p className="text-xs font-medium text-foreground">
-                    {jobStatus === "queued" ? "Waiting for your Mac" : "Building foundation docs"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {jobStatus === "queued"
-                      ? "Make sure the worker is running: npm run worker"
-                      : "Claude Code is running the mother skill. This takes a few minutes"}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {(jobStatus === "review" || jobStatus === "approved") && foundationDocs.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {foundationDocs.map((doc) => (
-                  <div key={doc.id} className="rounded-lg border border-border/50 bg-card/30">
-                    <div className="group flex items-center gap-3 p-3">
-                      <FileText className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                      <button
-                        onClick={() => setExpandedDoc(expandedDoc === doc.id ? null : doc.id)}
-                        className="flex-1 min-w-0 text-left"
-                      >
-                        <p className="text-xs font-medium text-foreground truncate">{doc.title}</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {doc.content.length.toLocaleString()} chars ·{" "}
-                          {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-                        </p>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingDoc(doc.id);
-                          setEditContent(doc.content);
-                          setExpandedDoc(doc.id);
-                        }}
-                        className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-card/80 text-muted-foreground hover:text-foreground transition-all"
-                        title="Edit"
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                      {expandedDoc === doc.id ? (
-                        <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                      )}
-                    </div>
-                    {expandedDoc === doc.id && (
-                      <div className="px-3 pb-3">
-                        {editingDoc === doc.id ? (
-                          <div className="space-y-2">
-                            <Textarea
-                              value={editContent}
-                              onChange={(e) => setEditContent(e.target.value)}
-                              className="min-h-64 text-xs font-mono"
-                            />
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                disabled={updateDoc.isPending}
-                                onClick={() => updateDoc.mutate({ id: doc.id, content: editContent })}
-                                className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 text-xs"
-                              >
-                                {updateDoc.isPending && (
-                                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                                )}
-                                Save
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setEditingDoc(null)}
-                                className="h-7 text-xs"
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="max-h-[32rem] overflow-y-auto rounded-lg bg-background/40 p-4">
-                            <MarkdownDoc content={doc.content} />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {jobStatus === "review" && (
-                  <div className="pt-2">
-                    {!rejecting ? (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          disabled={review.isPending}
-                          onClick={() => review.mutate({ clientId, action: "approve" })}
-                          className="bg-emerald-600 text-white hover:bg-emerald-600/90 h-8 text-xs"
-                        >
-                          {review.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
-                          <Check className="w-3 h-3 mr-1.5" />
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setRejecting(true)}
-                          className="text-xs text-muted-foreground hover:text-foreground h-8"
-                        >
-                          <X className="w-3 h-3 mr-1.5" />
-                          Request changes
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Textarea
-                          autoFocus
-                          placeholder="What should change? Be specific. This goes straight to the worker."
-                          value={rejectFeedback}
-                          onChange={(e) => setRejectFeedback(e.target.value)}
-                          className="min-h-20 text-sm"
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            disabled={review.isPending || !rejectFeedback.trim()}
-                            onClick={() =>
-                              review.mutate({ clientId, action: "reject", feedback: rejectFeedback })
-                            }
-                            className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 text-xs"
-                          >
-                            {review.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
-                            Send back for revision
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setRejecting(false)}
-                            className="h-8 text-xs"
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
-
-          {/* ─── Future stages ─── */}
-          {FUTURE_STAGES.map((label, i) => (
-            <div
-              key={label}
-              className="rounded-xl border border-border/30 bg-card/10 p-5 opacity-50"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full border border-border/40 bg-card/20 flex items-center justify-center flex-shrink-0">
-                  <Lock className="w-3 h-3 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-sm font-semibold text-muted-foreground">{label}</h2>
-                </div>
-                <span className="text-[11px] text-muted-foreground">Coming next</span>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </AppShell>

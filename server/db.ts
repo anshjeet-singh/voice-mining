@@ -655,18 +655,25 @@ export async function deleteClientDocument(id: number) {
 }
 
 /** Replace a generated foundation doc (regenerations overwrite by docType). */
-export async function upsertFoundationDocument(clientId: number, docType: string, title: string, content: string) {
+/** Replace-on-regenerate upsert keyed by (clientId, kind, docType). */
+export async function upsertClientDocumentByType(
+  clientId: number,
+  kind: "foundation" | "deliverable",
+  docType: string,
+  title: string,
+  content: string
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const existing = await db
     .select({ id: clientDocuments.id })
     .from(clientDocuments)
-    .where(and(eq(clientDocuments.clientId, clientId), eq(clientDocuments.kind, "foundation"), eq(clientDocuments.docType, docType)))
+    .where(and(eq(clientDocuments.clientId, clientId), eq(clientDocuments.kind, kind), eq(clientDocuments.docType, docType)))
     .limit(1);
   if (existing[0]) {
     await db.update(clientDocuments).set({ content, title }).where(eq(clientDocuments.id, existing[0].id));
   } else {
-    await db.insert(clientDocuments).values({ clientId, kind: "foundation", docType, title, content });
+    await db.insert(clientDocuments).values({ clientId, kind, docType, title, content });
   }
 }
 

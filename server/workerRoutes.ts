@@ -18,10 +18,11 @@ import {
   getReportBySearchId,
   getSearchesByClient,
   setJobStatus,
-  upsertFoundationDocument,
+  upsertClientDocumentByType,
 } from "./db";
 import { normalizeInsights } from "@shared/reportContent";
 import type { InsightList } from "../drizzle/schema";
+import { stageContract, stagePromptSpec, STAGES, type FunnelType } from "./stages";
 
 /** True when the request carries the correct worker bearer token. */
 export function isWorkerAuthorized(authHeader: string | undefined, secret: string): boolean {
@@ -29,12 +30,8 @@ export function isWorkerAuthorized(authHeader: string | undefined, secret: strin
   return authHeader === `Bearer ${secret}`;
 }
 
-export const FOUNDATION_DOC_TITLES: Record<string, string> = {
-  icp_snapshot: "ICP Snapshot",
-  offers: "Offers",
-  brand_positioning: "Brand & Positioning",
-  course_outline: "Course Outline",
-};
+/** Legacy export kept for the worker-auth test contract. */
+export const FOUNDATION_DOC_TITLES: Record<string, string> = stageContract("foundation", "call");
 
 const insightLines = (list: InsightList | null | undefined, cap: number) =>
   normalizeInsights(list)
@@ -117,17 +114,32 @@ export function registerWorkerRoutes(app: Express) {
         await setJobStatus(job.id, "failed", "Client not found");
         return res.json({ job: null });
       }
+      const spec = stagePromptSpec(job.type, client.funnelType as FunnelType);
+      if (!spec) {
+        await setJobStatus(job.id, "failed", `Unknown job type: ${job.type}`);
+        return res.json({ job: null });
+      }
+
       const docs = await getClientDocuments(job.clientId);
       const onboardingDocs = docs
         .filter((d) => d.kind === "onboarding")
         .map((d) => ({ title: d.title, docType: d.docType, content: d.content }));
       const lessons = docs.filter((d) => d.kind === "lesson").map((d) => d.content);
+      // Approved artefacts from earlier stages: the mother skill's rule is
+      // "pass full documents, never summaries", so later stages get everything.
+      const approvedDocs =
+        job.type === "foundation"
+          ? []
+          : docs
+              .filter((d) => d.kind === "foundation" || d.kind === "deliverable")
+              .map((d) => ({ title: d.title, docType: d.docType, content: d.content }));
       const research = await renderResearchForClient(job.clientId);
 
       res.json({
         job: {
           id: job.id,
           type: job.type,
+          stage: spec,
           client: {
             name: client.name,
             niche: client.niche,
@@ -135,6 +147,7 @@ export function registerWorkerRoutes(app: Express) {
             pricePoint: client.pricePoint ?? "",
           },
           onboardingDocs,
+          approvedDocs,
           research,
           lessons,
           feedback: job.payload?.feedback ?? "",
@@ -158,14 +171,22 @@ export function registerWorkerRoutes(app: Express) {
 
       const job = await (await import("./db")).getJobById(jobId);
       if (!job) return res.status(404).json({ error: "job not found" });
+      const client = await getClientById(job.clientId);
+      if (!client) return res.status(404).json({ error: "client not found" });
 
-      for (const [docType, title] of Object.entries(FOUNDATION_DOC_TITLES)) {
+      // Contract comes from the server-side stage registry, never the worker
+      const contract = stageContract(job.type, client.funnelType as FunnelType);
+      if (!Object.keys(contract).length) {
+        return res.status(400).json({ error: `unknown job type: ${job.type}` });
+      }
+      const kind = job.type === "foundation" ? ("foundation" as const) : ("deliverable" as const);
+      for (const [docType, title] of Object.entries(contract)) {
         const content = docs[docType];
         if (!content || content.trim().length < 50) {
           await setJobStatus(jobId, "failed", `Worker returned empty or too-short doc: ${docType}`);
           return res.status(400).json({ error: `missing doc: ${docType}` });
         }
-        await upsertFoundationDocument(job.clientId, docType, title, content.trim());
+        await upsertClientDocumentByType(job.clientId, kind, docType, title, content.trim());
       }
 
       for (const lesson of clientLessons ?? []) {

@@ -70,6 +70,7 @@ import {
 } from "./aiAnalysis";
 import type { DeepMarketIntelligence } from "@shared/reportContent";
 import { fetchRelatedSearches } from "./realScraper";
+import { STAGE_ORDER, STAGES } from "./stages";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -176,12 +177,15 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const client = await requireClient(input.id, ctx.user.id);
-        const [documents, searches, foundationJob] = await Promise.all([
+        const [documents, searches, ...stageJobs] = await Promise.all([
           getClientDocuments(input.id),
           getSearchesByClient(input.id),
-          getLatestJobForClient(input.id, "foundation"),
+          ...STAGE_ORDER.map((stage) => getLatestJobForClient(input.id, stage)),
         ]);
-        return { client, documents, searches, foundationJob: foundationJob ?? null };
+        const jobs = Object.fromEntries(
+          STAGE_ORDER.map((stage, i) => [stage, stageJobs[i] ?? null])
+        ) as Record<(typeof STAGE_ORDER)[number], Awaited<ReturnType<typeof getLatestJobForClient>> | null>;
+        return { client, documents, searches, jobs };
       }),
 
     delete: protectedProcedure
@@ -269,54 +273,79 @@ export const appRouter = router({
         return { ok: true };
       }),
 
-    /** Queue (or requeue) the foundation-docs job for the Mac worker. */
-    generateFoundation: protectedProcedure
-      .input(z.object({ clientId: z.number(), feedback: z.string().max(10000).optional() }))
+    /**
+     * Queue (or requeue) a pipeline stage job for the Mac worker. Gating
+     * mirrors the mother skill: foundation needs onboarding material, every
+     * later stage needs the previous stage approved.
+     */
+    generateStage: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          stage: z.enum(["foundation", "skool", "funnel", "emails"]),
+          feedback: z.string().max(10000).optional(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
         await requireClient(input.clientId, ctx.user.id);
-        const docs = await getClientDocuments(input.clientId);
-        if (!docs.some((d) => d.kind === "onboarding")) {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Add onboarding material first" });
+        const stageDef = STAGES[input.stage];
+        if (stageDef.requires) {
+          const prev = await getLatestJobForClient(input.clientId, stageDef.requires);
+          if (!prev || prev.status !== "approved") {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: `Approve ${STAGES[stageDef.requires].label} first`,
+            });
+          }
+        } else {
+          const docs = await getClientDocuments(input.clientId);
+          if (!docs.some((d) => d.kind === "onboarding")) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Add onboarding material first" });
+          }
         }
-        const existing = await getLatestJobForClient(input.clientId, "foundation");
+        const existing = await getLatestJobForClient(input.clientId, input.stage);
         if (existing && (existing.status === "queued" || existing.status === "running")) {
-          throw new TRPCError({ code: "CONFLICT", message: "A foundation job is already in progress" });
+          throw new TRPCError({ code: "CONFLICT", message: `A ${stageDef.label} job is already in progress` });
         }
         const id = await createJob({
           clientId: input.clientId,
           userId: ctx.user.id,
-          type: "foundation",
+          type: input.stage,
           status: "queued",
           payload: input.feedback ? { feedback: input.feedback } : {},
         });
         return { jobId: id };
       }),
 
-    /** Approve the foundation docs, or reject with feedback (requeues). */
-    reviewFoundation: protectedProcedure
+    /** Approve a stage's deliverables, or reject with feedback (requeues). */
+    reviewStage: protectedProcedure
       .input(
         z.object({
           clientId: z.number(),
+          stage: z.enum(["foundation", "skool", "funnel", "emails"]),
           action: z.enum(["approve", "reject"]),
           feedback: z.string().max(10000).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
         await requireClient(input.clientId, ctx.user.id);
-        const job = await getLatestJobForClient(input.clientId, "foundation");
+        const job = await getLatestJobForClient(input.clientId, input.stage);
         if (!job || job.status !== "review") {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No foundation docs waiting for review" });
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `No ${STAGES[input.stage].label} deliverables waiting for review`,
+          });
         }
         if (input.action === "approve") {
           await setJobStatus(job.id, "approved");
-          await logActivity(ctx.user.id, "foundation_approved", `client ${input.clientId}`);
+          await logActivity(ctx.user.id, "foundation_approved", `${input.stage} for client ${input.clientId}`);
           return { status: "approved" as const };
         }
         await setJobStatus(job.id, "failed", "Rejected by owner with feedback");
         const id = await createJob({
           clientId: input.clientId,
           userId: ctx.user.id,
-          type: "foundation",
+          type: input.stage,
           status: "queued",
           payload: { feedback: input.feedback ?? "" },
         });

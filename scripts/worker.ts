@@ -17,9 +17,9 @@ import path from "node:path";
 import os from "node:os";
 import "dotenv/config";
 import {
-  buildFoundationPrompt,
+  buildStagePrompt,
   parseCraftLessons,
-  parseFoundationOutputs,
+  parseStageOutputs,
   type ClaimedJob,
 } from "./workerLib";
 
@@ -95,9 +95,9 @@ async function saveCraftLessons(raw: string, jobId: number, clientName: string) 
 }
 
 async function runJob(job: ClaimedJob) {
-  console.log(`[job ${job.id}] claimed — ${job.client.name} (${job.client.niche})`);
-  const jobDir = await fs.mkdtemp(path.join(os.tmpdir(), `foundation-${job.id}-`));
-  const prompt = buildFoundationPrompt(job, { skillsDir: SKILLS_DIR, learningsDir: LEARNINGS_DIR });
+  console.log(`[job ${job.id}] claimed — ${job.stage.label} for ${job.client.name} (${job.client.niche})`);
+  const jobDir = await fs.mkdtemp(path.join(os.tmpdir(), `${job.type}-${job.id}-`));
+  const prompt = buildStagePrompt(job, { skillsDir: SKILLS_DIR, learningsDir: LEARNINGS_DIR });
   const promptFile = path.join(jobDir, "PROMPT.md");
   await fs.writeFile(promptFile, prompt);
 
@@ -110,10 +110,12 @@ async function runJob(job: ClaimedJob) {
 
   const files = await readJobDir(jobDir);
   delete files["PROMPT.md"];
-  const outputs = parseFoundationOutputs(files);
+  const outputs = parseStageOutputs(files, job.stage.outputs);
 
   await api("complete", { jobId: job.id, docs: outputs.docs, clientLessons: outputs.clientLessons });
-  console.log(`[job ${job.id}] complete — 4 docs posted, ${outputs.clientLessons.length} client lessons`);
+  console.log(
+    `[job ${job.id}] complete — ${Object.keys(outputs.docs).length} docs posted, ${outputs.clientLessons.length} client lessons`
+  );
 
   await saveCraftLessons(outputs.craftLessonsRaw, job.id, job.client.name);
   await fs.rm(jobDir, { recursive: true, force: true });

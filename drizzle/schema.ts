@@ -85,7 +85,7 @@ export type InsertClient = typeof clients.$inferInsert;
 export const clientDocuments = mysqlTable("client_documents", {
   id: int("id").autoincrement().primaryKey(),
   clientId: int("clientId").notNull(),
-  kind: mysqlEnum("kind", ["onboarding", "foundation", "lesson"]).notNull(),
+  kind: mysqlEnum("kind", ["onboarding", "foundation", "deliverable", "lesson"]).notNull(),
   docType: varchar("docType", { length: 50 }).notNull(),
   title: varchar("title", { length: 300 }).notNull(),
   content: longtext("content").notNull(),
