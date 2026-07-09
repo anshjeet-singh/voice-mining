@@ -1,5 +1,10 @@
 # Funnel Structure Spec (page-by-page anatomy)
 
+BEFORE writing any funnel page, read vsl-swipe-file.md in this directory: 12
+broken-down cold-traffic funnels from the top of the info industry. Model the 2-3
+closest to the client's market. The anatomy below is the default skeleton; the
+swipe file shows how winners flesh it out.
+
 The Funnel Structure document must contain the COMPLETE copy for every page, section
 by section in page order, so the owner can build the page in any builder without
 writing a word. For each section: the copy itself, plus a one-line layout note in
