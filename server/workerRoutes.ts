@@ -73,14 +73,24 @@ async function renderResearchForClient(clientId: number): Promise<string> {
 
   if (report?.competitorIntel?.competitors?.length) {
     const comp = report.competitorIntel.competitors
-      .map(
-        (c) =>
-          `- ${c.name}: angle: ${c.angle} | weakness: ${c.weakness} | gap: ${c.gap}${c.offer ? ` | sells: ${c.offer}` : ""}`
-      )
+      .map((c) => {
+        const bits = [
+          c.icp ? `targets: ${c.icp}` : "",
+          `angle: ${c.angles?.length ? c.angles.join("; ") : c.angle}`,
+          c.sells?.length ? `sells: ${c.sells.join("; ")}` : c.offer ? `sells: ${c.offer}` : "",
+          c.doingWell?.length ? `doing well: ${c.doingWell.join("; ")}` : "",
+          `weak: ${c.notDoingWell?.length ? c.notDoingWell.join("; ") : c.weakness}`,
+          `gap: ${c.gap}`,
+        ].filter(Boolean);
+        return `- ${c.name}: ${bits.join(" | ")}`;
+      })
       .join("\n");
-    parts.push(`\nCOMPETITOR INTEL:\n${comp}`);
-    if (report.competitorIntel.marketGaps?.length) {
-      parts.push(`\nMARKET GAPS:\n${report.competitorIntel.marketGaps.map((g) => `- ${g}`).join("\n")}`);
+    parts.push(`\nCOMPETITOR INTEL (use for positioning, offer differentiation, and ICP contrast):\n${comp}`);
+    const gapLines = report.competitorIntel.gapPlan?.length
+      ? report.competitorIntel.gapPlan.map((g) => `- ${g.gap} -> move: ${g.action}`)
+      : (report.competitorIntel.marketGaps ?? []).map((g) => `- ${g}`);
+    if (gapLines.length) {
+      parts.push(`\nMARKET GAPS + MOVES:\n${gapLines.join("\n")}`);
     }
   }
 

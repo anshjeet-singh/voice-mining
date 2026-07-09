@@ -30,7 +30,7 @@ import {
 } from "./trainingData";
 
 // Real internet scraping — imported from realScraper.ts
-import { scrapeCompetitorDeep, scrapeCompetitorsForKeyword, scrapeInternetForKeyword, scrapeYouTubeOutliers } from "./realScraper";
+import { discoverCompetitors, scrapeCompetitorDeep, scrapeCompetitorsForKeyword, scrapeInternetForKeyword, scrapeYouTubeOutliers } from "./realScraper";
 
 // ─── Helper to extract string content from LLM response ─────────────────────
 
@@ -254,7 +254,11 @@ export async function runAnalysis(
     "",
     "NEVER include personal names, usernames, creator shoutouts, or fan comments (e.g. 'LOVE YOU [name]', '@handle') anywhere in the output. That is noise, not market language.",
     "",
-    "Counts: painPoints 8-12, desires 8-12, objections 6-10, fears 6-10, buyingTriggers 6-10, emotionalLanguage 10-15, trendingPhrases 8-12, verbatimQuotes 10-15, topThemes 5-8, sentimentBreakdown sums to 100.",
+    "QUOTE QUALITY BAR. A verbatim quote earns its place ONLY if it reveals market intelligence: a pain, desire, objection, fear, belief, buying trigger, or specific situation ('I've applied to all of these for years and got nothing'). REJECT quotes that are generic engagement noise: gratitude ('thank you for this information', 'great video', 'blessings'), praise for the creator, requests to 'send me the link', emojis-only, or anything that teaches you nothing about what this market wants or struggles with. Apply the same bar to verbatimExample fields.",
+    "",
+    "PLATFORM DIVERSITY. The CONVERSATIONS data is tagged by platform ([REDDIT], [YOUTUBE_COMMENTS], [TRUSTPILOT], [TWITTER], [HACKERNEWS], [GOOGLE], [NEWS]...). Draw insights and verbatim examples from EVERY platform that has usable data, roughly proportional to how much signal each carries. Do not let one platform supply everything when others have real quotes too.",
+    "",
+    "Counts: painPoints 10-15, desires 10-15, objections 8-12, fears 8-12, buyingTriggers 8-12, emotionalLanguage 12-18, trendingPhrases 10-15, verbatimQuotes 12-18, topThemes 6-10, sentimentBreakdown sums to 100.",
   ].join("\n");
 
   const response = await invokeLLM({
@@ -268,6 +272,10 @@ export async function runAnalysis(
   const content = extractContent(response.choices[0]?.message?.content ?? "{}");
   const parsed = parseLLMJson(content);
 
+  const quotes = Array.isArray(parsed.verbatimQuotes)
+    ? (parsed.verbatimQuotes as VerbatimQuote[]).filter((q) => !isJunkQuote(q?.text ?? ""))
+    : [];
+
   return stripEmDashesDeep({
     painPoints: coerceInsights(parsed.painPoints),
     desires: coerceInsights(parsed.desires),
@@ -276,10 +284,33 @@ export async function runAnalysis(
     buyingTriggers: parsed.buyingTriggers ?? [],
     emotionalLanguage: parsed.emotionalLanguage ?? [],
     trendingPhrases: parsed.trendingPhrases ?? [],
-    verbatimQuotes: parsed.verbatimQuotes ?? [],
+    verbatimQuotes: quotes,
     topThemes: parsed.topThemes ?? [],
     sentimentBreakdown: parsed.sentimentBreakdown ?? { positive: 33, negative: 34, neutral: 33 },
   });
+}
+
+/**
+ * Hard filter for engagement noise the model sometimes lets through: gratitude,
+ * creator praise, link-begging. These teach nothing about the market.
+ */
+const JUNK_QUOTE_PATTERNS = [
+  /^\W*thank(s| you)/i,
+  /^\W*(great|awesome|amazing|nice|good|excellent|love(d)?( this| it| you)?)\b[^.!?]{0,40}[.!?]*\W*$/i,
+  /\b(great|awesome|amazing) (video|content|info(rmation)?|channel)\b/i,
+  /\bthank(s| you) (so much |for )/i,
+  /\bblessings?\b/i,
+  /\bsubscribed?\b/i,
+  /\b(send|drop) (me )?(the )?link\b/i,
+  /\bfirst\W*$/i,
+];
+
+export function isJunkQuote(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 15) return true;
+  // Emoji-only / no-words comments carry no market language
+  if (!/[a-zA-Z]{3,}/.test(t)) return true;
+  return JUNK_QUOTE_PATTERNS.some((p) => p.test(t));
 }
 
 // ─── Shared comment keywords ─────────────────────────────────────────────────
@@ -538,6 +569,14 @@ Rules for all ads:
 - Write for cold traffic
 - painAgitationScore: 1-10 rating of how hard THIS ad presses on the pain. Score honestly: a desire-led most_aware ad might be a 2, a problem_aware ad built on their worst fear might be a 9. Vary with awareness level
 
+HOW TO USE THE VOICE DATA (get this wrong and the ad reads fake):
+- The voice data tells you WHAT the market feels. Write the ad in that vocabulary. Do NOT paste raw scraped comments into the copy
+- NEVER fabricate a testimonial: no invented client names, no "Sarah from Texas said [scraped YouTube comment]". A random commenter's words in a made-up client's mouth reads as a lie and IS one
+- Social proof lines describe result TYPES with placeholders the business fills in: "[CLIENT] went from denied at 3 banks to [$X] approved in [N] weeks". Honest placeholders beat fake specifics
+- Only quote a verbatim phrase when it is the market talking about ITSELF ("I'm tired of hearing no") and it fits the sentence naturally. If a quote reads odd in context, paraphrase it into plain speech instead
+
+FINAL SENSE CHECK before returning: read each script aloud in your head as a person on camera. If any line would make a viewer squint ("wait, who is Sarah?", "why is this phrase here?"), rewrite that line. Every script must sound like a real founder talking, start to finish.
+
 Return JSON:
 {"ads": [
   {
@@ -772,7 +811,8 @@ Top Themes: ${analysis.topThemes.slice(0, 5).map((t) => t.name).join(" | ")}
 ${outliers ? `PROVEN OUTLIERS IN THIS NICHE (real videos, real view counts — these title patterns are already validated by the market):
 ${outliers}
 
-Model every idea's packaging on one of these outliers: same PATTERN, sharper specificity for this exact audience. Never copy words.` : "No outlier data available. Fall back to proven B2C education title patterns (mistakes, X vs Y, case study, mechanism breakdown)."}
+Model every idea's packaging on one of these outliers: same PATTERN, sharper specificity for this exact audience. Never copy words.
+OUTLIER QUALITY GATE: only model on an outlier that is genuinely about this market. If an outlier is off-topic or clickbait spam, SKIP it, even if its view count is huge. A relevant 300K-view video beats an irrelevant 3M-view one.` : "No outlier data available. Fall back to proven B2C education title patterns (mistakes, X vs Y, case study, mechanism breakdown)."}
 
 Each idea needs:
 - title: adapted from an outlier's proven pattern with this market's specifics. Under 60 characters where possible
@@ -791,6 +831,12 @@ Rules:
 - No em dashes. Use a colon or full stop instead
 - No hype words. Their verbatim language, real numbers
 - Never open a hook with "hey guys" or "in today's video"
+
+TITLE QUALITY BAR (a weak title kills the video, so rewrite until every title passes):
+- Every title carries at least ONE specific: a number, dollar figure, timeframe, or named mechanism ("EIN Only", "0% Interest"). "No Cash? 5 Startup Funding SECRETS Revealed!" fails. "New LLC? The $50K Bank List (No Income Proof)" passes
+- BANNED in titles: "SECRETS Revealed", "You Won't Believe", years ("in 2024"), ALL-CAPS words other than acronyms, and exclamation marks
+- The title must promise something the contentBullets actually deliver. If the bullets can't cash the title's check, change the title
+- Say each title out loud: it should sound like something a real person would search or click, not like an ad
 
 Return JSON:
 {"ideas": [
@@ -843,7 +889,7 @@ Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {
         role: "user",
-        content: `Write 5 talking head video scripts for "${keyword}".
+        content: `Write 10 talking head video scripts for "${keyword}".
 
 Voice mining data (use this exact language):
 Pain Points: ${topInsights(analysis.painPoints, 5)}
@@ -854,12 +900,14 @@ Desires: ${topInsights(analysis.desires, 4)}
 SCRIPT FRAMEWORKS (follow these exactly):
 ${CONTENT_SCRIPT_FRAMEWORKS}
 
-Create 5 scripts — one per framework, in this exact order:
-1. The Steak Method (Hook > Mind Read > Twist/Tease > CTA before payoff > Payoff)
-2. Authority Sales Conversion (Bold claim > Mind read > Agitate > Mechanism > Solution > CTA)
-3. Stories That Sell (Scene > Problem > Failed attempts > Discovery > Result > Bridge > CTA)
-4. Contrarian Take (Counterintuitive hook > Why common belief is wrong > Real truth > Proof > CTA)
-5. The Curiosity Loop (Tease the answer > Build tension > Withhold > CTA > Reveal)
+Create 10 scripts — two per framework, in this exact order:
+1-2. The Steak Method (Hook > Mind Read > Twist/Tease > CTA before payoff > Payoff)
+3-4. Authority Sales Conversion (Bold claim > Mind read > Agitate > Mechanism > Solution > CTA)
+5-6. Stories That Sell (Scene > Problem > Failed attempts > Discovery > Result > Bridge > CTA)
+7-8. Contrarian Take (Counterintuitive hook > Why common belief is wrong > Real truth > Proof > CTA)
+9-10. The Curiosity Loop (Tease the answer > Build tension > Withhold > CTA > Reveal)
+
+The two scripts sharing a framework MUST attack DIFFERENT topics: a different pain point, desire, or theme from the voice data. Never two variations of the same idea.
 
 CRITICAL: Every single field — hook, mindRead, twistTease, ctaBeforePayoff, payoff, closingCta — MUST contain real written content. Empty strings, null, "N/A", or placeholder text will break the output. If a framework does not naturally use a field, adapt the content to fit that field anyway. For example, Authority Sales Conversion does not have a twistTease — write the agitate section there instead. Stories That Sell does not have a ctaBeforePayoff — write the bridge there instead. No field can ever be empty.
 
@@ -875,7 +923,7 @@ Rules:
 - twistTease must build real curiosity and tension. At least 3 sentences
 - payoff must deliver a real insight or mechanism. At least 3 sentences
 - End every script with a comment keyword CTA
-- COMMENT KEYWORDS: use ONLY these three, spread across the 5 scripts: ${commentKeywords.join(", ")}. Never invent a different keyword, never write [KEYWORD] or [undefined]
+- COMMENT KEYWORDS: use ONLY these three, spread across the 10 scripts: ${commentKeywords.join(", ")}. Never invent a different keyword, never write [KEYWORD] or [undefined]
 - bRollSuggestions: for EACH section (Pattern Interrupt, Hook, Mind Read, Twist/Tease, CTA, Payoff, Closing CTA) describe in one line what visuals/B-roll to show while it is spoken (screen recording, text overlay, cutaway, prop, location change). Concrete and filmable, not "relevant footage"
 - No em dashes. Use a full stop or start a new line
 
@@ -1081,7 +1129,7 @@ export async function generateCompetitorIntel(
   competitorUrls?: string[],
   competitorNotes?: string
 ): Promise<CompetitorIntel | null> {
-  const [searchScraped, directScraped] = await Promise.all([
+  const [searchScraped, directScraped, discovered] = await Promise.all([
     scrapeCompetitorsForKeyword(keyword),
     competitorUrls?.length
       ? Promise.allSettled(competitorUrls.map((u) => scrapeCompetitorDeep(u))).then((rs) =>
@@ -1091,10 +1139,11 @@ export async function generateCompetitorIntel(
             .join("\n\n")
         )
       : Promise.resolve(""),
+    discoverCompetitors(keyword).catch(() => ""),
   ]);
   const hasSearchData = searchScraped !== "NO_SCRAPED_DATA";
   const notes = competitorNotes?.trim().slice(0, 8000) ?? "";
-  if (!hasSearchData && !directScraped && !notes) return null;
+  if (!hasSearchData && !directScraped && !notes && !discovered) return null;
 
   const scraped = [
     notes
@@ -1102,6 +1151,9 @@ export async function generateCompetitorIntel(
       : "",
     directScraped
       ? `── DIRECT COMPETITOR PAGES (pasted by the user — analyse these FIRST and in the most depth) ──\n${directScraped}`
+      : "",
+    discovered
+      ? `── AUTO-DISCOVERED COMPETITORS (the engine found these itself: niche-owning YouTube channels, Skool communities, courses) ──\n${discovered}`
       : "",
     hasSearchData ? `── SEARCH & REVIEW DATA ──\n${searchScraped}` : "",
   ]
@@ -1113,16 +1165,16 @@ export async function generateCompetitorIntel(
       {
         role: "system",
         content: `You are a competitive intelligence analyst for direct response marketers, trained on the $100M Branding method.
-You analyse real search results about competitors in a market and extract who the players are, how they position themselves, where they are weak, and what gaps a new entrant can own.
+You analyse real scraped data about competitors in a market and produce a briefing an agency owner can hand to a client: who the players are, what they sell, who they target, where they win, where they are weak, and exactly how to beat them.
 
 ${BRANDING_FRAMEWORK}
 
-CRITICAL RULE: Every competitor, angle, weakness, and pricing signal MUST come from the COMPETITOR DATA in the user message. Never invent companies or facts. If the data does not name real competitors, describe competitor TYPES instead (e.g. "traditional brokers", "DIY course sellers").
+CRITICAL RULE: Every competitor, claim, link, and pricing signal MUST come from the COMPETITOR DATA in the user message. Never invent companies, URLs, or facts. If the data does not name real competitors, describe competitor TYPES instead (e.g. "traditional brokers", "DIY course sellers").
 Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
       },
       {
         role: "user",
-        content: `Extract competitor intelligence for the "${keyword}" market from this scraped data.
+        content: `Build the competitor briefing for the "${keyword}" market from this scraped data.
 
 COMPETITOR DATA:
 ${scraped}
@@ -1131,30 +1183,37 @@ Return JSON:
 {
   "competitors": [
     {
-      "name": "Competitor or competitor-type name",
-      "angle": "Their core messaging angle, quoting their actual bio/headline/video-title language",
-      "weakness": "Their biggest weakness, pulled from complaints/reviews/what their content never covers",
-      "gap": "The specific gap this weakness opens that you can own",
-      "pricingSignals": "What the data says about their pricing (or 'No pricing signals found')",
-      "contentPlaybook": "What they post, which formats/titles perform best (cite actual video titles + view counts when present), and how often",
-      "offer": "What they actually sell and how they monetise (community, mentorship, DFY, courses)",
-      "steal": ["2-3 specific tactics of theirs worth copying, each concrete enough to execute this week"],
-      "counter": "The single concrete move that beats them, stated as a command"
+      "name": "Competitor name",
+      "discovered": false,
+      "icp": "Who they target, one line",
+      "angle": "Their #1 messaging angle in one line, quoting their actual language",
+      "angles": ["2-4 bullet angles they run, each quoting their actual bio/headline/title language"],
+      "sells": ["what they sell as bullets: offer + format + price when the data shows it"],
+      "doingWell": ["2-4 bullets: what genuinely works for them, grounded in the data"],
+      "notDoingWell": ["2-4 bullets: provable weaknesses from complaints, low engagement, content holes"],
+      "links": [{"label": "YouTube", "url": "https://..."}, {"label": "Skool", "url": "https://..."}],
+      "topContent": [{"title": "actual video/post title", "url": "https://...", "views": "1,088"}],
+      "gap": "The single most ownable gap this competitor leaves open",
+      "pricingSignals": "What the data says about pricing (or 'No pricing signals found')",
+      "steal": ["2-3 tactics worth copying, each concrete enough to execute this week"],
+      "counter": "The single concrete move that beats them, stated as a command",
+      "weakness": "one-line summary of their biggest weakness"
     }
   ],
-  "marketGaps": ["gap 1", "gap 2", ...],
-  "actionPlan": ["5-7 concrete moves"]
+  "gapPlan": [
+    {"gap": "a gap NOBODY in the data is filling", "action": "the concrete move that fills it, with a format, number, or deadline"}
+  ]
 }
 
 RULES ON SPECIFICITY (this is the whole game):
-- BANNED: consultant-speak like "offer truly unbiased education", "focus on transparent client-centric strategies", "provide comprehensive guidance". If a line could apply to any business in any market, delete it and write what to actually DO
-- Every actionPlan item is a command with a format, a number, or a deadline: "Film 3 client-interview clips per week like [competitor] does, but end each with a step-by-step breakdown they never give" not "create more educational content"
-- Every "steal" item names the exact tactic from the data: a video title pattern, a posting format, a proof style, a pricing move
-- 4-8 competitors, ranked by how prominent they are in the data
-- If the USER'S OWN COMPETITOR NOTES name specific competitors, every one of them MUST appear as its own entry, listed first with the deepest analysis. Combine the user's first-hand observations with the scraped channel/page data
-- If YOUTUBE CHANNEL data is present for a competitor, cite their real video titles and view counts in contentPlaybook. Their top-viewed titles ARE their winning hooks
-- marketGaps: 3-6 gaps NOBODY in the data is filling, each one line, each ownable by a coach/course creator
-- Weaknesses must be grounded in actual complaint language or provable content holes, never vibes
+- BANNED: consultant-speak like "offer truly unbiased education", "focus on transparent client-centric strategies". If a line could apply to any business in any market, delete it and write what to actually DO
+- Aim for 6-10 competitors total: every competitor from the USER'S OWN NOTES first (deepest analysis), then the strongest AUTO-DISCOVERED ones (set "discovered": true on those)
+- links and topContent URLs must be copied EXACTLY from the data (CHANNEL URL, VIDEO ... | https://..., [DISCOVERED_SKOOL] ... | https://...). Never fabricate a URL. Omit the field if the data has no URL
+- topContent: their 3-5 best-performing pieces with real view counts from the data. These titles ARE their winning hooks
+- Every "steal" item names the exact tactic: a title pattern, a posting format, a proof style, a pricing move
+- gapPlan: 4-6 pairs. Each gap is one line, ownable by a coach/course creator. Each action is a command with a format, a number, or a deadline: "Film 3 client-interview clips per week, ending each with the step-by-step breakdown nobody in this market gives" not "create more educational content"
+- Weaknesses grounded in actual complaint language, real engagement numbers, or provable content holes, never vibes
+- Bullets are short: 5-15 words each. This gets read by busy people
 - No em dashes. Use a full stop instead
 - Plain confident language a non-technical marketer understands`,
       },
@@ -1166,59 +1225,18 @@ RULES ON SPECIFICITY (this is the whole game):
   const parsed = parseLLMJson(content);
   if (!Array.isArray(parsed.competitors) || parsed.competitors.length === 0) return null;
 
+  const gapPlan = Array.isArray(parsed.gapPlan)
+    ? (parsed.gapPlan as Array<{ gap?: string; action?: string }>).filter(
+        (g) => typeof g?.gap === "string" && typeof g?.action === "string"
+      )
+    : [];
+
   return stripEmDashesDeep({
     competitors: parsed.competitors,
-    marketGaps: Array.isArray(parsed.marketGaps) ? parsed.marketGaps : [],
-    actionPlan: Array.isArray(parsed.actionPlan) ? parsed.actionPlan : [],
+    // Legacy field kept populated so old readers keep working
+    marketGaps: gapPlan.map((g) => g.gap as string),
+    gapPlan: gapPlan as { gap: string; action: string }[],
     generatedAt: new Date().toISOString(),
   });
 }
 
-/**
- * One-click positioning statement built from the gaps found in competitor
- * intel. Returns a short, punchy statement the user can drop into their copy.
- */
-export async function generatePositioningStatement(
-  keyword: string,
-  intel: CompetitorIntel,
-  brandVoice?: string
-): Promise<string> {
-  const response = await invokeLLM({
-    messages: [
-      {
-        role: "system",
-        content: `You are a positioning strategist trained on April Dunford's Obviously Awesome, Alex Hormozi's offer frameworks, and the $100M Branding method below.
-You write ONE positioning statement that plants a flag in the exact gap competitors leave open.
-
-${BRANDING_FRAMEWORK}
-
-Always respond with valid JSON only.${buildBrandVoiceSystemSuffix(brandVoice)}`,
-      },
-      {
-        role: "user",
-        content: `Write a unique positioning statement for a "${keyword}" offer based on these competitor gaps.
-
-Competitor weaknesses:
-${intel.competitors.map((c) => `- ${c.name}: ${c.weakness} -> gap: ${c.gap}`).join("\n")}
-
-Market gaps nobody owns:
-${intel.marketGaps.map((g) => `- ${g}`).join("\n")}
-
-Rules:
-- 2-3 sentences maximum
-- Structure: who it's for + a NAMED mechanism (invent a specific name like "the EIN-Only Stack" or "the 14-Day Funding Sprint", built from this market's language) + the named competitor behaviour it beats
-- BANNED: generic positioning like "transparent, step-by-step curriculum", "unbiased education", "empower you with guidance". If it could be any coach's website headline, rewrite it
-- Must contain at least one specific number, timeframe, or dollar figure from the gaps
-- Use plain language the market itself uses
-- No em dashes. Use a full stop instead
-
-Return JSON: {"positioningStatement": "..."}`,
-      },
-    ],
-    response_format: { type: "json_object" },
-  });
-
-  const content = extractContent(response.choices[0]?.message?.content ?? "{}");
-  const parsed = parseLLMJson(content);
-  return stripEmDashes(typeof parsed.positioningStatement === "string" ? parsed.positioningStatement : "");
-}

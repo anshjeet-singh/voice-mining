@@ -158,3 +158,4 @@ describe("auth router", () => {
     expect(result.success).toBe(true);
   });
 });
+

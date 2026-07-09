@@ -61,7 +61,6 @@ import {
   generateCompetitorIntel,
   generateDeepMarketIntelligence,
   generateEmailSequence,
-  generatePositioningStatement,
   generateSkoolPosts,
   generateTalkingHeadScripts,
   generateViralHooks,
@@ -640,28 +639,6 @@ export const appRouter = router({
         return getReportById(input.id);
       }),
 
-    /** One-click positioning statement from the report's competitor intel. */
-    generatePositioning: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async ({ ctx, input }) => {
-        const report = await getReportById(input.id);
-        if (!report || report.userId !== ctx.user.id) {
-          throw new TRPCError({ code: "NOT_FOUND" });
-        }
-        if (!report.competitorIntel) {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Generate competitor intel first" });
-        }
-        const search = await getMiningSearchById(report.searchId);
-        const statement = await generatePositioningStatement(
-          search?.keyword ?? report.name,
-          report.competitorIntel,
-          search?.brandVoice ?? undefined
-        );
-        await updateReport(input.id, {
-          competitorIntel: { ...report.competitorIntel, positioningStatement: statement },
-        });
-        return { statement };
-      }),
   }),
 
   // ─── Report Sharing ──────────────────────────────────────────────────────────
@@ -718,8 +695,14 @@ export const appRouter = router({
         const { userId: _u, searchId: _s, ...publicReport } = report;
         return {
           report: publicReport,
+          // Full analysis view so the shared page renders EXACTLY like the
+          // owner's report (voice-of-customer, sentiment, themes, quotes)
           analysis: analysis
             ? {
+                painPoints: analysis.painPoints,
+                desires: analysis.desires,
+                objections: analysis.objections,
+                fears: analysis.fears,
                 sentimentBreakdown: analysis.sentimentBreakdown,
                 topThemes: analysis.topThemes,
                 verbatimQuotes: analysis.verbatimQuotes,

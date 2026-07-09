@@ -256,6 +256,19 @@ export interface EmailMessage {
 
 // ─── Competitor intelligence ─────────────────────────────────────────────────
 
+/** A named, clickable competitor asset: funnel page, YouTube channel, Skool, Instagram. */
+export interface CompetitorLink {
+  label: string;
+  url: string;
+}
+
+/** One of their top-performing content pieces, with a real link when the data has one. */
+export interface CompetitorContentPiece {
+  title: string;
+  url?: string;
+  views?: string;
+}
+
 export interface CompetitorEntry {
   name: string;
   angle: string;
@@ -270,6 +283,29 @@ export interface CompetitorEntry {
   steal?: string[];
   /** The concrete move that beats them. Absent on legacy intel. */
   counter?: string;
+  // ── v2 fields (bullet-first format). All absent on legacy intel. ──
+  /** Who they target, one line. */
+  icp?: string;
+  /** What they sell, as bullets (offers, tiers, pricing when known). */
+  sells?: string[];
+  /** Their main messaging angles, as bullets. */
+  angles?: string[];
+  /** What they do well, as bullets. */
+  doingWell?: string[];
+  /** Where they fall short, as bullets. */
+  notDoingWell?: string[];
+  /** Funnel + social links found in the data. */
+  links?: CompetitorLink[];
+  /** Their top content pieces with real URLs and view counts when present. */
+  topContent?: CompetitorContentPiece[];
+  /** True when the engine found this competitor itself (not user-supplied). */
+  discovered?: boolean;
+}
+
+/** A market gap paired with the concrete move that fills it. */
+export interface GapPlay {
+  gap: string;
+  action: string;
 }
 
 export interface CompetitorIntel {
@@ -277,6 +313,8 @@ export interface CompetitorIntel {
   marketGaps: string[];
   /** 5-7 concrete do-this-now moves built from the gaps. Absent on legacy intel. */
   actionPlan?: string[];
+  /** v2: each unfilled gap paired with the move that owns it. Replaces marketGaps + actionPlan. */
+  gapPlan?: GapPlay[];
   positioningStatement?: string;
   generatedAt: string; // ISO date
 }

@@ -657,24 +657,34 @@ async function doScrape(
     ...googleTrends.top.map((q) => ({ platform: "google_trends", text: `TOP SEARCH: ${q}` })),
   ];
 
-  // Priority order: raw comments and reviews first (richest verbatim voice),
-  // then discussion snippets, then titles/headlines.
-  const allResults: ScrapedConversation[] = [
-    ...redditResults,
-    ...youtubeResults,
-    ...hnResults,
-    ...trustpilotResults,
-    ...discussionResults,
-    ...googleResults,
-    ...trendResults,
-    ...ddgResults,
-    ...twitterResults,
-    ...newsResults,
+  const sourceGroups: ScrapedConversation[][] = [
+    redditResults,
+    youtubeResults,
+    hnResults,
+    trustpilotResults,
+    discussionResults,
+    googleResults,
+    trendResults,
+    ddgResults,
+    twitterResults,
+    newsResults,
   ];
 
-  if (allResults.length === 0) {
+  if (sourceGroups.every((g) => g.length === 0)) {
     onProgress?.("No data came back from any source. Try a broader keyword.");
     return `NO_SCRAPED_DATA`;
+  }
+
+  // Interleave sources round-robin instead of dumping one source at a time.
+  // Two reasons: the total cap no longer starves late sources, and the LLM
+  // (which weights early context more) sees every platform's voice up front
+  // instead of 200 lines of one platform before the next appears.
+  const interleaved: ScrapedConversation[] = [];
+  const maxLen = Math.max(...sourceGroups.map((g) => g.length));
+  for (let i = 0; i < maxLen; i++) {
+    for (const group of sourceGroups) {
+      if (i < group.length) interleaved.push(group[i]);
+    }
   }
 
   // Dedupe, apply per-source diversity caps, format for the LLM
@@ -682,7 +692,7 @@ async function doScrape(
   const perSource: Record<string, number> = {};
   const lines: string[] = [];
 
-  for (const r of allResults) {
+  for (const r of interleaved) {
     if (lines.length >= TOTAL_CAP) break;
     const clean = r.text.trim();
     if (clean.length < 15) continue;
@@ -821,20 +831,24 @@ export async function scrapeCompetitorUrls(urls: string[]): Promise<string> {
 /**
  * Mine a competitor's YouTube channel via the Data API: channel stats plus
  * their most recent and most viewed uploads (titles are their hooks, view
- * counts show what actually performs).
+ * counts show what actually performs). Accepts an @handle or a raw channelId.
  */
-async function scrapeYouTubeChannel(handle: string): Promise<string> {
+async function scrapeYouTubeChannel(handleOrId: string, byId = false): Promise<string> {
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) return "";
   try {
+    const selector = byId
+      ? `id=${encodeURIComponent(handleOrId)}`
+      : `forHandle=${encodeURIComponent(handleOrId)}`;
     const chResp = await fetchWithRetry(
-      `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&forHandle=${encodeURIComponent(handle)}&key=${apiKey}`,
+      `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&${selector}&key=${apiKey}`,
       undefined,
       1
     );
     if (!chResp.ok) return "";
     const chData = (await chResp.json()) as {
       items?: Array<{
+        id?: string;
         snippet?: { title?: string; description?: string };
         statistics?: { subscriberCount?: string; videoCount?: string; viewCount?: string };
         contentDetails?: { relatedPlaylists?: { uploads?: string } };
@@ -844,7 +858,8 @@ async function scrapeYouTubeChannel(handle: string): Promise<string> {
     if (!ch) return "";
 
     const lines: string[] = [];
-    lines.push(`YOUTUBE CHANNEL: ${ch.snippet?.title ?? handle} | ${ch.statistics?.subscriberCount ?? "?"} subscribers | ${ch.statistics?.videoCount ?? "?"} videos | ${ch.statistics?.viewCount ?? "?"} total views`);
+    lines.push(`YOUTUBE CHANNEL: ${ch.snippet?.title ?? handleOrId} | ${ch.statistics?.subscriberCount ?? "?"} subscribers | ${ch.statistics?.videoCount ?? "?"} videos | ${ch.statistics?.viewCount ?? "?"} total views`);
+    if (ch.id) lines.push(`CHANNEL URL: https://youtube.com/channel/${ch.id}`);
     if (ch.snippet?.description) lines.push(`CHANNEL BIO: ${ch.snippet.description.slice(0, 500)}`);
 
     const uploads = ch.contentDetails?.relatedPlaylists?.uploads;
@@ -870,17 +885,18 @@ async function scrapeYouTubeChannel(handle: string): Promise<string> {
           );
           if (statsResp.ok) {
             const statsData = (await statsResp.json()) as {
-              items?: Array<{ snippet?: { title?: string }; statistics?: { viewCount?: string; commentCount?: string } }>;
+              items?: Array<{ id?: string; snippet?: { title?: string }; statistics?: { viewCount?: string; commentCount?: string } }>;
             };
             const videos = (statsData.items ?? [])
               .map((v) => ({
+                id: v.id ?? "",
                 title: v.snippet?.title ?? "",
                 views: Number(v.statistics?.viewCount ?? 0),
               }))
               .filter((v) => v.title);
             videos.sort((a, b) => b.views - a.views);
             for (const v of videos) {
-              lines.push(`VIDEO (${v.views.toLocaleString()} views): ${v.title}`);
+              lines.push(`VIDEO (${v.views.toLocaleString()} views): ${v.title}${v.id ? ` | https://youtube.com/watch?v=${v.id}` : ""}`);
             }
           }
         }
@@ -934,6 +950,18 @@ export async function scrapeYouTubeOutliers(keyword: string): Promise<string> {
       }>;
     };
 
+    // Relevance gate: an outlier only counts if its title shares real terms
+    // with the niche keyword. order=viewCount happily returns huge off-topic
+    // videos; modeling titles on those produced garbage ideas.
+    const kwTerms = keyword
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= 4);
+    const isRelevant = (title: string) => {
+      const t = title.toLowerCase();
+      return kwTerms.length === 0 || kwTerms.some((term) => t.includes(term));
+    };
+
     const videos = (statsData.items ?? [])
       .map((v) => ({
         title: v.snippet?.title ?? "",
@@ -941,7 +969,7 @@ export async function scrapeYouTubeOutliers(keyword: string): Promise<string> {
         year: (v.snippet?.publishedAt ?? "").slice(0, 4),
         views: Number(v.statistics?.viewCount ?? 0),
       }))
-      .filter((v) => v.title && v.views > 1000);
+      .filter((v) => v.title && v.views > 50_000 && isRelevant(v.title));
     videos.sort((a, b) => b.views - a.views);
 
     return videos
@@ -990,6 +1018,95 @@ export async function scrapeCompetitorDeep(url: string): Promise<string> {
   if (channel) sections.push(channel);
   if (searches) sections.push(`SEARCH RESULTS ABOUT ${identity}:\n${searches}`);
   return sections.join("\n");
+}
+
+// ─── Competitor auto-discovery ───────────────────────────────────────────────
+
+/**
+ * Find competitors the user did NOT supply. Two engines:
+ *
+ * 1. YouTube: search the niche, aggregate results by channel, deep-mine the
+ *    channels that keep showing up (their stats, bios, top videos with URLs).
+ *    Whoever owns the niche's search results IS a competitor.
+ * 2. SERP/DDG: hunt for Skool communities, courses, and coaching programs
+ *    selling into the niche.
+ *
+ * Returns an LLM-ready blob tagged [DISCOVERED_*], with URLs preserved, or "".
+ */
+export async function discoverCompetitors(keyword: string): Promise<string> {
+  const primary = keyword.split(",")[0]?.trim() ?? keyword;
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  const sections: string[] = [];
+
+  // Engine 1: YouTube channel aggregation
+  if (apiKey) {
+    try {
+      const searchUrls = [
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&relevanceLanguage=en&regionCode=US&q=${encodeURIComponent(primary)}&key=${apiKey}`,
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&relevanceLanguage=en&regionCode=US&order=viewCount&q=${encodeURIComponent(primary)}&key=${apiKey}`,
+      ];
+      const channelHits = new Map<string, { title: string; count: number }>();
+      await Promise.allSettled(
+        searchUrls.map(async (url) => {
+          const resp = await fetchWithRetry(url, undefined, 1);
+          if (!resp.ok) return;
+          const data = (await resp.json()) as {
+            items?: Array<{ snippet?: { channelId?: string; channelTitle?: string } }>;
+          };
+          for (const item of data.items ?? []) {
+            const id = item.snippet?.channelId;
+            if (!id) continue;
+            const hit = channelHits.get(id) ?? { title: item.snippet?.channelTitle ?? "", count: 0 };
+            hit.count += 1;
+            channelHits.set(id, hit);
+          }
+        })
+      );
+
+      // Channels appearing 2+ times own the niche's search results
+      const topChannels = Array.from(channelHits.entries())
+        .sort((a, b) => b[1].count - a[1].count)
+        .filter(([, h]) => h.count >= 2)
+        .slice(0, 5);
+
+      const channelBlobs = await Promise.allSettled(
+        topChannels.map(([channelId]) => scrapeYouTubeChannel(channelId, true))
+      );
+      for (const blob of channelBlobs) {
+        if (blob.status === "fulfilled" && blob.value) {
+          sections.push(`[DISCOVERED_YOUTUBE_COMPETITOR]\n${blob.value}`);
+        }
+      }
+    } catch (err) {
+      console.warn("[discoverCompetitors] YouTube discovery failed:", String(err).slice(0, 120));
+    }
+  }
+
+  // Engine 2: Skool communities + courses + coaching programs
+  const discoveryQueries = [
+    { q: `site:skool.com ${primary}`, tag: "DISCOVERED_SKOOL" },
+    { q: `best ${primary} course OR coaching OR mentorship program`, tag: "DISCOVERED_PROGRAMS" },
+  ];
+  await Promise.allSettled(
+    discoveryQueries.map(async ({ q, tag }) => {
+      const lines: string[] = [];
+      if (process.env.SERP_API_KEY) {
+        const data = await serpFetch({ engine: "google", q, num: "10" }).catch(() => ({}) as Record<string, unknown>);
+        const organic = (data.organic_results as Array<Record<string, string>> | undefined) ?? [];
+        for (const r of organic) {
+          if (r.title) lines.push(`[${tag}] ${r.title}${r.link ? ` | ${r.link}` : ""}${r.snippet ? ` | ${r.snippet}` : ""}`);
+        }
+      }
+      if (lines.length === 0) {
+        for (const r of await ddgSearch(q).catch(() => [])) {
+          if (r.title) lines.push(`[${tag}] ${r.title} | ${r.url}${r.snippet ? ` | ${r.snippet}` : ""}`);
+        }
+      }
+      if (lines.length) sections.push(lines.slice(0, 10).join("\n"));
+    })
+  );
+
+  return sections.join("\n\n");
 }
 
 // ─── Related Keyword Suggestions (Google Suggest — FREE, no key) ─────────────

@@ -104,6 +104,8 @@ export function RegenerateSectionBtn({ reportId, section }: { reportId: number; 
     },
     onError: (err) => toast.error(err.message ?? "Failed to regenerate section"),
   });
+  // reportId 0 = public shared view: read-only, no owner actions
+  if (reportId <= 0) return null;
   return (
     <button
       onClick={() => mutation.mutate({ id: reportId, section })}
