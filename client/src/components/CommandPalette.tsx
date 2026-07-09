@@ -11,13 +11,11 @@ import {
 } from "@/components/ui/command";
 import { trpc } from "@/lib/trpc";
 import {
-  Bookmark,
-  Calendar,
   FileText,
   LayoutDashboard,
   Plus,
   TrendingUp,
-  Vault as VaultIcon,
+  Users,
 } from "lucide-react";
 
 const CommandPaletteContext = createContext<{ open: () => void }>({ open: () => {} });
@@ -25,16 +23,16 @@ const CommandPaletteContext = createContext<{ open: () => void }>({ open: () => 
 export const useCommandPalette = () => useContext(CommandPaletteContext);
 
 /**
- * Global command palette (Cmd+K) with fuzzy search across pages, reports, and
- * vault items. Also wires app-wide keyboard shortcuts:
- *   Cmd+K — palette · N — new search · V — vault (single keys only outside inputs)
+ * Global command palette (Cmd+K) with fuzzy search across pages, clients, and
+ * reports. Also wires app-wide keyboard shortcuts:
+ *   Cmd+K palette, N new search, C clients (single keys only outside inputs)
  */
 export function CommandPaletteProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [, navigate] = useLocation();
 
   const { data: reports } = trpc.reports.list.useQuery(undefined, { enabled: open });
-  const { data: vaultItems } = trpc.vault.list.useQuery(undefined, { enabled: open });
+  const { data: clients } = trpc.clients.list.useQuery(undefined, { enabled: open });
 
   const go = useCallback(
     (path: string) => {
@@ -52,7 +50,7 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
         target.tagName === "TEXTAREA" ||
         target.isContentEditable;
 
-      // Cmd/Ctrl+K — open palette (works everywhere)
+      // Cmd/Ctrl+K opens the palette (works everywhere)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setOpen((o) => !o);
@@ -64,9 +62,9 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
       if (e.key.toLowerCase() === "n") {
         e.preventDefault();
         navigate("/search/new");
-      } else if (e.key.toLowerCase() === "v") {
+      } else if (e.key.toLowerCase() === "c") {
         e.preventDefault();
-        navigate("/vault");
+        navigate("/clients");
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -77,7 +75,7 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
     <CommandPaletteContext.Provider value={{ open: () => setOpen(true) }}>
       {children}
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Search reports, vault items, or jump anywhere..." />
+        <CommandInput placeholder="Search clients, reports, or jump anywhere..." />
         <CommandList>
           <CommandEmpty>Nothing found. Try a different search.</CommandEmpty>
           <CommandGroup heading="Go to">
@@ -90,24 +88,34 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
               <LayoutDashboard className="w-4 h-4 mr-2" />
               Dashboard
             </CommandItem>
+            <CommandItem onSelect={() => go("/clients")}>
+              <Users className="w-4 h-4 mr-2" />
+              Clients
+              <span className="ml-auto text-xs text-muted-foreground">C</span>
+            </CommandItem>
             <CommandItem onSelect={() => go("/reports")}>
               <FileText className="w-4 h-4 mr-2" />
               Saved Reports
-            </CommandItem>
-            <CommandItem onSelect={() => go("/vault")}>
-              <VaultIcon className="w-4 h-4 mr-2" />
-              Vault
-              <span className="ml-auto text-xs text-muted-foreground">V</span>
-            </CommandItem>
-            <CommandItem onSelect={() => go("/calendar")}>
-              <Calendar className="w-4 h-4 mr-2" />
-              Content Calendar
             </CommandItem>
             <CommandItem onSelect={() => go("/trends")}>
               <TrendingUp className="w-4 h-4 mr-2" />
               Trend Tracker
             </CommandItem>
           </CommandGroup>
+
+          {(clients?.length ?? 0) > 0 && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Clients">
+                {(clients ?? []).slice(0, 25).map((client) => (
+                  <CommandItem key={`c-${client.id}`} onSelect={() => go(`/clients/${client.id}`)}>
+                    <Users className="w-4 h-4 mr-2 text-primary" />
+                    <span className="truncate">{client.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
 
           {(reports?.length ?? 0) > 0 && (
             <>
@@ -117,20 +125,6 @@ export function CommandPaletteProvider({ children }: { children: React.ReactNode
                   <CommandItem key={`r-${report.id}`} onSelect={() => go(`/report/${report.id}`)}>
                     <FileText className="w-4 h-4 mr-2 text-primary" />
                     <span className="truncate">{report.name}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </>
-          )}
-
-          {(vaultItems?.length ?? 0) > 0 && (
-            <>
-              <CommandSeparator />
-              <CommandGroup heading="Vault">
-                {(vaultItems ?? []).slice(0, 25).map((item) => (
-                  <CommandItem key={`v-${item.id}`} onSelect={() => go("/vault")}>
-                    <Bookmark className="w-4 h-4 mr-2 text-amber-400" />
-                    <span className="truncate">{item.label}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>

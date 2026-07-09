@@ -67,14 +67,22 @@ ${onboarding}
 ${job.research || "(no research report attached — work from onboarding material alone and note the gap in your lessons)"}
 
 # YOUR TASK
-Produce the four Step 1 foundation documents, following the mother skill's process and the child skills' frameworks. Write each as a complete, polished markdown document into the CURRENT WORKING DIRECTORY with EXACTLY these filenames:
+Produce the four Step 1 foundation documents. The STRUCTURE of each document comes from the skills, not from this prompt: follow the mother skill's process and each child skill's document template EXACTLY as the skills define them, section by section. Write each as a complete, polished markdown document into the CURRENT WORKING DIRECTORY with EXACTLY these filenames:
 
-1. 01_icp_snapshot.md — ICP Snapshot (avatar, awareness stage, pains/desires in their language)
-2. 02_offers.md — Offers (offer structure, pricing, mechanism, offer math)
-3. 03_brand_positioning.md — Brand & Positioning (one-of-one mechanism, positioning statement, brand voice)
-4. 04_course_outline.md — Course Outline (module/lesson structure per the course-builder MENU)
+1. 01_icp_snapshot.md (ICP Snapshot)
+2. 02_offers.md (Offers)
+3. 03_brand_positioning.md (Brand & Positioning)
+4. 04_course_outline.md (Course Outline)
 
 Ground every document in the client's actual language from the onboarding transcript and the research verbatims. No generic filler.
+
+# FORMATTING RULES (the docs render in a web app as formatted markdown)
+- Clean heading hierarchy: one # title, ## for sections, ### for subsections. Never skip levels.
+- Use GitHub-flavored markdown TABLES wherever the skill's template calls for tabular content (sub-avatars, comparisons, pricing tiers, module maps). Real | tables, not bullet lists pretending to be tables.
+- Bold the key labels inside prose (e.g. **Pain:**, **Desire:**) so sections scan fast.
+- Short paragraphs (3 sentences max), bullets for lists, --- between major sections.
+- NO em dashes anywhere. Use commas, colons, or periods instead.
+- Write for a reader skimming on screen: every section should be understandable from its heading and first line.
 
 # LESSONS OUTPUT
 After the four documents, also write:

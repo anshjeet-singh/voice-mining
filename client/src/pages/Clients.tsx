@@ -62,7 +62,7 @@ export default function Clients() {
               Clients
             </h1>
             <p className="text-sm text-muted-foreground">
-              Onboarding, research, and fulfillment — one workspace per client
+              Onboarding, research, and fulfillment. One workspace per client
             </p>
           </div>
           {!creating && (

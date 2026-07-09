@@ -17,6 +17,7 @@ import {
   Share2,
   Sparkles,
   TrendingUp,
+  Users,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -36,6 +37,8 @@ const ACTIVITY_META: Record<string, { label: string; icon: typeof Search }> = {
   vault_saved: { label: "Saved to Vault", icon: Bookmark },
   report_shared: { label: "Shared report", icon: Share2 },
   trend_refreshed: { label: "Refreshed trends", icon: TrendingUp },
+  client_created: { label: "New client", icon: Users },
+  foundation_approved: { label: "Foundation approved", icon: CheckCircle2 },
 };
 
 export default function Dashboard() {
@@ -72,9 +75,9 @@ export default function Dashboard() {
 
   const onboardingSteps = onboarding
     ? [
+        { label: "Create your first client", done: onboarding.createdClient, action: () => navigate("/clients") },
         { label: "Run your first search", done: onboarding.ranFirstSearch, action: () => navigate("/search/new") },
         { label: "View your report", done: onboarding.viewedReport, action: () => navigate("/reports") },
-        { label: "Save your favourite pieces to the Vault", done: onboarding.savedToVault, action: () => navigate("/reports") },
         { label: "Check the Trend Tracker", done: onboarding.checkedTrends, action: () => navigate("/trends") },
       ]
     : [];
@@ -149,9 +152,9 @@ export default function Dashboard() {
             ))
           ) : (
             [
+              { label: "Clients", value: stats.clients, icon: Users },
               { label: "Keywords Mined", value: stats.keywordsMined, icon: Pickaxe },
               { label: "Content Pieces Generated", value: stats.contentPieces, icon: Layers },
-              { label: "Vault Items", value: stats.vaultItems, icon: Bookmark },
               { label: "Trend Snapshots", value: stats.trendSnapshots, icon: TrendingUp },
             ].map((stat) => {
               const Icon = stat.icon;

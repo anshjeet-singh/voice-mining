@@ -2,7 +2,6 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import {
-  Calendar,
   ChevronDown,
   Command,
   FileText,
@@ -12,7 +11,6 @@ import {
   Sparkles,
   TrendingUp,
   Users,
-  Vault,
 } from "lucide-react";
 import { useCommandPalette } from "@/components/CommandPalette";
 import { useLocation } from "wouter";
@@ -100,8 +98,6 @@ export function AppShell({ children }: AppShellProps) {
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
     { label: "Clients", icon: Users, path: "/clients" },
     { label: "Reports", icon: FileText, path: "/reports" },
-    { label: "Vault", icon: Vault, path: "/vault" },
-    { label: "Calendar", icon: Calendar, path: "/calendar" },
     { label: "Trend Tracker", icon: TrendingUp, path: "/trends" },
   ];
 

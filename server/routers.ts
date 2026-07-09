@@ -929,12 +929,12 @@ export const appRouter = router({
   // ─── Dashboard ───────────────────────────────────────────────────────────────
 
   dashboard: router({
-    /** Quick Stats row: keywords mined, content pieces, vault items, trend snapshots. */
+    /** Quick Stats row: clients, keywords mined, content pieces, trend snapshots. */
     stats: protectedProcedure.query(async ({ ctx }) => {
-      const [searches, reports, vaultCount, snapshotCount] = await Promise.all([
+      const [searches, reports, clientList, snapshotCount] = await Promise.all([
         getMiningSearchesByUser(ctx.user.id),
         getReportsByUser(ctx.user.id),
-        getVaultItemCount(ctx.user.id),
+        getClientsByUser(ctx.user.id),
         getTrendSnapshotCount(ctx.user.id),
       ]);
 
@@ -952,7 +952,7 @@ export const appRouter = router({
       return {
         keywordsMined: new Set(searches.map((s) => s.keyword.toLowerCase())).size,
         contentPieces,
-        vaultItems: vaultCount,
+        clients: clientList.length,
         trendSnapshots: snapshotCount,
         completedSearches: searches.filter((s) => s.status === "complete").length,
         activeSearches: searches.filter((s) => s.status === "mining" || s.status === "analyzing").length,
@@ -967,17 +967,17 @@ export const appRouter = router({
 
     /** Onboarding checklist state, derived from real usage. */
     onboarding: protectedProcedure.query(async ({ ctx }) => {
-      const [searches, reports, vaultCount, searchKeywords] = await Promise.all([
+      const [searches, reports, clientList, searchKeywords] = await Promise.all([
         getMiningSearchesByUser(ctx.user.id),
         getReportsByUser(ctx.user.id),
-        getVaultItemCount(ctx.user.id),
+        getClientsByUser(ctx.user.id),
         getDistinctTrendKeywords(),
       ]);
       const mine = new Set(searches.map((s) => s.keyword.toLowerCase()));
       return {
+        createdClient: clientList.length > 0,
         ranFirstSearch: searches.length > 0,
         viewedReport: reports.length > 0,
-        savedToVault: vaultCount > 0,
         checkedTrends: searchKeywords.some((k) => mine.has(k.toLowerCase())),
       };
     }),

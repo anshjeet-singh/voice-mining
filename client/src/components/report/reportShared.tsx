@@ -35,51 +35,19 @@ export const POST_FORMAT_CONFIG: Record<string, { label: string; color: string }
   case_study: { label: "Case Study", color: "text-purple-400 bg-purple-400/10 border-purple-400/20" },
 };
 
-// ─── Save to Vault Button ────────────────────────────────────────────────────
+// ─── Save to Vault Button (PARKED) ──────────────────────────────────────────
+// The Vault is parked until client-facing dashboards ship; the backend router
+// and Vault page remain intact for that. Rendering nothing keeps the dozens of
+// call sites across the report renderers untouched.
 
-export function SaveBtn({
-  reportId,
-  searchKeyword,
-  contentType,
-  label,
-  content,
-}: {
+export function SaveBtn(_props: {
   reportId: number;
   searchKeyword: string;
   contentType: "hook" | "email" | "skool_post" | "ad_copy" | "script" | "youtube_idea";
   label: string;
   content: string;
 }) {
-  const utils = trpc.useUtils();
-  const [saved, setSaved] = useState(false);
-  const saveMutation = trpc.vault.save.useMutation({
-    onSuccess: () => {
-      setSaved(true);
-      utils.vault.list.invalidate();
-      toast.success("Saved to Vault");
-    },
-    onError: () => toast.error("Already saved or failed to save"),
-  });
-  return (
-    <button
-      onClick={() =>
-        saveMutation.mutate({ reportId, searchKeyword, contentType, label, content })
-      }
-      disabled={saveMutation.isPending || saved}
-      className={`flex-shrink-0 p-1.5 rounded-lg transition-colors ${
-        saved
-          ? "text-primary"
-          : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-      }`}
-      title={saved ? "Saved to Vault" : "Save to Vault"}
-    >
-      {saved ? (
-        <BookmarkCheck className="w-3.5 h-3.5" />
-      ) : (
-        <Bookmark className="w-3.5 h-3.5" />
-      )}
-    </button>
-  );
+  return null;
 }
 
 // ─── Copy Buttons ────────────────────────────────────────────────────────────

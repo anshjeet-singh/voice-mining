@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { MarkdownDoc } from "@/components/MarkdownDoc";
 
 const DOC_TYPES = [
   { id: "voice_transcript", label: "Voice transcript" },
@@ -101,7 +102,7 @@ export default function ClientDetail() {
   const addPdf = trpc.clients.addPdfDocument.useMutation({
     onSuccess: ({ chars }) => {
       invalidate();
-      toast.success(`PDF added — ${chars.toLocaleString()} characters extracted`);
+      toast.success(`PDF added: ${chars.toLocaleString()} characters extracted`);
     },
     onError: (err) => toast.error(err.message),
     onSettled: () => setUploading(false),
@@ -125,7 +126,7 @@ export default function ClientDetail() {
   const generate = trpc.clients.generateFoundation.useMutation({
     onSuccess: () => {
       invalidate();
-      toast.success("Foundation job queued — your Mac worker will pick it up");
+      toast.success("Foundation job queued. Your Mac worker will pick it up");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -134,7 +135,7 @@ export default function ClientDetail() {
       invalidate();
       setRejecting(false);
       setRejectFeedback("");
-      toast.success(status === "approved" ? "Foundation approved" : "Changes requested — job requeued");
+      toast.success(status === "approved" ? "Foundation approved" : "Changes requested, job requeued");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -144,7 +145,7 @@ export default function ClientDetail() {
       if (!files?.length) return;
       const file = files[0];
       if (!file.name.toLowerCase().endsWith(".pdf")) {
-        toast.error("Only PDF files — paste anything else as text");
+        toast.error("Only PDF files. Paste anything else as text");
         return;
       }
       if (file.size > 20 * 1024 * 1024) {
@@ -451,7 +452,7 @@ export default function ClientDetail() {
               <div className="flex-1">
                 <h2 className="text-sm font-semibold text-foreground">Foundation Documents</h2>
                 <p className="text-xs text-muted-foreground">
-                  ICP, offers, positioning, course outline — built from onboarding + research
+                  ICP, offers, positioning, course outline. Built from onboarding + research
                 </p>
               </div>
 
@@ -503,7 +504,7 @@ export default function ClientDetail() {
                   <p className="text-[11px] text-muted-foreground">
                     {jobStatus === "queued"
                       ? "Make sure the worker is running: npm run worker"
-                      : "Claude Code is running the mother skill — this takes a few minutes"}
+                      : "Claude Code is running the mother skill. This takes a few minutes"}
                   </p>
                 </div>
               </div>
@@ -574,9 +575,9 @@ export default function ClientDetail() {
                             </div>
                           </div>
                         ) : (
-                          <pre className="text-[11px] text-muted-foreground whitespace-pre-wrap max-h-96 overflow-y-auto rounded-lg bg-background/40 p-3">
-                            {doc.content}
-                          </pre>
+                          <div className="max-h-[32rem] overflow-y-auto rounded-lg bg-background/40 p-4">
+                            <MarkdownDoc content={doc.content} />
+                          </div>
                         )}
                       </div>
                     )}
@@ -611,7 +612,7 @@ export default function ClientDetail() {
                       <div className="space-y-2">
                         <Textarea
                           autoFocus
-                          placeholder="What should change? Be specific — this goes straight to the worker."
+                          placeholder="What should change? Be specific. This goes straight to the worker."
                           value={rejectFeedback}
                           onChange={(e) => setRejectFeedback(e.target.value)}
                           className="min-h-20 text-sm"

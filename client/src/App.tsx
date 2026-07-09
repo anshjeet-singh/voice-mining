@@ -13,11 +13,9 @@ import ClientDetail from "./pages/ClientDetail";
 import NewSearch from "./pages/NewSearch";
 import SearchResults from "./pages/SearchResults";
 import ReportView from "./pages/ReportView";
-import ContentCalendar from "./pages/ContentCalendar";
 import SavedReports from "./pages/SavedReports";
 import SharedReport from "./pages/SharedReport";
 import NicheComparison from "./pages/NicheComparison";
-import Vault from "./pages/Vault";
 import TrendTracker from "./pages/TrendTracker";
 
 function Router() {
@@ -41,11 +39,8 @@ function Router() {
             <Route path="/search/:id" component={SearchResults} />
             <Route path="/report/:id" component={ReportView} />
             <Route path="/share/:token" component={SharedReport} />
-            <Route path="/calendar" component={ContentCalendar} />
-            <Route path="/calendar/:searchId" component={ContentCalendar} />
             <Route path="/compare" component={NicheComparison} />
             <Route path="/reports" component={SavedReports} />
-            <Route path="/vault" component={Vault} />
             <Route path="/trends" component={TrendTracker} />
             <Route path="/404" component={NotFound} />
             <Route component={NotFound} />
