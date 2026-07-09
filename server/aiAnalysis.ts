@@ -31,6 +31,7 @@ import {
 
 // Real internet scraping — imported from realScraper.ts
 import { discoverCompetitors, scrapeCompetitorDeep, scrapeCompetitorsForKeyword, scrapeInternetForKeyword, scrapeYouTubeOutliers } from "./realScraper";
+import { fetchForeplayWinningAds } from "./foreplay";
 
 // ─── Helper to extract string content from LLM response ─────────────────────
 
@@ -508,6 +509,8 @@ export async function generateAdCopy(
   analysis: AnalysisInput,
   brandVoice?: string
 ): Promise<AdCopyIdea[]> {
+  // Live ad-spy data: ads profitably spending in this niche right now
+  const provenAds = await fetchForeplayWinningAds(keyword).catch(() => "");
   const response = await invokeLLM({
     messages: [
       {
@@ -532,6 +535,11 @@ Buying Triggers: ${analysis.buyingTriggers.slice(0, 5).join(" | ")}
 Desires: ${topInsights(analysis.desires, 5)}
 Fears: ${topInsights(analysis.fears, 4)}
 Emotional Language: ${analysis.emotionalLanguage.slice(0, 6).join(" | ")}
+
+${provenAds ? `PROVEN ADS SPENDING IN THIS MARKET RIGHT NOW (from the Foreplay ad library; long-running + live = profitably spending):
+${provenAds}
+
+How to use them: these are your PATTERN models. Study which hooks, offer framings, and CTA styles this market is already paying to run, then write ORIGINAL copy that beats them. Steal the shape (a number-led hook, a qualification angle, an urgency close), never the sentences. If several proven ads lean on the same emotional driver, at least two of your ads should hit that driver harder than they do.` : ""}
 
 ${GOATED_ADS_FRAMEWORK}
 
