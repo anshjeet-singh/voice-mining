@@ -13,6 +13,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import "dotenv/config";
@@ -35,6 +36,30 @@ const FRAMEWORKS_DIR = process.env.FRAMEWORKS_DIR ?? path.join(REPO_ROOT, "worke
 // Pin model AND effort: headless CLI defaults can silently downgrade quality
 const WORKER_MODEL = process.env.WORKER_MODEL ?? "opus";
 const WORKER_EFFORT = process.env.WORKER_EFFORT ?? "high";
+
+/**
+ * Resolve the claude binary to an absolute path. Under launchd the login
+ * shell does not source .zshrc, so ~/.local/bin is not on PATH and a bare
+ * "claude" spawn fails with ENOENT.
+ */
+function resolveClaudeBin(): string {
+  if (process.env.CLAUDE_BIN) return process.env.CLAUDE_BIN;
+  const candidates = [
+    path.join(os.homedir(), ".local", "bin", "claude"),
+    "/opt/homebrew/bin/claude",
+    "/usr/local/bin/claude",
+  ];
+  for (const c of candidates) {
+    try {
+      fsSync.accessSync(c, fsSync.constants.X_OK);
+      return c;
+    } catch {
+      /* try next */
+    }
+  }
+  return "claude";
+}
+const CLAUDE_BIN = resolveClaudeBin();
 const POLL_MS = 5_000;
 const CLAUDE_TIMEOUT_MS = 30 * 60 * 1000; // deliverables are long runs
 
@@ -112,7 +137,7 @@ async function runDeliverable(job: ClaimedJob, output: StageOutputSpec) {
 
   console.log(`[job ${job.id}] ${output.title}: running headless Claude Code (${WORKER_MODEL}, effort ${WORKER_EFFORT}) ...`);
   await exec(
-    "claude",
+    CLAUDE_BIN,
     [
       "-p",
       `Follow the instructions in ${promptFile} exactly.`,
@@ -167,11 +192,23 @@ async function tick() {
   }
 }
 
-console.log(`Worker up. Polling ${APP_URL} every ${POLL_MS / 1000}s. Skills: ${SKILLS_DIR}`);
-console.log(`Learnings: ${LEARNINGS_DIR}`);
-
 // Sequential loop: one job at a time, keep polling forever.
 (async () => {
+  // Boot self-check: fail loudly NOW if the claude binary is unusable,
+  // instead of failing every job with a cryptic spawn error later.
+  try {
+    const { stdout } = await exec(CLAUDE_BIN, ["--version"], { timeout: 30_000 });
+    console.log(`claude binary: ${CLAUDE_BIN} (${stdout.trim()})`);
+  } catch (err) {
+    console.error(`FATAL: cannot run claude at "${CLAUDE_BIN}":`, (err as Error).message.slice(0, 200));
+    console.error("Set CLAUDE_BIN in .env to the full path of your claude binary.");
+    process.exit(1);
+  }
+
+  console.log(`Worker up. Polling ${APP_URL} every ${POLL_MS / 1000}s. Model: ${WORKER_MODEL}, effort: ${WORKER_EFFORT}`);
+  console.log(`Skills: ${SKILLS_DIR}`);
+  console.log(`Learnings: ${LEARNINGS_DIR}`);
+
   for (;;) {
     try {
       await tick();
