@@ -13,12 +13,19 @@ describe("stage registry", () => {
   it("branches the funnel contract on funnel type", () => {
     const call = stagePromptSpec("funnel", "call")!;
     const webinar = stagePromptSpec("funnel", "webinar")!;
-    expect(call.outputs[0].filename).toBe("01_vsl_script.md");
+    // Call funnel: 2 docs. Funnel Structure (both pages) + Video Scripts (10 scripts)
+    expect(call.outputs.map((o) => o.docType)).toEqual(["funnel_structure", "video_scripts"]);
+    expect(call.outputs[1].description).toContain("EXACTLY 10");
+    expect(call.outputs[1].description).toContain("1 VSL script");
+    expect(call.outputs[1].description).toContain("8 breakout");
+    // Webinar funnel: deck + structure + scripts
+    expect(webinar.outputs.map((o) => o.docType)).toEqual(["funnel_core", "funnel_structure", "video_scripts"]);
     expect(webinar.outputs[0].filename).toBe("01_webinar_deck.md");
-    // docTypes stay branch-independent so the UI needs no branching
-    expect(call.outputs.map((o) => o.docType)).toEqual(webinar.outputs.map((o) => o.docType));
     expect(call.childSkills.join()).toContain("vsl-and-sales-page-writer");
     expect(webinar.childSkills.join()).toContain("webinar-deck-builder");
+    // The copy quality bar is enforced in the stage instructions
+    expect(call.extraInstructions).toContain("ATTENTION");
+    expect(call.extraInstructions).toContain("NEVER a diagnosis");
   });
 
   it("defines validation contracts for every stage", () => {

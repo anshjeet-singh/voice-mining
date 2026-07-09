@@ -30,6 +30,7 @@ const WORKER_SECRET = process.env.WORKER_SECRET ?? "";
 const SKILLS_DIR = process.env.SKILLS_DIR ?? "";
 const REPO_ROOT = path.resolve(import.meta.dirname, "..");
 const LEARNINGS_DIR = process.env.LEARNINGS_DIR ?? path.join(REPO_ROOT, "worker", "learnings");
+const FRAMEWORKS_DIR = process.env.FRAMEWORKS_DIR ?? path.join(REPO_ROOT, "worker", "frameworks");
 const POLL_MS = 15_000;
 const CLAUDE_TIMEOUT_MS = 30 * 60 * 1000; // foundation docs are a long run
 
@@ -97,7 +98,11 @@ async function saveCraftLessons(raw: string, jobId: number, clientName: string) 
 async function runJob(job: ClaimedJob) {
   console.log(`[job ${job.id}] claimed — ${job.stage.label} for ${job.client.name} (${job.client.niche})`);
   const jobDir = await fs.mkdtemp(path.join(os.tmpdir(), `${job.type}-${job.id}-`));
-  const prompt = buildStagePrompt(job, { skillsDir: SKILLS_DIR, learningsDir: LEARNINGS_DIR });
+  const prompt = buildStagePrompt(job, {
+    skillsDir: SKILLS_DIR,
+    learningsDir: LEARNINGS_DIR,
+    frameworksDir: FRAMEWORKS_DIR,
+  });
   const promptFile = path.join(jobDir, "PROMPT.md");
   await fs.writeFile(promptFile, prompt);
 

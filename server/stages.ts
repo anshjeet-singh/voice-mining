@@ -81,16 +81,15 @@ export const STAGES: Record<string, StageDef> = {
       ft === "webinar"
         ? [
             { docType: "funnel_core", filename: "01_webinar_deck.md", title: "Webinar Deck", description: "The full live workshop deck, slide by slide, with the big idea and core promise flagged at the top" },
-            { docType: "funnel_pages", filename: "02_funnel_pages.md", title: "Funnel Pages", description: "Registration page, thank-you page, and lead magnet page copy. Every page echoes the deck's core promise language exactly" },
-            { docType: "funnel_videos", filename: "03_funnel_videos.md", title: "Funnel Videos", description: "Thank-you page video script plus the breakout objection/FAQ video bullet library" },
+            { docType: "funnel_structure", filename: "02_funnel_structure.md", title: "Funnel Structure", description: "COMPLETE page-by-page copy per the funnel-structure framework: registration page (eyebrow, headline, subheadline, secrets bullets, proof strip, CTA), thank-you page, and replay page. Every section's actual copy plus a one-line layout note. Every page echoes the deck's core promise exactly" },
+            { docType: "video_scripts", filename: "03_video_scripts.md", title: "Video Scripts", description: "EXACTLY 10 full scripts, numbered: 1 thank-you page video, 1 offer-breakdown video, and 8 breakout objection/FAQ videos (60-90s each). Every script written word for word" },
           ]
         : [
-            { docType: "funnel_core", filename: "01_vsl_script.md", title: "VSL Script", description: "The full VSL script with the big idea and core promise flagged at the top" },
-            { docType: "funnel_pages", filename: "02_funnel_pages.md", title: "Funnel Pages", description: "VSL page, booking/Calendly page, post-call page, and pre-call hub copy. Every page echoes the VSL's core promise language exactly" },
-            { docType: "funnel_videos", filename: "03_funnel_videos.md", title: "Funnel Videos", description: "Call-confirmed and offer-breakdown video scripts plus the breakout objection/FAQ video bullet library" },
+            { docType: "funnel_structure", filename: "01_funnel_structure.md", title: "Funnel Structure", description: "COMPLETE page-by-page copy per the funnel-structure framework: Page 1 the VSL page (eyebrow ATTENTION line, headline, subheadline, CTA button text, proof strip, pain block, mechanism reveal, offer stack, testimonial specs, FAQ, all three CTA blocks) and Page 2 the booking page (header, calendar rules, what-happens bullets, proof). Every section's actual copy plus a one-line layout note" },
+            { docType: "video_scripts", filename: "02_video_scripts.md", title: "Video Scripts", description: "EXACTLY 10 full scripts, numbered: 1 VSL script (big idea and core promise flagged at the top), 1 call-confirmed video, and 8 breakout objection/FAQ videos (60-90s each). Every script written word for word" },
           ],
     extraInstructions: (ft) =>
-      `This client runs a ${ft === "webinar" ? "WEBINAR funnel (Branch A)" : "CALL funnel (Branch B, VSL into booked call)"}. Flag the BIG IDEA and CORE PROMISE explicitly at the top of the first document so the owner can pressure-test them. Pages must echo the ${ft === "webinar" ? "deck's" : "VSL's"} language exactly, never a paraphrase. Use [BOOKING LINK], [COMMUNITY LINK], and [VSL LINK] placeholders wherever a real URL goes.`,
+      `This client runs a ${ft === "webinar" ? "WEBINAR funnel (Branch A)" : "CALL funnel (Branch B, VSL into booked call)"}. Flag the BIG IDEA and CORE PROMISE explicitly at the top of the first document so the owner can pressure-test them. Every page and script must pass the copy-quality-bar framework: eyebrow ATTENTION line calling out the exact ICP, headline with a specific number/timeframe/named mechanism promising the dream outcome (NEVER a diagnosis-of-their-failure headline), proof next to every claim, one repeated CTA, their verbatim language from the research. Pages echo the ${ft === "webinar" ? "deck's" : "VSL's"} language exactly, never a paraphrase. Use [BOOKING LINK], [COMMUNITY LINK], [VSL LINK], and [PROOF: ...] placeholders wherever a real URL or client asset goes.`,
   },
 
   emails: {

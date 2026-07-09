@@ -39,6 +39,8 @@ export interface PromptOptions {
   skillsDir: string;
   /** Git-versioned worker/learnings dir with accumulated craft lessons. */
   learningsDir: string;
+  /** Git-versioned worker/frameworks dir: distilled copywriting playbooks. */
+  frameworksDir?: string;
 }
 
 export function buildStagePrompt(job: ClaimedJob, opts: PromptOptions): string {
@@ -68,15 +70,14 @@ export function buildStagePrompt(job: ClaimedJob, opts: PromptOptions): string {
 
   return `You are running ${stage.motherStep} of the client-onboarding-orchestrator skill for our agency: ${stage.label}.
 
-# SKILLS
-Read the mother skill first, then the child skills this stage uses:
-- Mother skill: ${opts.skillsDir}/client-onboarding-orchestrator/SKILL.md
-- Child skills for this stage: ${stage.childSkills.join(", ")}
-- All skills live in sibling folders under: ${opts.skillsDir}/
-Follow each child skill's own SKILL.md process fully. These skill files are READ-ONLY. Never modify anything under ${opts.skillsDir}.
+# MANDATORY READING (do this FIRST, with the Read tool, before writing a single word)
+You MUST read, in full, in this order:
+1. The mother skill: ${opts.skillsDir}/client-onboarding-orchestrator/SKILL.md
+2. EVERY child skill for this stage: ${stage.childSkills.join(", ")} (each lives in its own folder under ${opts.skillsDir}/ as SKILL.md; strip any parenthetical mode note to get the folder name)
+3. EVERY file in ${opts.frameworksDir ?? "the frameworks directory"}/ (distilled from the $100M playbooks, Scientific Advertising, Sell Like Crazy, and top-converting funnel teardowns; these set the QUALITY BAR)
+4. EVERY file in ${opts.learningsDir}/ (lessons from past client work)
 
-# ACCUMULATED CRAFT LESSONS
-Before writing, read every file in ${opts.learningsDir}/ (if it exists and has files). These are lessons from past client work — apply them.
+This is not optional. The deliverables must VISIBLY follow the skill templates and pass the framework quality bars. If your draft would read the same without having read these files, you have failed the task. Skill files and framework files are READ-ONLY. Never modify anything under ${opts.skillsDir}.
 
 # CLIENT
 - Name: ${job.client.name}

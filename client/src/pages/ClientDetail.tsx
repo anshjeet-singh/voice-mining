@@ -62,9 +62,9 @@ const WORKER_STAGES: Array<{
   {
     id: "funnel",
     label: "Funnel Copy",
-    blurb: "The conversion engine: core asset, page copy, and funnel video scripts",
-    docTypes: ["funnel_core", "funnel_pages", "funnel_videos"],
-    runningNote: "Writing the funnel core, pages, and videos. This is the longest stage",
+    blurb: "Funnel Structure (every page, complete copy) + Video Scripts (10 scripts)",
+    docTypes: ["funnel_core", "funnel_structure", "video_scripts"],
+    runningNote: "Writing the funnel structure and all 10 video scripts. This is the longest stage",
   },
   {
     id: "emails",
