@@ -6,30 +6,20 @@ VSL pages. If a line of copy fails this bar, rewrite it before shipping.
 
 ## The headline bar
 
-A headline is an ad for the rest of the page. It must pass ALL of these:
+Headlines are governed by suby-headline-machine.md in this directory. Read it
+and follow its process: 10-15 candidates across the 8 patterns, scored against
+the four non-negotiables (hyper-specific dream outcome, "without" clause,
+"even if" clause, curiosity device), ship the top 5-7 ranked. On top of that:
 
-1. **Called-out avatar.** The right person must instantly think "this is for me".
-   Use an eyebrow line above the headline: `**ATTENTION [EXACT ICP]:**`
-   ("ATTENTION business owners and real estate investors", never "attention everyone").
-2. **One specific, valuable promise.** A number, dollar figure, timeframe, or named
-   mechanism. "Get up to $250K at 0% interest in 30 days, even with a new LLC" passes.
-3. **Dream outcome, not process.** Lead with what they GET, not what they did wrong.
-   ANTI-PATTERN (never write this shape): "You're not getting denied because of your
-   credit, you're getting denied because of how you apply." That headline lectures the
-   reader about their failure and promises nothing. Diagnosis belongs in the body,
-   AFTER the promise has earned attention.
-4. **Value equation check** (from $100M Offers): does it maximize dream outcome and
-   perceived likelihood, and minimize time delay and effort? Say the outcome, imply
-   the speed, kill the effort ("without X, even if Y").
-5. **Read-aloud test.** It should sound like a person making a confident promise,
-   not a corporate slogan and not a riddle.
-
-Proven headline shapes (adapt with the client's specifics, never copy words):
-- Outcome + timeframe + objection killed: "[RESULT] in [TIME], without [PAIN]"
-- Callout + question: "Would you pay $X to have [DREAM] in [TIME]?"
-- Named mechanism: "The [NAME] system that [RESULT] for [AVATAR]"
-- Command: "Read this if you're tired of [PAIN]"
-- Big claim + proof anchor: "[NUMBER] [AVATAR]s got [RESULT]. Here's the exact system"
+1. **Called-out avatar.** The eyebrow line above the headline is ONLY a pure
+   callout: `**ATTENTION [EXACT ICP]:**`, nothing bolted on.
+2. **Dream outcome, not process.** ANTI-PATTERN (never write this shape):
+   "You're not getting denied because of your credit, you're getting denied
+   because of how you apply." That lectures and promises nothing. The
+   contrarian diagnosis works ONLY as pattern 7 in the headline machine, where
+   it immediately flips into the promise.
+3. **Read-aloud test.** A confident promise said in one breath, not a
+   corporate slogan, not a riddle, not a parable.
 
 ## The one big idea
 
