@@ -65,6 +65,24 @@ e.g. name + number + timeframe]`.
   much funding you qualify for" beats "Learn more".
 - Urgency only when real. Fake countdowns burn trust.
 
+## Market intelligence IS the copy source
+
+The claim payload carries the client's voice-mining research. It is not
+background reading; it is the raw material. Map it section by section:
+
+- **Pain blocks / "sounds familiar" bullets** <- painPoints and their verbatim
+  examples, written as scenes
+- **Headline + subheadline promises** <- top desires + buying triggers
+- **FAQ questions** <- objections, phrased the way the market actually asks them
+- **Fear/cost-of-inaction sections** <- fears, turned into concrete math
+- **Power words and phrasing everywhere** <- emotionalLanguage + trendingPhrases
+- **Testimonial specs and hooks** <- verbatimQuotes (the market talking about
+  itself)
+- **Positioning / "this is NOT X" enemies** <- competitor intel weaknesses + gaps
+
+If a page section could have been written without the research, rewrite it
+using the research.
+
 ## The final sense check
 
 Read the whole asset aloud as the ICP. At any line where they would squint, stop

@@ -41,6 +41,62 @@ The owner's benchmark for "this would convert cold traffic". Full anatomy:
 - **FB-review screenshot wall** headed "REAL MEN. FAMILIES. RESULTS."
 - **8-reasons cards** (photo + one outcome sentence each)
 - **Movement close**: "It's More Than A Program... It's A Movement."
+- **3-simple-steps section**: numbered process cards ("Apply for Your Free
+  'Control Your Destiny' Coaching Session" -> call + custom named roadmap ->
+  transform), each step names its deliverable
+- **Lead magnet mockup image** (the action plan shown as a physical checklist
+  document) + offer restated: "Claim Your Free 30-Minute 'Control Your Destiny'
+  Coaching Session (Value $997)" + a black +BONUS bar ("Get a Tactical 'Save My
+  Marriage' Action Plan"): free call framed as a product with a bonus stack
+- **Benefit stack cards**, each headed "How To [DREAM]:" with one-line payoff
+- **Enemy positioning header**: "This is NOT Marriage Counselling. This Is a
+  Transformative Program For High Performance Fathers." (what it's NOT, then
+  identity flattery)
+- **9-review wall** where every review BOLDS the outcome + timeframe mid-quote
+  ("I pulled the trigger and fixed my marriage in less than 8 weeks") and opens
+  with the raw before-state ("I was lazy and used drugs and alcohol almost daily")
+- **WARNING section**: black/red banner, "Here's Why You Need To Act Today",
+  then cost-of-inaction MATH in a box ("50% of marriages end in divorce; with
+  alcohol the risk TRIPLES; the average divorce costs men up to 50% of their net
+  worth"), then the fork: "Keep hoping things will magically get better (they
+  won't), or take action TODAY."
+- **Guarantee reframed as qualification**: "Our No Bullshit, Action Takers Only
+  Guarantee": 30-day 100% refund, then flips into gatekeeping ("If you're not
+  100% committed... we CAN NOT have you in the community... we are more likely to
+  ask you to leave"). The guarantee makes them qualify, not the seller.
+- **"How We Stack Up" comparison table**: us vs marriage counselling vs other
+  men's programs, checkmarks vs X's (steal this for any market with a tired
+  default solution)
+- **FAQ leads with price** and anchors it down: "$67/week. That's less than $10
+  per day. The real question is: how much is saving your marriage worth to you?"
+- **Final close**: "Ready To [DREAM]?" + 4-item checkmark list restating the
+  offer, then a massive community photo (belonging proof) as the last image
+
+### Copy techniques to reuse everywhere (from this page)
+
+- Power verbs in commands: "pulled the trigger", "take back control", "reignite"
+- Emotional scene language over abstractions: "your wife's talking to lawyers",
+  "sleeping in separate beds", "kids who barely know you"
+- Identity flattery pairs with pain: "high-performing men like you... crushing it
+  at work, but watching their marriages crumble"
+- Not-your-fault bridge before the pitch; enemy = the tired default (counselling)
+- Bold the outcome inside every testimonial; open testimonials with the ugly
+  before-state, not praise
+- Cost-of-inaction stated as MATH in a visual box, not as a vague threat
+- Price handled by daily-cost anchor + values reframe, inside the FAQ
+
+## Page depth decision rule (owner insight, 2026-07)
+
+Match page length to the TRUST BURDEN of the ask, not to a template:
+- **Long-form page** (Empowered Man style): emotional, skeptical, high-stakes
+  markets (relationships, health, money recovery) and cold traffic to a high-
+  ticket call. The page must absorb every doubt before they book.
+- **Minimal page** (Viral Coach style: headline + guarantee + VSL + one button):
+  when a hard guarantee or dirt-simple promise does the lifting, or for low-
+  ticket offers where friction kills more sales than doubt does. Forces the VSL
+  to do the persuading.
+- Default for our DFY call funnels: LONG page, because we sell high-ticket to
+  cold traffic. Go minimal only when the client has a knockout guarantee.
 
 ## 2. Viral Coach / Daniel Iles (1M views guaranteed, ~$3M/mo on cold VSL traffic)
 

@@ -60,6 +60,7 @@ async function renderResearchForClient(clientId: number): Promise<string> {
     Array.isArray(v) ? (v as string[]).slice(0, cap).map((x) => `- ${x}`).join("\n") : "";
   parts.push(`\nBUYING TRIGGERS:\n${strList(analysis.buyingTriggers, 8)}`);
   parts.push(`\nEMOTIONAL LANGUAGE:\n${strList(analysis.emotionalLanguage, 12)}`);
+  parts.push(`\nTRENDING PHRASES:\n${strList(analysis.trendingPhrases, 10)}`);
   const quotes = Array.isArray(analysis.verbatimQuotes)
     ? (analysis.verbatimQuotes as Array<{ text: string; platform?: string }>)
         .slice(0, 12)
