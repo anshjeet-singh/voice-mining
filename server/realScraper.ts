@@ -20,6 +20,7 @@
  */
 
 import { getCachedScrape, saveCachedScrape } from "./db";
+import { scrapeFacebookGroups } from "./apify";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -608,6 +609,7 @@ const inFlightScrapes = new Map<string, Promise<string>>();
 
 /** Per-source line caps keep the blob diverse instead of one source dominating. */
 const SOURCE_CAPS: Record<string, number> = {
+  facebook_groups: 60,
   reddit_comments: 120,
   reddit: 45,
   youtube_comments: 120,
@@ -666,12 +668,31 @@ export async function scrapeInternetForKeyword(
   return scrapePromise;
 }
 
+/** Search-engine link finder injected into the Apify Facebook groups miner. */
+async function findGroupLinksViaSearch(query: string): Promise<string[]> {
+  const links: string[] = [];
+  if (process.env.SERP_API_KEY) {
+    const data = await serpFetch({ engine: "google", q: query, num: "10" }).catch(
+      () => ({}) as Record<string, unknown>
+    );
+    for (const r of (data.organic_results as Array<Record<string, string>> | undefined) ?? []) {
+      if (r.link) links.push(r.link);
+    }
+  }
+  if (links.length === 0) {
+    for (const r of await ddgSearch(query).catch(() => [])) {
+      if (r.url) links.push(r.url);
+    }
+  }
+  return links;
+}
+
 async function doScrape(
   keyword: string,
   _platforms: string[],
   onProgress?: ScrapeProgress
 ): Promise<string> {
-  onProgress?.("Scraping Reddit threads, YouTube comments, Hacker News, Trustpilot, Google, DuckDuckGo, Quora, news...");
+  onProgress?.("Scraping Reddit threads, Facebook groups, YouTube comments, Hacker News, Trustpilot, Google, DuckDuckGo, Quora, news...");
 
   // Run all scrapers in parallel for maximum speed
   const [
@@ -685,6 +706,7 @@ async function doScrape(
     twitterResults,
     newsResults,
     googleTrends,
+    facebookResults,
   ] = await Promise.all([
     scrapeRedditConversations(keyword),
     scrapeHackerNews(keyword),
@@ -696,6 +718,7 @@ async function doScrape(
     scrapeTwitter(keyword),
     scrapeNews(keyword),
     fetchGoogleTrends(keyword),
+    scrapeFacebookGroups(keyword, findGroupLinksViaSearch),
   ]);
 
   const trendResults: ScrapedConversation[] = [
@@ -705,6 +728,7 @@ async function doScrape(
 
   const sourceGroups: ScrapedConversation[][] = [
     redditResults,
+    facebookResults,
     youtubeResults,
     hnResults,
     trustpilotResults,
