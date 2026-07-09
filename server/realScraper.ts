@@ -155,6 +155,48 @@ function walkRedditComments(children: RedditChild[], out: string[], depth = 0) {
   }
 }
 
+/**
+ * Fallback when Reddit's API is unreachable (anonymous JSON now 403s and no
+ * OAuth app is configured): pull Reddit threads through Google/DDG search.
+ * Snippets are thinner than full comment threads, but real market language
+ * beats zero Reddit signal.
+ */
+async function scrapeRedditViaSearch(keyword: string): Promise<ScrapedConversation[]> {
+  const results: ScrapedConversation[] = [];
+  const queries = [
+    `site:reddit.com ${keyword}`,
+    `site:reddit.com ${keyword} "anyone else" OR "am I the only one" OR advice`,
+  ];
+  await Promise.allSettled(
+    queries.map(async (q) => {
+      // Both engines can slip ads/off-site results past the site: operator,
+      // so only trust results whose URL is actually a reddit thread.
+      const isReddit = (url?: string) => !!url && /(^|\.)reddit\.com\//i.test(url.replace(/^https?:\/\//, ""));
+      if (process.env.SERP_API_KEY) {
+        const data = await serpFetch({ engine: "google", q, num: "10" }).catch(
+          () => ({}) as Record<string, unknown>
+        );
+        const organic = (data.organic_results as Array<Record<string, string>> | undefined) ?? [];
+        for (const r of organic) {
+          if (!isReddit(r.link)) continue;
+          if (r.title) results.push({ platform: "reddit", text: r.title.replace(/ ?[:|-] r\/\w+.*$/i, ""), source: r.link });
+          if (r.snippet && r.snippet.length > 40) results.push({ platform: "reddit", text: r.snippet, source: r.link });
+        }
+      } else {
+        for (const r of await ddgSearch(q).catch(() => [])) {
+          if (!isReddit(r.url)) continue;
+          if (r.title) results.push({ platform: "reddit", text: r.title, source: r.url });
+          if (r.snippet && r.snippet.length > 40) results.push({ platform: "reddit", text: r.snippet, source: r.url });
+        }
+      }
+    })
+  );
+  if (results.length) {
+    console.log(`[realScraper] Reddit via search fallback: ${results.length} snippets (add REDDIT_CLIENT_ID/SECRET for full comment threads)`);
+  }
+  return results;
+}
+
 /** Search Reddit for the keyword and mine full comment threads from top posts. */
 export async function scrapeRedditConversations(keyword: string): Promise<ScrapedConversation[]> {
   const results: ScrapedConversation[] = [];
@@ -215,6 +257,10 @@ export async function scrapeRedditConversations(keyword: string): Promise<Scrape
     );
   } catch (err) {
     console.warn("[realScraper] Reddit unavailable:", String(err).slice(0, 120));
+  }
+  // API path came back empty (403s without OAuth creds): fall back to search
+  if (results.length === 0) {
+    return scrapeRedditViaSearch(keyword);
   }
   return results;
 }
