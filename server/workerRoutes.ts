@@ -24,6 +24,7 @@ import {
 import { normalizeInsights } from "@shared/reportContent";
 import type { InsightList } from "../drizzle/schema";
 import { stageAllDocTypes, stageContract, stagePromptSpec, type FunnelType } from "./stages";
+import { fetchForeplayWinningAds } from "./foreplay";
 
 /** True when the request carries the correct worker bearer token. */
 export function isWorkerAuthorized(authHeader: string | undefined, secret: string): boolean {
@@ -135,7 +136,15 @@ export function registerWorkerRoutes(app: Express) {
           : docs
               .filter((d) => d.kind === "foundation" || d.kind === "deliverable")
               .map((d) => ({ title: d.title, docType: d.docType, content: d.content }));
-      const research = await renderResearchForClient(job.clientId);
+      let research = await renderResearchForClient(job.clientId);
+      // Ads stage: attach live Foreplay winners for the niche as pattern
+      // models (angles and hooks, never words to copy).
+      if (job.type === "ads") {
+        const foreplay = await fetchForeplayWinningAds(client.niche).catch(() => "");
+        if (foreplay) {
+          research = `${research}\n\n# FOREPLAY WINNING ADS IN THIS NICHE (live, longest-running: proven spenders. Model the angles and proof types, never copy the words)\n\n${foreplay}`;
+        }
+      }
 
       res.json({
         job: {
