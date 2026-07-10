@@ -16,3 +16,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180001 · client: Trent Kus -->
 - The skill frames word-for-word scripts as always-wrong AI slop, but agency funnel deliverables sometimes hard-require full breakout scripts (a "video scripts" doc where every script is written out). Add a first-class WORD_FOR_WORD variant to the SOP: keep the FAQ four-beat (Question, Answer, Why-now, Social proof) plus first person and an end-on-reframe sentence, and REQUIRE a "freestyle from these beats, do not read verbatim" recording note at the top of every script. This resolves the tension instead of leaving the writer to reconcile the skill against the deliverable spec each time.
+
+<!-- 2026-07-10 · job 180002 · client: Trent Kus -->
+- The WORD_FOR_WORD variant (keep the FAQ four-beat plus first person plus an end-on-reframe sentence, and require a "freestyle from these beats, do not read verbatim" note) is now battle-tested across multiple Trent runs and should be promoted from a per-client learning to a first-class mode in the SOP, so agency "video scripts" docs stop reconciling the bullets-only default against the deliverable spec each build.

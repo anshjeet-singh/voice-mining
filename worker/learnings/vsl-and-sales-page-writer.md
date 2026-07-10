@@ -20,3 +20,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180001 · client: Trent Kus -->
 - Add a compliance gate for regulated niches (funding, credit, finance, health) to the Voice and craft rules: strip quantified approval-adjacent claims and provider-performance ratios from client-facing spoken copy even when the client says them and the offer doc contains them (e.g. "$360,000 over a year", "nine times out of ten"). Replace with "run your own margins" invitations and unquantified capability statements. This currently lives only in per-client learnings and gets rediscovered each build.
+
+<!-- 2026-07-10 · job 180002 · client: Trent Kus -->
+- The headline-swipe appendix's guarantee rule (ban "guaranteed" when the client's own positioning disowns guarantees) is correct but easy to miss when a reviewer's feedback is simply "make the headlines stronger". Surface it at the top of the bank-composition rule as a hard gate, because for funding/credit/health clients the strongest-sounding power word is the one that contradicts the qualifier section and burns trust.
