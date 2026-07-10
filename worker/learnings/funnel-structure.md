@@ -9,3 +9,7 @@ Accumulated craft lessons applied on every run.
 - The framework's copy-quality-bar warns against the diagnosis-as-headline anti-pattern but does not remind the writer that fee-size words in the headline ("Big", "Huge") pre-agitate the price objection on cold traffic. Add a headline rule: name the pay MODEL as the differentiator, never the size of the fee.
 - Add a compliance note to the framework for regulated/financial niches: keep quantified approval-adjacent claims (odds like "nine times out of ten", stated multi-figure ROI like "$360,000 over a year") off the page, since Meta restricted categories flag them. Reframe as "run your own margins" and let the reader do the arithmetic.
 - The subheadline spec should warn against the run-on stack (closing five to seven loops in one sentence). State the rule: the subhead makes the ONE promise the headline didn't, plus the top 2-3 objections killed, and nothing more.
+
+<!-- 2026-07-10 · framework mining session -->
+- Brown's Evaluate rule (frameworks/dr-masters-scavenge.md section 1): ship the minimum viable funnel first and let the market vote before enhancing. When a funnel underperforms, diagnose in Wojo's order: offer, then messaging, then creative, then landing page, then channel. Never start at creative.
+- Page copy blocks should pull from McLaughlin's 56 written-copy templates (frameworks/mclaughlin-language-patterns.md section 13): qualifier-in and qualifier-out lines, one-piece value math at the close, and end every section on the wanted representation, never on the pain.

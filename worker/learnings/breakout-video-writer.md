@@ -10,3 +10,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-09 · job 120003 · client: Trent Kus -->
 - The four-beat FAQ framework's mandatory "social proof" beat assumes a deep, reusable result pool. When only a handful of named, screenshot-gated wins exist (here four across eight funding videos), two of the videos have no fitting fresh win and must lean on mechanism or margin-math to satisfy the beat. The skill should state plainly that a first-principles or structural proof (e.g., "nobody stacks their fee on the back end unless they intend to get you funded") legitimately satisfies the proof beat when no result fits, so writers do not force an irrelevant screenshot onto a video just to check the box. (This extends the existing distribute-the-wins learning with the specific "structural proof counts as proof" rule.)
+
+<!-- 2026-07-10 · framework mining session -->
+- Each objection-focused breakout should be built from 3 to 5 Sleight of Mouth patterns for that one objection, never all 18 (frameworks/mclaughlin-language-patterns.md section 8), and per SPIN, frame the video to PREVENT the objection by building need before capability claims rather than rebutting it after (frameworks/rackham-spin-selling.md).
