@@ -22,3 +22,8 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180004 · client: Trent Kus -->
 - Step 5's SMS block was fixed in prior runs, but the email side of Branch B still names only pre-call-email-writer and email-campaign-writer as the child skills, with no explicit home for the no-show-and-post-call recovery deliverable. Name the recovery track explicitly (no-show recovery + post-call follow-up) and route its structure to the pre-call-email-writer no-show section plus the post-webinar follow-up anatomy, so the deliverable is not assembled ad hoc from a prompt spec each run.
+
+<!-- 2026-07-10 · job 180004 · client: Trent Kus -->
+- Step 5's SMS companion spec (the call-branch list) is missing two texts that the deliverable is now expected to include: a "post-call follow-up" text. The list currently stops at the no-show rebook. Add the post-call follow-up to the call-branch SMS enumeration so it is not left to the writer to infer.
+- The Step 5 SMS rules omit the TCPA opt-out requirement. Add: the first text in every SMS set carries "Reply STOP to opt out," and that opt-out line does not count against the one-CTA rule. It is easy to drop under a tight character budget, so it should be stated explicitly.
+- Step 5 names only the generic email placeholders. The SMS set needs its own standardized placeholder trio, [PRE-CALL HUB LINK] (asset nudge), [CALL LINK] (the calendar join link the reminders point at), and [BOOKING LINK] (reschedule), distinct from the email placeholders. Name these in the skill so writers do not re-derive them and risk inventing URLs.
