@@ -13,3 +13,7 @@ Accumulated craft lessons applied on every run.
 <!-- 2026-07-10 · framework mining session -->
 - Brown's Evaluate rule (frameworks/dr-masters-scavenge.md section 1): ship the minimum viable funnel first and let the market vote before enhancing. When a funnel underperforms, diagnose in Wojo's order: offer, then messaging, then creative, then landing page, then channel. Never start at creative.
 - Page copy blocks should pull from McLaughlin's 56 written-copy templates (frameworks/mclaughlin-language-patterns.md section 13): qualifier-in and qualifier-out lines, one-piece value math at the close, and end every section on the wanted representation, never on the pain.
+
+<!-- 2026-07-10 · job 180002 · client: Trent Kus -->
+- The framework should note that a client may constrain the ranked headline set to one named framework for the first N variants (e.g. "first 5 Sabri Suby only, then 3 others"). The spec currently implies a free mix across all patterns, so a writer has no rule for honoring that constraint or for labeling each option with its source framework. Add: label every ranked headline option with the framework it came from.
+- Financial-niche compliance note for the headline's "without" clause: when the offer has any real upfront component, the "without [fee]" promise must describe the pay MODEL accurately (e.g. "without paying my real fee until the money lands"), never imply zero upfront cost. A punchy but false "not a dime in fees" clause trips both accuracy and a financial-services review.
