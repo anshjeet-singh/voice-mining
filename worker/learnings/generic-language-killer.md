@@ -25,3 +25,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180009 · client: Trent Kus -->
 - The SKILL.md is a near-empty stub; its actual banned-word list and the domain-term carve-out (for example, financial "leverage" must survive in a 0%-funding niche) live only in the learnings file. Promote the banned-word list and the carve-out rule into the skill itself so the polish pass is reproducible without the learnings context, and so a writer does not strip real mechanism language.
+
+<!-- 2026-07-10 · job 180009 · client: Trent Kus -->
+- The SKILL.md is still a bare stub ("identify generic phrases, replace with specifics") with no banned-word list and no locked-line guardrail. On a paid-ad pass it would strip load-bearing plain-spoken brand assets (Trent's "I don't have a magic eraser" disclaimer, "I only get paid when you get funded") as "weak/generic." Seed it with the copy-quality-bar banned-word list (leverage, unlock, empower, elevate, journey, seamless, comprehensive, holistic), add the operative test "if this line could have been written without the research, rewrite it using the research," and add an explicit rule: never strip lines the deliverable marks as locked/verbatim or compliance-required, and carve out domain terms that only look banned (financial "leverage" in a 0%-card funding niche is real mechanism language, not fluff).
