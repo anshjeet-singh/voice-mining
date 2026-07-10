@@ -19,3 +19,6 @@ Accumulated craft lessons applied on every run.
 <!-- 2026-07-10 · job 180003 · client: Trent Kus -->
 - Step 5's SMS block should standardize the two placeholders the call-branch SMS set needs but the base placeholder set (`[BOOKING LINK]`, `[VSL LINK]`, `[COMMUNITY LINK]`) does not cover: `[CALL LINK]` (the calendar event's join link, used by the reminders) and `[PRE-CALL HUB LINK]` (the asset nudge). Without this, each writer re-derives them and risks inventing URLs.
 - Step 5's SMS rules should explicitly require a "Reply STOP to opt out" on the first text of every marketing SMS set. It is a legal (TCPA) requirement, it does not count as the text's one CTA, and it is easy to omit since the character budget is tight.
+
+<!-- 2026-07-10 · job 180004 · client: Trent Kus -->
+- Step 5's SMS block was fixed in prior runs, but the email side of Branch B still names only pre-call-email-writer and email-campaign-writer as the child skills, with no explicit home for the no-show-and-post-call recovery deliverable. Name the recovery track explicitly (no-show recovery + post-call follow-up) and route its structure to the pre-call-email-writer no-show section plus the post-webinar follow-up anatomy, so the deliverable is not assembled ad hoc from a prompt spec each run.
