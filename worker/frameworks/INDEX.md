@@ -39,6 +39,7 @@ VSL + video scripts (breakouts, call-confirmed):
 - mclaughlin-language-patterns.md (spoken copy may also use punctuation and phonological ambiguity, future pacing, Cartesian logic close)
 
 Emails + SMS:
+- cc-email-swipe-style.md (THE style contract: ConvertKit merge tags, skeleton, sign-off nickname, P.S. rules, formatting density)
 - emails-and-booking.md, suby-email-machine.md
 - haynes-scaling-systems.md section 4 (the 30 to 90 day sequence shape, segmentation, never ascend before value)
 - mclaughlin-language-patterns.md section 11 (chaining modal operators for cold lists, time-released suggestions across a sequence)

@@ -1,16 +1,21 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 
 /**
  * Renders a markdown document the way claude.ai does: clear headings, bold
  * labels, real tables. Used for foundation docs and any long-form AI output.
+ * rehype-raw enables inline HTML like <u> so email deliverables carry
+ * underlines that survive a rich-text copy-paste into ConvertKit.
  */
 export function MarkdownDoc({ content }: { content: string }) {
   return (
     <div className="text-sm leading-relaxed">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
         components={{
+          u: ({ children }) => <u className="underline underline-offset-2">{children}</u>,
           h1: ({ children }) => (
             <h1 className="text-lg font-semibold text-foreground tracking-tight mt-2 mb-3 pb-2 border-b border-border/50">
               {children}
