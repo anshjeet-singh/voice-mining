@@ -85,8 +85,11 @@ describe("stage registry", () => {
       "email_noshow_followup",
       "sms_set",
     ]);
-    expect(call.outputs[1].description).toContain("value-loaded");
+    expect(call.outputs[1].description).toContain("value-INTENSIVE");
+    expect(call.outputs[1].description).toContain("FAQ email");
     expect(call.outputs[1].description).toContain("24h and 3h reminders");
+    expect(call.outputs[0].description).toContain("named asset");
+    expect(call.outputs[3].description).toContain("14-day community track");
     expect(call.outputs[2].description).toContain("no-show recovery");
     expect(call.outputs[2].description).toContain("post-call follow-up");
     // Webinar funnel: pre-webinar show-up + post-webinar replay/close

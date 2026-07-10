@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 
 /**
@@ -12,7 +13,7 @@ export function MarkdownDoc({ content }: { content: string }) {
   return (
     <div className="text-sm leading-relaxed">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkBreaks]}
         rehypePlugins={[rehypeRaw]}
         components={{
           u: ({ children }) => <u className="underline underline-offset-2">{children}</u>,
