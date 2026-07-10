@@ -21,3 +21,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180004 · client: Trent Kus -->
 - The skill explicitly disclaims SMS ("SMS sequences, email only") yet its voice, subject/pretext discipline, and no-show reschedule psychology are exactly what the SMS set has to mirror. A one-line pointer ("for the companion SMS set, apply these voice rules under the mother skill's Step 5 length limits") would stop the SMS writer from having to reverse-engineer the connection.
+
+<!-- 2026-07-10 · job 180005 · client: Trent Kus -->
+- The skill is named for the 72-hour post-booking window (14 emails, "the email IS the consumable," 600 to 1,200 words each), but its name is what the orchestrator matches for the 14-DAY pre-booking community nurture, which is the opposite animal: one email per DAY, short and P-group (150 to 280 words, skimmable in 20 seconds), governed by emails-and-booking.md's fixed 14-angle arc and the cc-email-swipe-style skeleton. This mismatch has now recurred across multiple runs. A one-line disambiguation at the very top of SKILL.md ("post-booking pre-call = go long, install beliefs, 72h; pre-booking community nurture = go short, get the click, 14 days, see emails-and-booking.md") would stop the wrong length/cadence being reached for.
