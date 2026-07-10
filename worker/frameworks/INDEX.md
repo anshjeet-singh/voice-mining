@@ -46,6 +46,7 @@ Emails + SMS:
 
 Ads (scripts, hooks, batches):
 - ad-script-system.md (THE process: diversification engine, hook bank, 5 formats, batch checklist)
+- static-render-rules.md (HARD contract for rendered statics: the skill's build pipeline, CTA slot rule, no generated humans, mandatory visual QA loop)
 - haynes-scaling-systems.md section 1 (the Forester architecture around the DR campaign)
 - brunson-traffic-secrets.md (dream 100, hook-story-offer), hooks-and-proof.md, acq-prompt-playbook.md
 
