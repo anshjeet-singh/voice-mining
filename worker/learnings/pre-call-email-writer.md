@@ -36,3 +36,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180005 · client: Trent Kus -->
 - The skill explicitly disclaims SMS ("email only"), yet its voice rules, no-show psychology, and "every reminder carries standalone value" principle are exactly what the SMS companion has to inherit. Add a one-line pointer from this skill to the orchestrator's SMS spec so the SMS writer knows to mirror this skill's voice under the 320-character limit, rather than treating SMS as out of scope with no bridge.
+
+<!-- 2026-07-10 · job 180006 · client: Trent Kus -->
+- This skill is calibrated to the 72-hour post-booking window (14 hour-stamped emails, "the email IS the consumable," 600-1,200 words each) and gets repeatedly mis-applied to the 14-DAY community-join nurture, which is the opposite animal: one short email per DAY (~150-280 words), skimmable in 20 seconds, governed by emails-and-booking.md (the 14-angle arc) + cc-email-swipe-style.md (format) + suby-email-machine.md (P-group delivery). Add a routing note at the top of the SKILL.md that names the 14-day community nurture as OUT of scope and points to those three frameworks, so downstream writers stop reaching for the post-booking shape.
