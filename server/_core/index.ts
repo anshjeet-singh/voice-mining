@@ -36,6 +36,10 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerOAuthRoutes(app);
+  // Deploy verification: Render injects RENDER_GIT_COMMIT into every deploy
+  app.get("/api/healthz", (_req, res) => {
+    res.json({ ok: true, commit: process.env.RENDER_GIT_COMMIT ?? "unknown" });
+  });
   // Scheduled endpoints (must be mounted before Vite/static fallthrough)
   app.post("/api/scheduled/trend-refresh", trendRefreshHandler);
   // Client OS: endpoints polled by the local Mac worker
