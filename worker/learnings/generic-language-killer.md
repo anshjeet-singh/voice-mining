@@ -16,3 +16,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180006 · client: Trent Kus -->
 - The skill is a bare stub ("remove vague/fluff/buzzwords, replace with specifics") with no guardrail against stripping deliberately plain, on-brand copy. On a recovery-email pass it will read a founder's honest disclaimer ("I don't have a magic eraser, I can't make real things vanish") or a compliance hedge ("No guaranteed numbers, just the truth about your file") as weak/generic and delete it, when those lines are load-bearing brand and legal assets. Add a rule: never strip lines the deliverable flags as locked/verbatim or compliance-required; plainness chosen for trust is not the vagueness this skill removes. Strip corporate fog, preserve deliberate bluntness.
+
+<!-- 2026-07-10 · job 180008 · client: Trent Kus -->
+- The SKILL.md is a bare stub (identify generic phrases, replace with specifics) with no client-specific carve-out mechanism. On this build it would happily strip on-brand, deliberately-kept assets like Trent's "magic eraser" disclaimer and his verbatim locked lines ("I only get paid when you get funded"). Add a one-line rule that a polish pass must not remove phrases the approved foundation/funnel docs mark as locked or verbatim, even when they read like plain speech.
