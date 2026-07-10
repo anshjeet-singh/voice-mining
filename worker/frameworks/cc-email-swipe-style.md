@@ -7,7 +7,8 @@ Source: the agency's [CC] Emails Swipe File (Google Doc, read in full: 5 sequenc
 - Emails ship in ConvertKit. First name is ALWAYS the merge tag {{ subscriber.first_name }}, exactly like that, never [FIRST NAME] or a made-up name.
 - SMS ships in GHL and uses GHL merge fields ({{contact.first_name}}), stays under 320 characters, one link, one CTA.
 - Every email is written so the rendered doc can be copy-pasted straight into ConvertKit: markdown bold (**text**), italics (*text*), and underline (<u>text</u>) only. No tables inside email bodies, no code blocks, no images.
-- Links: never invent URLs. Use [BOOKING LINK], [VSL LINK], [COMMUNITY LINK], [ZOOM LINK], [CALENDAR LINK] placeholders as the link target, with real anchor text.
+- Links: never invent URLs. Use [VSL LINK], [COMMUNITY LINK], [ZOOM LINK], [CALENDAR LINK] placeholders as the link target, with real anchor text.
+- THE CTA DESTINATION FOR ALL NURTURE AND RECOVERY EMAILS IS [VSL LINK]. In our call funnels the VSL page IS the booking page: one URL. Never write [BOOKING LINK] as a separate destination. The only other links that ever appear: [ZOOM LINK] and [CALENDAR LINK] in post-booking logistics emails, [COMMUNITY LINK] when pointing back into Skool.
 
 ## The email skeleton (every email, in this order)
 
@@ -29,12 +30,14 @@ Source: the agency's [CC] Emails Swipe File (Google Doc, read in full: 5 sequenc
 - Objection emails quote the objection in the subject and first line, in quotes, then dismantle it with one story and one reframe.
 - Scarcity is only ever real: live-attendee bonuses, founding-member caps, price changes. Named bonus + dollar value + the word LIVE.
 - Voice: contractions, "ur" and "tmrw" style shorthand in subjects only (body stays clean), zero corporate tone, no em dashes anywhere.
+- Casing: lowercase casual is the default (about 80% of clients). EXCEPTION: if the ICP skews 40+/50+, switch to straighter sentence-case email copy. Check the approved ICP Snapshot's age range before writing.
+- Emoji: use whatever the swipe file uses where it fits. The three workhorses, good in almost every email: the green tick (benefit stacks and checklists), the red cross (myth busting and what-you-don't-need lists), and the pointing hand (flanking CTA link lines). No banned emojis, just never decorate for decoration's sake.
 
 ## The sequence map (which emails exist)
 
 The swipe file's five-sequence architecture, generalized:
 1. Community onboarding (14 day): welcome + toolkit, myth/mechanism emails, case-study emails (one per avatar path), objection emails, urgency close. Every email CTAs to ONE next step (the onboarding call / VSL / booking page).
-2. Show-up reminders (post-registration or post-booking): confirmation with link + calendar + what-we-cover + live-only bonus, then value-loaded reminders at decreasing distance (4 days, 3 days, 2 days, tomorrow, today/hours). Short, logistics up top, one value beat, live bonus restated. These are the shortest emails in the system.
+2. Show-up reminders (post-registration or post-booking): confirmation with link + calendar + what-we-cover + live-only bonus, then value-loaded reminders at decreasing distance. Short, logistics up top, one value beat, live bonus restated. These are the shortest emails in the system. CALL FUNNELS: the booking window is ALWAYS 3 days out at most, so the post-booking sequence is exactly: instant confirmation, day-1 value email, day-2 value email, 24h reminder, 3h reminder. Never write a week-long show-up arc for a call.
 3. Attended follow-up: "u were on it, u know it works" recap, the offer restated, case study, deadline.
 4. No-show recovery: "u missed it (others didn't)" without shaming, replay or rebook path, objection handling, final "in or out?".
 5. Ascension/upsell: congrats + first move, where to start, what's-happening-inside social proof, DFY invitation, price-anchor comparison.

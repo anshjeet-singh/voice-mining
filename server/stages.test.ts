@@ -87,7 +87,8 @@ describe("stage registry", () => {
   it("carries the 14-day community sequence and link placeholders in the emails stage", () => {
     const spec = stagePromptSpec("emails", "call")!;
     expect(spec.outputs[0].description).toContain("FREE Skool community");
-    expect(spec.extraInstructions).toContain("[BOOKING LINK]");
+    expect(spec.extraInstructions).toContain("THE CTA DESTINATION IS ALWAYS [VSL LINK]");
+    expect(spec.extraInstructions).toContain("never emit a separate [BOOKING LINK]");
     expect(spec.outputs[0].description).toContain("14-day");
   });
 });
