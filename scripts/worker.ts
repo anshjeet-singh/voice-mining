@@ -10,7 +10,7 @@
  * Env: APP_URL, WORKER_SECRET, SKILLS_DIR (claude.ai skills cache, read-only),
  *      LEARNINGS_DIR (defaults to <repo>/worker/learnings)
  */
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
@@ -124,6 +124,36 @@ async function saveCraftLessons(raw: string, jobId: number, clientName: string) 
   }
 }
 
+/**
+ * Spawn headless Claude Code with stdin CLOSED. Recent claude CLI versions
+ * stall then error on an open-but-empty stdin pipe ("no stdin data received
+ * in 3s"), which is exactly what promisified execFile hands them. spawn with
+ * stdio ignore is the equivalent of `< /dev/null`. Captures a stderr tail so
+ * a failed run reports the real error, not just "Command failed".
+ */
+function runClaude(args: string[], cwd: string, timeoutMs: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(CLAUDE_BIN, args, { cwd, stdio: ["ignore", "ignore", "pipe"] });
+    let stderr = "";
+    child.stderr.on("data", (d: Buffer) => {
+      stderr = (stderr + d.toString()).slice(-4000);
+    });
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error(`claude timed out after ${Math.round(timeoutMs / 60000)}m. stderr: ${stderr.trim()}`));
+    }, timeoutMs);
+    child.on("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (code === 0) return resolve();
+      reject(new Error(`claude exited ${code}. stderr: ${stderr.trim() || "(empty)"}`));
+    });
+  });
+}
+
 /** Run ONE deliverable in its own temp dir with its own headless Claude Code. */
 async function runDeliverable(job: ClaimedJob, output: StageOutputSpec) {
   const jobDir = await fs.mkdtemp(path.join(os.tmpdir(), `${job.type}-${job.id}-${output.docType}-`));
@@ -136,8 +166,7 @@ async function runDeliverable(job: ClaimedJob, output: StageOutputSpec) {
   await fs.writeFile(promptFile, prompt);
 
   console.log(`[job ${job.id}] ${output.title}: running headless Claude Code (${WORKER_MODEL}, effort ${WORKER_EFFORT}) ...`);
-  await exec(
-    CLAUDE_BIN,
+  await runClaude(
     [
       "-p",
       `Follow the instructions in ${promptFile} exactly.`,
@@ -147,7 +176,8 @@ async function runDeliverable(job: ClaimedJob, output: StageOutputSpec) {
       WORKER_EFFORT,
       "--dangerously-skip-permissions",
     ],
-    { cwd: jobDir, timeout: CLAUDE_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 }
+    jobDir,
+    CLAUDE_TIMEOUT_MS
   );
 
   const files = await readJobDir(jobDir);
