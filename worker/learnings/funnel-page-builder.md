@@ -19,3 +19,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-09 · job 120004 · client: Trent Kus -->
 - CALENDLY mode defines the four booking questions but neither it nor the framework's Page 2 anatomy specifies routing logic for the low-intent answer on Q3 ("Just exploring for now"). Add a rule: route that answer to the community link, not the calendar, so it does double duty as a show-quality filter rather than letting tyre-kickers book.
+
+<!-- 2026-07-10 · job 180001 · client: Trent Kus -->
+- The booking-page guidance is incomplete for a Branch B call funnel. CALENDLY mode supplies the four questions but nothing on flow architecture, so a writer building strictly to it produces a naive two-page booking flow. Add to the booking-page structure: (1) the application and scheduler are ONE integrated step (time-slot selection is the final form field, never a separate "pick a time" page, because splitting them costs roughly 50% drop-off and doubles cost per call), and (2) a disqualified (DQ) outcome page distinct from the confirmation page, with a soft next step (community/drop-sell) and the pixel rule that Schedule / Complete Registration fires only on the qualified confirmation page. Cross-reference call-funnel-blueprint, which carries these rules today while funnel-page-builder does not.
