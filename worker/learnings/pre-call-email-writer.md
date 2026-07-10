@@ -48,3 +48,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180008 · client: Trent Kus -->
 - The swipe appendix models a sign-off with an em-dash ("— [Founder first name]"), which conflicts with the orchestrator's hard "no em-dashes anywhere" file spec and with the cc-email-swipe-style rotating-nickname sign-off. Note the conflict in the appendix and state the resolution (dash-free "To your success," + Trent "<nickname>" Kus) so each run does not have to re-derive it.
+
+<!-- 2026-07-10 · job 180008 · client: Trent Kus -->
+- The orchestrator's show-up subset spec asks for "one straight FAQ email" as a distinct email, but the locked 7-email show-up spine (confirmation, proof, mechanism, homework, qualifier, 24h, 3h) has no FAQ slot, and adding an 8th email breaks the compression tiers that assume exactly E1 to E7. In practice the FAQ job (is it a pitch, timeline, cost) folds cleanly into the qualifier email as a short "answered before you ask" beat. The skill should note that when the FAQ email would push the spine past its locked count, its content becomes a beat inside the qualifier rather than a standalone send, so the "answer the real pre-call questions" requirement is met without violating the spine or the compression map.
