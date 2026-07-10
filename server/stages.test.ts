@@ -20,7 +20,7 @@ describe("stage registry", () => {
       "ad_statics",
       "ad_campaign_plan",
     ]);
-    expect(call.outputs[1].description).toContain("EXACTLY 12");
+    expect(call.outputs[1].description).toContain("EXACTLY 10");
     expect(call.outputs[1].description).toContain("verification checklist");
     expect(call.outputs[3].description).toContain("Forester");
     expect(call.extraInstructions).toContain("ONE AD, ONE ANGLE");
