@@ -41,3 +41,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180009 · client: Trent Kus -->
 - Step 6 (Ad batch) names the copy child skills (static-and-broll-ad-writer, ad-script-writer, carousel-and-story-ad-writer) and the build skill (static-ad-builder) but never wires in the campaign-architecture layer. The Forester content-ad plan (content-ads-cold-traffic / haynes-scaling-systems section 1) and the compliance pre-flight (meta-ad-restrictions-prep) are the wrapper the creatives run inside, and they are a distinct deliverable from the creatives. Add a line to Step 6 naming the campaign plan (Forester architecture plus compliance pre-flight) as an output alongside the creative batch, so the ad stage produces the machine, not just the ammunition.
+
+<!-- 2026-07-10 · job 210001 · client: Trent Kus -->
+- Step 6 (Ad batch) defines the ad deliverables as a copy batch plus rendered creative and names no written campaign-plan artifact, yet this pipeline expects a `03_campaign_plan.md` (Forester architecture plus compliance pre-flight) as a Step 6 output. Add the campaign plan to the Step 6 spec explicitly, naming content-ads-cold-traffic and meta-ad-restrictions-prep as its source skills and fixing its filename and its references to the sibling angle/script and static/b-roll files.

@@ -13,3 +13,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 210001 · client: Trent Kus -->
 - The SKILL.md is entirely pixel/domain/targeting infrastructure (Special Ad Category, backup conversion events, domain-swap workaround) and contains none of the ad-COPY compliance rules a writer needs (personal-attribute claims, guaranteed amounts, provider ratios, safe rephrasings). Those rules currently live only in the skill's learnings file. Fold a short "ad-copy compliance" reference into the skill body, or cross-link it explicitly, so copy skills that invoke it for a restricted category actually reach the copy rules.
+
+<!-- 2026-07-10 · job 210001 · client: Trent Kus -->
+- The SKILL.md covers only account-infrastructure protection (restriction types, backup event conditioning, pixel firing, domain-swap emergency playbook). The two constraints most needed for a client-facing compliance pre-flight, the Ad-Copy Compliance Gate (stripping guaranteed amounts, quantified approval-adjacent claims, and provider-performance ratios, replacing them with capability statements and "run your own numbers") and the Special Ad Category declaration, exist only in the learnings file, not the skill. Fold both into the SKILL itself so a compliant pre-flight can be produced from the skill alone.
