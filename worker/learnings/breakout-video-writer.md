@@ -13,3 +13,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · framework mining session -->
 - Each objection-focused breakout should be built from 3 to 5 Sleight of Mouth patterns for that one objection, never all 18 (frameworks/mclaughlin-language-patterns.md section 8), and per SPIN, frame the video to PREVENT the objection by building need before capability claims rather than rebutting it after (frameworks/rackham-spin-selling.md).
+
+<!-- 2026-07-10 · job 180001 · client: Trent Kus -->
+- The skill frames word-for-word scripts as always-wrong AI slop, but agency funnel deliverables sometimes hard-require full breakout scripts (a "video scripts" doc where every script is written out). Add a first-class WORD_FOR_WORD variant to the SOP: keep the FAQ four-beat (Question, Answer, Why-now, Social proof) plus first person and an end-on-reframe sentence, and REQUIRE a "freestyle from these beats, do not read verbatim" recording note at the top of every script. This resolves the tension instead of leaving the writer to reconcile the skill against the deliverable spec each time.
