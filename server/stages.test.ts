@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STAGE_ORDER, STAGES, stageContract, stagePromptSpec } from "./stages";
+import { STAGE_ORDER, STAGES, stageAllDocTypes, stageContract, stagePromptSpec } from "./stages";
 
 describe("stage registry", () => {
   it("keeps the mother skill's order and gating chain", () => {
@@ -15,19 +15,23 @@ describe("stage registry", () => {
     const call = stagePromptSpec("ads", "call")!;
     const webinar = stagePromptSpec("ads", "webinar")!;
     expect(call.outputs.map((o) => o.docType)).toEqual([
-      "ad_angles",
       "ad_scripts",
       "ad_statics",
       "ad_campaign_plan",
     ]);
-    expect(call.outputs[1].description).toContain("EXACTLY 10");
-    expect(call.outputs[1].description).toContain("verification checklist");
-    expect(call.outputs[3].description).toContain("Forester");
+    // Angles + scripts merged into one doc
+    expect(call.outputs[0].description).toContain("THE ANGLE MATRIX");
+    expect(call.outputs[0].description).toContain("EXACTLY 10");
+    expect(call.outputs[0].description).toContain("verification checklist");
+    expect(call.outputs[1].description).toContain("FULLY RENDERED");
+    expect(call.outputs[2].description).toContain("Forester");
     expect(call.extraInstructions).toContain("ONE AD, ONE ANGLE");
     expect(call.extraInstructions).toContain("[VSL LINK]");
     expect(webinar.extraInstructions).toContain("[REGISTRATION LINK]");
     expect(call.extraInstructions).toContain("COMPLIANCE GATE");
     expect(call.childSkills.join()).toContain("ad-script-writer");
+    // Retired docTypes still get swept
+    expect(stageAllDocTypes("ads")).toContain("ad_angles");
   });
 
   it("branches the funnel contract on funnel type", () => {

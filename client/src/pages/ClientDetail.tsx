@@ -13,7 +13,6 @@ import {
   FileText,
   FileUp,
   Loader2,
-  Lock,
   Pencil,
   Plus,
   RefreshCw,
@@ -83,9 +82,9 @@ const WORKER_STAGES: Array<{
   {
     id: "ads",
     label: "Ad Creatives",
-    blurb: "Ad Angle Matrix, 12 full video ad scripts, statics + b-rolls, Forester campaign plan",
-    docTypes: ["ad_angles", "ad_scripts", "ad_statics", "ad_campaign_plan"],
-    runningNote: "Generating the angle matrix, writing all 12 ad scripts, statics, and the campaign plan",
+    blurb: "Angles + 10 video ad scripts, 10 rendered statics + 5 b-rolls (PNGs land in the client's Drive Ads folder), Forester campaign plan",
+    docTypes: ["ad_scripts", "ad_statics", "ad_campaign_plan"],
+    runningNote: "Writing the angle matrix and 10 scripts, rendering the statics via ad-factory, building the campaign plan",
   },
 ];
 
@@ -756,18 +755,6 @@ export default function ClientDetail() {
             );
           })}
 
-          {/* ─── Future stage ─── */}
-          <div className="rounded-xl border border-border/30 bg-card/10 p-5 opacity-50">
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full border border-border/40 bg-card/20 flex items-center justify-center flex-shrink-0">
-                <Lock className="w-3 h-3 text-muted-foreground" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-sm font-semibold text-muted-foreground">Ad Creatives</h2>
-              </div>
-              <span className="text-[11px] text-muted-foreground">Coming next</span>
-            </div>
-          </div>
         </div>
       </div>
     </AppShell>
