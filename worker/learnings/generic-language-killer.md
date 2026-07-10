@@ -19,3 +19,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180008 · client: Trent Kus -->
 - The SKILL.md is a bare stub (identify generic phrases, replace with specifics) with no client-specific carve-out mechanism. On this build it would happily strip on-brand, deliberately-kept assets like Trent's "magic eraser" disclaimer and his verbatim locked lines ("I only get paid when you get funded"). Add a one-line rule that a polish pass must not remove phrases the approved foundation/funnel docs mark as locked or verbatim, even when they read like plain speech.
+
+<!-- 2026-07-10 · job 180008 · client: Trent Kus -->
+- On short SMS specifically, add an "end on the wanted representation" check to the polish pass: move any trailing negation off the final position so the text does not close on the word that installs the wrong picture (e.g. "...text me back, no pressure, no chasing" leaves the reader holding "chasing"; rewrite to "...no pressure, just text me back and we'll get you started"). This is the McLaughlin negation/last-word rule applied to texts, where the final word carries disproportionate weight because there is no body copy after it.
