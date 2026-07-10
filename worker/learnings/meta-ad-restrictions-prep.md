@@ -10,3 +10,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180009 · client: Trent Kus -->
 - The skill covers domain-level restrictions, pixel conditioning, and backup events thoroughly but never mentions Meta's Special Ad Categories (Credit, Employment, Housing, Social Issues). For the exact financial-services businesses this skill targets, the Credit Special Ad Category is a separate, mandatory, targeting-level constraint (no age/gender/ZIP, Special Ad Audiences only) that applies before any restriction lands. It belongs in Step 1 or Step 2 as a standing declaration requirement, not just an if-restricted contingency.
+
+<!-- 2026-07-10 · job 210001 · client: Trent Kus -->
+- The SKILL.md is entirely pixel/domain/targeting infrastructure (Special Ad Category, backup conversion events, domain-swap workaround) and contains none of the ad-COPY compliance rules a writer needs (personal-attribute claims, guaranteed amounts, provider ratios, safe rephrasings). Those rules currently live only in the skill's learnings file. Fold a short "ad-copy compliance" reference into the skill body, or cross-link it explicitly, so copy skills that invoke it for a restricted category actually reach the copy rules.
