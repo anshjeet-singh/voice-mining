@@ -124,10 +124,33 @@ export const STAGES: Record<string, StageDef> = {
     extraInstructions: (ft) =>
       `This client runs a ${ft === "webinar" ? "WEBINAR funnel: the sequence set is community nurture, pre-webinar show-up, post-webinar replay and close, SMS" : "CALL funnel (VSL into booked call): the sequence set is community nurture, post-booking show-up, no-show and post-call recovery, SMS"}. THE STYLE CONTRACT IS THE cc-email-swipe-style FRAMEWORK: every email follows its skeleton exactly. Emails ship in ConvertKit: first name is ALWAYS the merge tag {{ subscriber.first_name }}, verbatim. Every email ends "To your success," then the sender name with a topic-matched nickname in quotes that CHANGES per email (e.g. Trent "0%" Kus on the funding email), then a mandatory P.S. that opens tomorrow's loop, restates the CTA with real scarcity, or drops one proof point. ONE CTA per email around ONE core idea; the same destination may repeat up to 3 times, never a second action. Formatting is part of the copy: markdown bold on pains, numbers, mechanism names, and commands; italics on reframes and quoted speech; <u>underline</u> on the one must-hear sentence per email; a formatting touch every 2 to 3 lines, 1 to 2 line paragraphs, never a wall. MODEL THE REFERENCE EMAILS in the pre-call-email-writer and email-campaign-writer skills beat for beat. Quality bar: suby-email-machine and emails-and-booking frameworks (subjects earn the open with curiosity or specificity, never 'Reminder:'), reminder emails ALWAYS deliver standalone value alongside logistics, the arc follows the frameworks INDEX email routing, and P.S. loops must actually connect across the sequence. THE CTA DESTINATION IS ALWAYS [VSL LINK]: in our call funnels the VSL page IS the booking page, one URL, so never emit a separate [BOOKING LINK]. Other placeholders: [ZOOM LINK] and [CALENDAR LINK] for post-booking logistics, [COMMUNITY LINK], [CALL CONFIRMED VIDEO], and [PROOF: ...], never invented URLs or fabricated results. Emails reference the community's actual name and pinned content from the approved Skool docs and carry the core promise from the approved funnel docs word for word. SMS ships in GHL with {{contact.first_name}}, in the client's texting voice: contractions, no corporate tone, no emoji unless the client's voice material uses them.`,
   },
+  ads: {
+    type: "ads",
+    label: "Ad Creatives",
+    requires: "emails",
+    motherStep: "Step 6 (Ad creatives)",
+    childSkills: () => [
+      "ad-script-writer",
+      "static-and-broll-ad-writer",
+      "static-ad-builder",
+      "carousel-and-story-ad-writer",
+      "meta-ad-restrictions-prep",
+      "venus-fly-trap-ad-strategy (context for the campaign plan)",
+      "generic-language-killer (polish pass)",
+    ],
+    docs: () => [
+      { docType: "ad_angles", filename: "01_ad_angles.md", title: "Ad Angle Matrix", description: "The diversification engine output per the ad-script-system framework: 2-4 sub-avatars from the approved ICP Snapshot, 30+ buying reasons worked across all ten categories (functional, emotional, social, financial, time, risk, status, identity, situational, comparative), then the 12 selected batch angles ranked, each tagged with sub-avatar, buying-reason category, hook category, production format, and awareness level. The market's verbatims from the research attached to each angle" },
+      { docType: "ad_scripts", filename: "02_video_ad_scripts.md", title: "Video Ad Scripts", description: "EXACTLY 12 full-length video ad scripts (30-90s spoken, ~60s ideal), numbered, one per angle from the Ad Angle Matrix, written word for word: hook, body, CTA. Each script headed by sub-avatar, angle, script format (Pain/Desire/Proof/Curiosity/Controversial), hook archetype, awareness level, and destination. The batch MUST pass the ad-script-system verification checklist: 3+ sub-avatars, 5+ hook categories, 5+ production formats, no hook flows onto another ad's body" },
+      { docType: "ad_statics", filename: "03_static_and_broll_ads.md", title: "Static + B-Roll Ads", description: "10 static image ad concepts (headline, primary text 2-4 lines, one-paragraph visual brief written so a designer or the ad-factory renderer can produce it without questions) plus 5 b-roll caption ads (on-screen text lines timed to generic footage, with a footage brief). Statics and b-rolls reuse the strongest angles from the matrix, never new unvalidated ones" },
+      { docType: "ad_campaign_plan", filename: "04_campaign_plan.md", title: "Campaign Plan", description: "The Forester content-ad architecture from the haynes-scaling-systems framework sized to THIS client: content inventory audit into Cycle Bin 1 (pure views) and Cycle Bin 2 (strategic, no CTAs), 3-second exclusion setup, retention window from the client's sales cycle, budget split table, naming conventions, plus the DR campaign structure the 12 scripts feed into, and a compliance pre-flight per meta-ad-restrictions-prep for this niche" },
+    ],
+    extraInstructions: (ft) =>
+      `ONE AD, ONE ANGLE: hook, body, and CTA all serve a single angle for a single sub-avatar; if a hook could sit on another ad's body, the batch fails. Every destination is ${ft === "webinar" ? "[REGISTRATION LINK] (the webinar registration page)" : "[VSL LINK] (the VSL page, which IS the booking page)"}. REAL PROOF ONLY: named people, real numbers, real timeframes from the approved docs and research, [PROOF: ...] placeholders where proof is pending, never fabricated results, students, or scarcity. COMPLIANCE GATE: for regulated niches (funding, credit, finance, health), strip quantified approval-adjacent claims and provider-performance ratios from ad copy even when the client says them; replace with capability statements and 'run your own numbers' invitations, and flag every risky line in the campaign plan's compliance section. Hooks follow the ad-script-system hook bank: statements over questions, the market's exact self-descriptions from the research, specificity over adjectives, never 'if you're an agency owner' style category call-outs. Name the mechanism, never tutorial it: the funnel does the teach. Write in the client's voice from the approved brand doc. Read every script aloud: contractions throughout, no AI cadence, no em dashes anywhere.`,
+  },
 };
 
 /** Stage order for gating and UI. */
-export const STAGE_ORDER = ["foundation", "skool", "funnel", "emails"] as const;
+export const STAGE_ORDER = ["foundation", "skool", "funnel", "emails", "ads"] as const;
 
 /** The docType -> title contract used to validate a worker's completion. */
 export function stageContract(stageType: string, funnelType: FunnelType): Record<string, string> {

@@ -32,7 +32,7 @@ const DOC_TYPES = [
   { id: "other", label: "Other" },
 ] as const;
 
-type StageId = "foundation" | "skool" | "funnel" | "emails";
+type StageId = "foundation" | "skool" | "funnel" | "emails" | "ads";
 
 /**
  * Worker-run pipeline stages, in mother-skill order. docTypes mirror the
@@ -69,9 +69,23 @@ const WORKER_STAGES: Array<{
   {
     id: "emails",
     label: "Email Sequences",
-    blurb: "The 14-day free-community sequence that books calls, plus the SMS set",
-    docTypes: ["email_sequence_14day", "sms_set"],
-    runningNote: "Writing the 14-day sequence and SMS set from the approved funnel",
+    blurb: "14-day community sequence, post-booking show-up, no-show + post-call recovery, SMS (webinar: pre/post-webinar sequences)",
+    docTypes: [
+      "email_sequence_14day",
+      "email_postbooking",
+      "email_noshow_followup",
+      "email_prewebinar",
+      "email_postwebinar",
+      "sms_set",
+    ],
+    runningNote: "Writing every email sequence and the SMS set from the approved funnel, in the swipe-file style",
+  },
+  {
+    id: "ads",
+    label: "Ad Creatives",
+    blurb: "Ad Angle Matrix, 12 full video ad scripts, statics + b-rolls, Forester campaign plan",
+    docTypes: ["ad_angles", "ad_scripts", "ad_statics", "ad_campaign_plan"],
+    runningNote: "Generating the angle matrix, writing all 12 ad scripts, statics, and the campaign plan",
   },
 ];
 

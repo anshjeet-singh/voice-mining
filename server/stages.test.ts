@@ -3,11 +3,31 @@ import { STAGE_ORDER, STAGES, stageContract, stagePromptSpec } from "./stages";
 
 describe("stage registry", () => {
   it("keeps the mother skill's order and gating chain", () => {
-    expect(STAGE_ORDER).toEqual(["foundation", "skool", "funnel", "emails"]);
+    expect(STAGE_ORDER).toEqual(["foundation", "skool", "funnel", "emails", "ads"]);
     expect(STAGES.foundation.requires).toBeNull();
     expect(STAGES.skool.requires).toBe("foundation");
     expect(STAGES.funnel.requires).toBe("skool");
     expect(STAGES.emails.requires).toBe("funnel");
+    expect(STAGES.ads.requires).toBe("emails");
+  });
+
+  it("defines the ads contract with the batch quality gates", () => {
+    const call = stagePromptSpec("ads", "call")!;
+    const webinar = stagePromptSpec("ads", "webinar")!;
+    expect(call.outputs.map((o) => o.docType)).toEqual([
+      "ad_angles",
+      "ad_scripts",
+      "ad_statics",
+      "ad_campaign_plan",
+    ]);
+    expect(call.outputs[1].description).toContain("EXACTLY 12");
+    expect(call.outputs[1].description).toContain("verification checklist");
+    expect(call.outputs[3].description).toContain("Forester");
+    expect(call.extraInstructions).toContain("ONE AD, ONE ANGLE");
+    expect(call.extraInstructions).toContain("[VSL LINK]");
+    expect(webinar.extraInstructions).toContain("[REGISTRATION LINK]");
+    expect(call.extraInstructions).toContain("COMPLIANCE GATE");
+    expect(call.childSkills.join()).toContain("ad-script-writer");
   });
 
   it("branches the funnel contract on funnel type", () => {

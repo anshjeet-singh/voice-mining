@@ -282,7 +282,7 @@ export const appRouter = router({
       .input(
         z.object({
           clientId: z.number(),
-          stage: z.enum(["foundation", "skool", "funnel", "emails"]),
+          stage: z.enum(["foundation", "skool", "funnel", "emails", "ads"]),
           feedback: z.string().max(10000).optional(),
         })
       )
@@ -322,7 +322,7 @@ export const appRouter = router({
       .input(
         z.object({
           clientId: z.number(),
-          stage: z.enum(["foundation", "skool", "funnel", "emails"]),
+          stage: z.enum(["foundation", "skool", "funnel", "emails", "ads"]),
           action: z.enum(["approve", "reject"]),
           feedback: z.string().max(10000).optional(),
         })
