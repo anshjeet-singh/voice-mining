@@ -45,3 +45,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180006 · client: Trent Kus -->
 - The post-call and no-show recovery tracks need an explicit proof-reservation rule for readers who sit on more than one list (a no-show who also joined the free community, a non-closer also in the 14-day nurture). Map each named proof asset to exactly ONE email across ALL tracks, and hold at least one win back for the sibling sequence, so the same screenshot never reaches one reader twice. The skill currently gives no cross-sequence proof-allocation guidance, so writers can unknowingly reuse a win the reader already saw in the nurture.
+
+<!-- 2026-07-10 · job 180008 · client: Trent Kus -->
+- The swipe appendix models a sign-off with an em-dash ("— [Founder first name]"), which conflicts with the orchestrator's hard "no em-dashes anywhere" file spec and with the cc-email-swipe-style rotating-nickname sign-off. Note the conflict in the appendix and state the resolution (dash-free "To your success," + Trent "<nickname>" Kus) so each run does not have to re-derive it.
