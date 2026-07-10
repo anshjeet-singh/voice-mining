@@ -22,3 +22,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180008 · client: Trent Kus -->
 - On short SMS specifically, add an "end on the wanted representation" check to the polish pass: move any trailing negation off the final position so the text does not close on the word that installs the wrong picture (e.g. "...text me back, no pressure, no chasing" leaves the reader holding "chasing"; rewrite to "...no pressure, just text me back and we'll get you started"). This is the McLaughlin negation/last-word rule applied to texts, where the final word carries disproportionate weight because there is no body copy after it.
+
+<!-- 2026-07-10 · job 180009 · client: Trent Kus -->
+- The SKILL.md is a near-empty stub; its actual banned-word list and the domain-term carve-out (for example, financial "leverage" must survive in a 0%-funding niche) live only in the learnings file. Promote the banned-word list and the carve-out rule into the skill itself so the polish pass is reproducible without the learnings context, and so a writer does not strip real mechanism language.

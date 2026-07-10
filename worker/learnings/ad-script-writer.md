@@ -1,0 +1,7 @@
+# Learnings: ad-script-writer
+
+Accumulated craft lessons applied on every run.
+
+<!-- 2026-07-10 · job 180009 · client: Trent Kus -->
+- The skill's "Output format" only specifies per-ad scripts, but the pipeline also asks for a standalone "Ad Angle Matrix" document (the diversification-engine output as a deliverable in its own right, before any full script is written). Add an output template for that case: (1) the 2 to 4 sub-avatars as a table, (2) the 30+ buying reasons across the ten categories as a table tagged to sub-avatar, (3) the ranked selected angles as a table, each tagged with sub-avatar, buying-reason category, hook category, production format, and awareness level, with the market verbatims and a written hook attached, and (4) the batch verification checklist rendered as a coverage table. Right now an operator has to infer the document shape from the reference file.
+- The diversification-engine reference lists production formats (direct-to-camera, whiteboard, podcast, green-screen, demonstration, b-roll, UGC, comment-pin, walking) but the richer native-static taxonomy (the 42 native formats, "would a mate screenshot this" test, platform-to-avatar matching) lives only in static-and-broll-ad-writer/references/native-formats.md. A one-line cross-reference from the diversification engine to that file would help the angle-writer pick a genuinely native format per angle instead of defaulting to talking head.
