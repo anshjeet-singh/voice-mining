@@ -23,3 +23,8 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-11 · job 270004 · client: Trent Kus -->
 - For clients with a small, fixed, screenshot-gated proof set, the one-angle-one-ad rule needs a companion rule: one proof win per asset, never doubled across the batch OR across sibling batches. Reusing the same named result on two ads reads as sleight-of-hand to a skeptical buyer and wastes the diversification. When the named wins are already spent, the next angles must stand on mechanism, a founder-story qualitative beat, a competitor-fact figure, or an honesty disclaimer, with `[PROOF:]` only where a genuinely new result exists. Add this as an explicit line in the diversification engine's proof guidance.
+
+<!-- 2026-07-11 · job 270010 · client: Trent Kus -->
+- Name the mechanism, never tutorial it, is a hard gate, not a preference. A creative that lays the whole method out flat (for example, labeling the three steps "the whole method in three moves") closes the curiosity loop, so "see how it works" then offers the prospect nothing they do not already have. The mechanism must open a loop the funnel closes.
+- Match the emotional target to what the avatar actually believes. A reassurance like "it's simpler than you think" misfires on an audience that does not think the thing is complicated, they think it is rigged. Diagnose the real belief before writing the promise.
+- One angle, one asset holds across a batch: do not rebuild an angle already covered by a stronger creative in a weaker format. A duplicate angle in a worse skin is a cut, not a variation.
