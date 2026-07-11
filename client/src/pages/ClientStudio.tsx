@@ -18,13 +18,18 @@ import {
   ChevronUp,
   FileText,
   Image,
+  Instagram,
   Loader2,
   Mail,
   MonitorPlay,
+  Pickaxe,
+  Plus,
   Sparkles,
   Users,
   Youtube,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 /** Studio sections with their color identities (literal classes for Tailwind JIT). */
 const SECTIONS = [
@@ -129,6 +134,7 @@ function DocRow({ doc }: { doc: ClientDoc }) {
 // ─── Intel Desk ───────────────────────────────────────────────────────────────
 
 interface IntelReel {
+  platform?: "instagram" | "youtube";
   account: string;
   url?: string;
   views: number;
@@ -142,6 +148,16 @@ interface IntelReel {
   sections?: Array<{ label: string; text: string; note?: string }>;
   angle?: string;
 }
+
+/** A competitor account the miner can scrape, tagged with where we found it. */
+interface CompetitorSource {
+  platform: "instagram" | "youtube";
+  handle: string;
+  url: string;
+  origin: "research" | "onboarding" | "added";
+}
+
+const srcKey = (s: CompetitorSource) => `${s.platform}:${s.handle}`;
 
 const fmt = (n: number) =>
   n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K" : String(n);
@@ -158,6 +174,7 @@ function parseIntelReels(doc: ClientDoc | undefined): IntelReel[] {
       .filter((r) => r && typeof r.topic === "string")
       .map((r) => ({
         ...r,
+        platform: r.platform === "youtube" ? "youtube" : "instagram",
         views: Number(r.views) || 0,
         likes: Number(r.likes) || 0,
         comments: Number(r.comments) || 0,
@@ -168,10 +185,28 @@ function parseIntelReels(doc: ClientDoc | undefined): IntelReel[] {
   }
 }
 
-/** The Competitor Desk: KPIs, reach, hook taxonomy, script-rail reel cards. */
+/** The written report without the machine-readable JSON block at the end. */
+function stripIntelJson(doc: ClientDoc): ClientDoc {
+  return { ...doc, content: doc.content.replace(/```json[\s\S]*?```/g, "").trim() };
+}
+
+const INTEL_SORTS = [
+  { key: "views", label: "Views" },
+  { key: "likes", label: "Likes" },
+  { key: "relevance", label: "Relevance" },
+  { key: "newest", label: "Newest" },
+] as const;
+type IntelSort = (typeof INTEL_SORTS)[number]["key"];
+
+const PlatformIcon = ({ platform, className }: { platform?: string; className?: string }) =>
+  platform === "youtube" ? <Youtube className={className} /> : <Instagram className={className} />;
+
+/** The Competitor Desk: KPIs, reach, hook taxonomy, script-rail piece cards. */
 function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: ClientDoc }) {
+  const [platform, setPlatform] = useState<"all" | "instagram" | "youtube">("all");
   const [account, setAccount] = useState<string | null>(null);
-  const [openReel, setOpenReel] = useState<number | null>(null);
+  const [sort, setSort] = useState<IntelSort>("views");
+  const [openReel, setOpenReel] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
 
   if (!reels.length) {
@@ -180,39 +215,82 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
         <p className="text-[11px] text-muted-foreground mb-2">
           Intel report available (older format, no structured data): view it below. New runs render the full desk.
         </p>
-        <DocRow doc={reportDoc} />
+        <DocRow doc={stripIntelJson(reportDoc)} />
       </div>
     ) : null;
   }
 
-  const accounts = Array.from(new Set(reels.map((r) => r.account)));
+  const igCount = reels.filter((r) => (r.platform ?? "instagram") === "instagram").length;
+  const ytCount = reels.filter((r) => r.platform === "youtube").length;
+  const pool = reels.filter((r) => platform === "all" || (r.platform ?? "instagram") === platform);
+
+  const accounts = Array.from(new Set(pool.map((r) => r.account)));
   const byAccount = accounts
-    .map((a) => ({ account: a, views: reels.filter((r) => r.account === a).reduce((n, r) => n + r.views, 0) }))
+    .map((a) => ({ account: a, views: pool.filter((r) => r.account === a).reduce((n, r) => n + r.views, 0) }))
     .sort((a, b) => b.views - a.views);
   const maxAcc = byAccount[0]?.views || 1;
 
   const styleAgg = new Map<string, { count: number; views: number }>();
-  for (const r of reels) {
+  for (const r of pool) {
     const cur = styleAgg.get(r.hookStyle) ?? { count: 0, views: 0 };
     styleAgg.set(r.hookStyle, { count: cur.count + 1, views: cur.views + r.views });
   }
   const taxonomy = Array.from(styleAgg.entries()).sort((a, b) => b[1].views - a[1].views);
 
-  const visible = reels
-    .filter((r) => !account || r.account === account)
-    .sort((a, b) => b.views - a.views);
-  const totalViews = reels.reduce((n, r) => n + r.views, 0);
-  const topViews = Math.max(...reels.map((r) => r.views));
+  const sortFn: Record<IntelSort, (a: IntelReel, b: IntelReel) => number> = {
+    views: (a, b) => b.views - a.views,
+    likes: (a, b) => b.likes - a.likes,
+    relevance: (a, b) => b.score - a.score,
+    newest: (a, b) => (b.date ?? "").localeCompare(a.date ?? ""),
+  };
+  const visible = pool.filter((r) => !account || r.account === account).sort(sortFn[sort]);
+  const totalViews = pool.reduce((n, r) => n + r.views, 0);
+  const topViews = pool.length ? Math.max(...pool.map((r) => r.views)) : 0;
+
+  const reelKey = (r: IntelReel) => `${r.platform ?? "instagram"}:${r.account}:${r.url ?? r.topic}`;
+
+  const chip = (active: boolean) =>
+    `px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+      active ? "bg-foreground text-background border-foreground" : "border-border/50 text-muted-foreground hover:text-foreground"
+    }`;
 
   return (
     <div className="space-y-4">
+      {/* Platform tabs + sort */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {([
+          { key: "all", label: `All (${reels.length})` },
+          { key: "instagram", label: `Instagram (${igCount})` },
+          { key: "youtube", label: `YouTube (${ytCount})` },
+        ] as const).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => {
+              setPlatform(t.key);
+              setAccount(null);
+            }}
+            className={chip(platform === t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+        <span className="ml-auto flex items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground">Sort</span>
+          {INTEL_SORTS.map((s) => (
+            <button key={s.key} onClick={() => setSort(s.key)} className={chip(sort === s.key)}>
+              {s.label}
+            </button>
+          ))}
+        </span>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
         {[
-          { n: String(reels.length), l: "reels analyzed" },
-          { n: String(accounts.length), l: "accounts" },
+          { n: String(pool.length), l: "pieces analyzed" },
+          { n: String(accounts.length), l: "sources" },
           { n: fmt(totalViews), l: "combined views" },
-          { n: fmt(topViews), l: "top reel" },
+          { n: fmt(topViews), l: "top piece" },
         ].map((k) => (
           <div key={k.l} className="rounded-lg border border-border/40 bg-background/40 p-3">
             <p className="text-xl font-semibold text-foreground tabular-nums">{k.n}</p>
@@ -226,20 +304,20 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
       </div>
 
       <div className="grid lg:grid-cols-2 gap-3">
-        {/* Reach by account */}
+        {/* Reach by source */}
         <div className="rounded-lg border border-border/40 bg-background/40 p-3">
-          <p className="text-[11px] font-semibold text-foreground mb-2">Reach by account</p>
+          <p className="text-[11px] font-semibold text-foreground mb-2">Reach by source</p>
           <div className="space-y-1.5">
             {byAccount.map((a, i) => (
               <div key={a.account} className="grid grid-cols-[110px_1fr_56px] gap-2 items-center">
-                <span className="text-[10px] font-mono text-muted-foreground truncate">@{a.account}</span>
+                <span className="text-[11px] text-muted-foreground truncate">@{a.account}</span>
                 <div className="h-4 rounded bg-card/60 overflow-hidden">
                   <div
                     className={`h-full rounded ${i === 0 ? "bg-primary" : "bg-foreground/30"}`}
                     style={{ width: `${(a.views / maxAcc) * 100}%` }}
                   />
                 </div>
-                <span className="text-[10px] font-mono text-muted-foreground text-right tabular-nums">{fmt(a.views)}</span>
+                <span className="text-[11px] text-muted-foreground text-right tabular-nums">{fmt(a.views)}</span>
               </div>
             ))}
           </div>
@@ -255,14 +333,14 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
                   i === 0 ? "border-primary/40 bg-primary/10" : "border-border/40"
                 }`}
               >
-                <span className="text-[11px] font-mono font-medium text-foreground">{style}</span>
+                <span className="text-[11px] font-medium text-foreground">{style}</span>
                 {i === 0 && (
-                  <span className="text-[8px] font-mono uppercase tracking-wider bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+                  <span className="text-[9px] font-semibold uppercase tracking-wider bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
                     winning
                   </span>
                 )}
-                <span className="ml-auto text-[10px] font-mono text-muted-foreground tabular-nums">
-                  {d.count} reel{d.count > 1 ? "s" : ""} · {fmt(d.views)}
+                <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
+                  {d.count} piece{d.count > 1 ? "s" : ""} · {fmt(d.views)}
                 </span>
               </div>
             ))}
@@ -270,48 +348,40 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
         </div>
       </div>
 
-      {/* Account filter + reel cards */}
+      {/* Source filter */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <button
-          onClick={() => setAccount(null)}
-          className={`px-2.5 py-1 rounded-full text-[10px] font-mono border transition-colors ${
-            account === null ? "bg-foreground text-background border-foreground" : "border-border/50 text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          All accounts
+        <button onClick={() => setAccount(null)} className={chip(account === null)}>
+          All sources
         </button>
         {accounts.map((a) => (
-          <button
-            key={a}
-            onClick={() => setAccount(account === a ? null : a)}
-            className={`px-2.5 py-1 rounded-full text-[10px] font-mono border transition-colors ${
-              account === a ? "bg-foreground text-background border-foreground" : "border-border/50 text-muted-foreground hover:text-foreground"
-            }`}
-          >
+          <button key={a} onClick={() => setAccount(account === a ? null : a)} className={chip(account === a)}>
             @{a}
           </button>
         ))}
-        <span className="ml-auto text-[10px] font-mono text-muted-foreground">
-          {visible.length} / {reels.length} reels
+        <span className="ml-auto text-[11px] text-muted-foreground">
+          {visible.length} / {pool.length} pieces
         </span>
       </div>
 
       <div className="space-y-2">
         {visible.map((r, i) => (
-          <div key={`${r.account}-${i}`} className="rounded-lg border border-border/50 bg-background/40 overflow-hidden">
+          <div key={reelKey(r)} className="rounded-lg border border-border/50 bg-background/40 overflow-hidden">
             <button
-              onClick={() => setOpenReel(openReel === i ? null : i)}
+              onClick={() => setOpenReel(openReel === reelKey(r) ? null : reelKey(r))}
               className="w-full grid grid-cols-[36px_1fr_auto] gap-3 items-center p-3 text-left hover:bg-card/40"
             >
-              <span className={`text-base font-mono font-bold text-center ${i === 0 ? "text-primary" : "text-muted-foreground/40"}`}>
+              <span className={`text-base font-bold text-center tabular-nums ${i === 0 ? "text-primary" : "text-muted-foreground/40"}`}>
                 {String(i + 1).padStart(2, "0")}
               </span>
               <span className="min-w-0">
                 <span className="block text-xs font-semibold text-foreground truncate">{r.topic}</span>
-                <span className="block text-[10px] font-mono text-muted-foreground">
-                  @{r.account}
-                  {r.date ? ` · ${r.date}` : ""} ·{" "}
-                  <span className="text-primary">{r.hookStyle}</span> · {r.score}/10
+                <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <PlatformIcon platform={r.platform} className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">
+                    @{r.account}
+                    {r.date ? ` · ${r.date}` : ""} ·{" "}
+                    <span className="text-primary">{r.hookStyle}</span> · {r.score}/10
+                  </span>
                 </span>
               </span>
               <span className="flex items-center gap-4">
@@ -320,18 +390,18 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
                   { n: fmt(r.likes), l: "likes" },
                 ].map((st) => (
                   <span key={st.l} className="text-right">
-                    <span className="block text-xs font-mono font-semibold text-foreground tabular-nums">{st.n}</span>
+                    <span className="block text-xs font-semibold text-foreground tabular-nums">{st.n}</span>
                     <span className="block text-[9px] uppercase text-muted-foreground">{st.l}</span>
                   </span>
                 ))}
-                {openReel === i ? (
+                {openReel === reelKey(r) ? (
                   <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
                 ) : (
                   <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                 )}
               </span>
             </button>
-            {openReel === i && (
+            {openReel === reelKey(r) && (
               <div className="border-t border-border/40 p-4 grid lg:grid-cols-[3fr_2fr] gap-5">
                 {/* Script rail */}
                 <div className="relative pl-5 space-y-3 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-px before:bg-border">
@@ -346,7 +416,7 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
                               : "bg-background border-muted-foreground"
                         }`}
                       />
-                      <p className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
+                      <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
                         {sec.label}
                         {sec.note && <span className="normal-case tracking-normal italic"> · {sec.note}</span>}
                       </p>
@@ -358,13 +428,13 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
                 <div className="space-y-3">
                   {r.angle && (
                     <div className="rounded-lg bg-foreground text-background p-3">
-                      <p className="text-[9px] font-mono uppercase tracking-wider opacity-60 mb-1">Your angle</p>
+                      <p className="text-[9px] font-semibold uppercase tracking-wider opacity-60 mb-1">Your angle</p>
                       <p className="text-xs leading-relaxed">{r.angle}</p>
                     </div>
                   )}
                   {r.caption && (
                     <div className="border-l-2 border-border pl-2.5">
-                      <p className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground mb-0.5">Caption</p>
+                      <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Caption</p>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">{r.caption}</p>
                     </div>
                   )}
@@ -373,7 +443,7 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
                       href={r.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[10px] font-mono text-primary underline underline-offset-2"
+                      className="text-[11px] text-primary underline underline-offset-2"
                     >
                       open original ↗
                     </a>
@@ -388,12 +458,189 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
       {reportDoc && (
         <button
           onClick={() => setShowReport(!showReport)}
-          className="text-[10px] font-mono text-muted-foreground hover:text-foreground underline underline-offset-2"
+          className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
         >
-          {showReport ? "hide" : "view"} full written report
+          {showReport ? "Hide" : "View"} the full written report
         </button>
       )}
-      {showReport && reportDoc && <DocRow doc={reportDoc} />}
+      {showReport && reportDoc && <DocRow doc={stripIntelJson(reportDoc)} />}
+    </div>
+  );
+}
+
+/** Turn whatever the operator pastes (URLs, @handles, comma lists) into sources. */
+function parseSourceInput(raw: string): CompetitorSource[] {
+  const out: CompetitorSource[] = [];
+  for (const token of raw.split(/[\s,]+/).filter(Boolean)) {
+    let m = token.match(/youtube\.com\/(@[A-Za-z0-9._-]{2,30})/i);
+    if (m) {
+      const h = m[1].slice(1).toLowerCase();
+      out.push({ platform: "youtube", handle: h, url: `https://youtube.com/@${h}`, origin: "added" });
+      continue;
+    }
+    m = token.match(/youtube\.com\/channel\/(UC[A-Za-z0-9_-]{10,})/i);
+    if (m) {
+      out.push({ platform: "youtube", handle: m[1], url: `https://youtube.com/channel/${m[1]}`, origin: "added" });
+      continue;
+    }
+    m = token.match(/youtube\.com\/(?:c|user)\/([A-Za-z0-9._-]{2,30})/i);
+    if (m) {
+      const h = m[1].toLowerCase();
+      out.push({ platform: "youtube", handle: h, url: `https://youtube.com/@${h}`, origin: "added" });
+      continue;
+    }
+    m = token.match(/instagram\.com\/([A-Za-z0-9._]{2,30})/i);
+    if (m) {
+      const h = m[1].toLowerCase();
+      out.push({ platform: "instagram", handle: h, url: `https://instagram.com/${h}`, origin: "added" });
+      continue;
+    }
+    // Bare @handle or handle: instagram by default
+    m = token.match(/^@?([A-Za-z0-9._]{2,30})$/);
+    if (m) {
+      const h = m[1].toLowerCase();
+      out.push({ platform: "instagram", handle: h, url: `https://instagram.com/${h}`, origin: "added" });
+    }
+  }
+  return out;
+}
+
+const ORIGIN_LABEL: Record<CompetitorSource["origin"], string> = {
+  research: "URL found · voice mining",
+  onboarding: "URL found · onboarding",
+  added: "added by you",
+};
+
+/** The miner: pick which competitor sources to scrape, then hit Mine. */
+function CompetitorMiner({
+  found,
+  job,
+  clientId,
+  invalidate,
+}: {
+  found: CompetitorSource[];
+  job: StageJob;
+  clientId: number;
+  invalidate: () => void;
+}) {
+  const [added, setAdded] = useState<CompetitorSource[]>([]);
+  const [deselected, setDeselected] = useState<Set<string>>(new Set());
+  const [input, setInput] = useState("");
+
+  const all = [...found, ...added.filter((a) => !found.some((f) => srcKey(f) === srcKey(a)))];
+  const selected = all.filter((s) => !deselected.has(srcKey(s)));
+
+  const generate = trpc.clients.generateStage.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success("Mining queued. Your Mac worker will pick it up");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const status = job?.status ?? null;
+  const busy = status === "queued" || status === "running";
+
+  const toggle = (s: CompetitorSource) =>
+    setDeselected((prev) => {
+      const next = new Set(prev);
+      const k = srcKey(s);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+
+  const addFromInput = () => {
+    const parsed = parseSourceInput(input);
+    if (!parsed.length) {
+      toast.error("Paste Instagram or YouTube URLs, or @handles");
+      return;
+    }
+    setAdded((prev) => [...prev, ...parsed.filter((p) => !prev.some((x) => srcKey(x) === srcKey(p)) && !found.some((f) => srcKey(f) === srcKey(p)))]);
+    setInput("");
+  };
+
+  const mine = () => {
+    const ig = selected.filter((s) => s.platform === "instagram").map((s) => s.handle);
+    const yt = selected
+      .filter((s) => s.platform === "youtube")
+      .map((s) => (s.handle.startsWith("UC") ? s.handle : `@${s.handle}`));
+    const request =
+      `Run competitor content intel.` +
+      (ig.length ? ` INSTAGRAM accounts: ${ig.join(", ")}.` : "") +
+      (yt.length ? ` YOUTUBE channels: ${yt.join(", ")}.` : "") +
+      ` Mine the TOP content for every source: 3 reels per Instagram account, and as many recent long-form videos per YouTube channel as the run allows (minimum 3).`;
+    generate.mutate({ clientId, stage: "content_intel", feedback: request });
+  };
+
+  if (busy) {
+    return (
+      <div className="rounded-lg border border-border/40 bg-card/20 p-4 flex items-center gap-2.5">
+        <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
+        <div>
+          <p className="text-xs font-semibold text-foreground">Mining competitor content</p>
+          <p className="text-[11px] text-muted-foreground">
+            {status === "queued" ? "Waiting for your Mac worker" : job?.progress || "Scraping and transcribing..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border/40 bg-card/20 p-4">
+      {all.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {all.map((s) => {
+            const on = !deselected.has(srcKey(s));
+            return (
+              <button
+                key={srcKey(s)}
+                onClick={() => toggle(s)}
+                title={s.url}
+                className={`flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 rounded-lg border text-left transition-colors ${
+                  on ? "border-primary/40 bg-primary/10" : "border-border/40 bg-card/40 opacity-50 hover:opacity-80"
+                }`}
+              >
+                <PlatformIcon platform={s.platform} className={`w-3.5 h-3.5 ${on ? "text-primary" : "text-muted-foreground"}`} />
+                <span>
+                  <span className="block text-[11px] font-semibold text-foreground leading-tight">@{s.handle}</span>
+                  <span className="block text-[9px] text-muted-foreground leading-tight">{ORIGIN_LABEL[s.origin]}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-foreground mb-3">
+          No competitor URLs found in the research or onboarding yet. Paste them below.
+        </p>
+      )}
+
+      <div className="flex items-center gap-2 mb-3">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addFromInput()}
+          placeholder="Paste Instagram / YouTube URLs or @handles..."
+          className="flex-1 h-8 rounded-lg border border-border/40 bg-background/40 px-2.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+        />
+        <Button size="sm" variant="outline" onClick={addFromInput} className="h-8 text-xs">
+          <Plus className="w-3 h-3 mr-1" /> Add
+        </Button>
+      </div>
+
+      <Button
+        size="sm"
+        disabled={generate.isPending || selected.length === 0}
+        onClick={mine}
+        className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 text-xs"
+      >
+        {generate.isPending ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : <Pickaxe className="w-3.5 h-3.5 mr-1.5" />}
+        Mine {selected.length} source{selected.length === 1 ? "" : "s"}
+      </Button>
+      {status === "failed" && job?.error && (
+        <p className="mt-2 text-[11px] text-destructive">Last run failed: {job.error.slice(0, 200)}</p>
+      )}
     </div>
   );
 }
@@ -450,7 +697,7 @@ export default function ClientStudio() {
   const jobs = (data?.jobs ?? {}) as Record<string, StageJob>;
   const documents = (data?.documents ?? []) as ClientDoc[];
   const assets = (data?.assets ?? []) as ClientAssetMeta[];
-  const suggested = (data?.suggestedCompetitors ?? []) as string[];
+  const competitorSources = (data?.competitorSources ?? []) as CompetitorSource[];
   const researchReportId = data?.researchReportId ?? null;
 
   const hasActiveJob = Object.values(jobs).some((j) => j?.status === "queued" || j?.status === "running");
@@ -488,24 +735,10 @@ export default function ClientStudio() {
 
   const sec = sectionById(section);
 
-  const intelBlock = (frame: string) => (
-    <StudioBlock
-      title="Competitor Desk"
-      hint="Scrape + transcribe competitor reels: who pulls reach, which hooks win, and the exact gaps to fill"
-      frame={frame}
-    >
-      {suggested.length > 0 && (
-        <p className="text-[10px] font-mono text-muted-foreground mb-2">
-          From onboarding: {suggested.map((h) => `@${h}`).join("  ")}
-          <span className="opacity-60"> (type handles in the box to mine them)</span>
-        </p>
-      )}
-      <EngineCard engine={engineByKind("content_intel")} job={jobs.content_intel ?? null} clientId={clientId} invalidate={invalidate} />
-      <div className="mt-4">
-        <IntelDesk reels={intelReels} reportDoc={intelDoc} />
-      </div>
-    </StudioBlock>
-  );
+  const scrollToDesk = () => {
+    setSection("overview");
+    setTimeout(() => document.getElementById("competitor-desk")?.scrollIntoView({ behavior: "smooth" }), 50);
+  };
 
   return (
     <AppShell>
@@ -549,7 +782,7 @@ export default function ClientStudio() {
                     { label: "Approved ads", value: approvedAds.length },
                     { label: "Content pieces", value: engineDocCount },
                     { label: "Posted / live", value: postedCount },
-                    { label: "Intel reels analyzed", value: intelReels.length },
+                    { label: "Intel pieces analyzed", value: intelReels.length },
                   ].map((kpi) => (
                     <div key={kpi.label} className="rounded-xl bg-background/40 border border-border/40 p-3.5">
                       <p className="text-2xl font-semibold text-foreground tabular-nums">{kpi.value}</p>
@@ -583,11 +816,11 @@ export default function ClientStudio() {
                   {intelReels.length ? (
                     <>
                       <p className="text-xs text-muted-foreground">
-                        {intelReels.length} reels analyzed · winning hook style:{" "}
-                        <span className="text-pink-400 font-mono font-semibold">{winningStyle}</span>
+                        {intelReels.length} pieces analyzed · winning hook style:{" "}
+                        <span className="text-pink-400 font-semibold">{winningStyle}</span>
                       </p>
                       <button
-                        onClick={() => setSection("shortform")}
+                        onClick={scrollToDesk}
                         className="mt-3 text-xs font-medium text-pink-400 border border-pink-500/40 rounded-lg px-3 py-1.5 hover:bg-pink-500/10"
                       >
                         Open the Competitor Desk →
@@ -595,9 +828,9 @@ export default function ClientStudio() {
                     </>
                   ) : (
                     <>
-                      <p className="text-xs text-muted-foreground">No intel yet: mine the niche's reels to see who pulls reach and which hooks win</p>
+                      <p className="text-xs text-muted-foreground">No intel yet: mine the niche's top Instagram and YouTube content to see who pulls reach and which hooks win</p>
                       <button
-                        onClick={() => setSection("shortform")}
+                        onClick={scrollToDesk}
                         className="mt-3 text-xs font-medium text-pink-400 border border-pink-500/40 rounded-lg px-3 py-1.5 hover:bg-pink-500/10"
                       >
                         Run competitor intel →
@@ -642,6 +875,24 @@ export default function ClientStudio() {
                   ))}
                 </div>
               </div>
+
+              {/* Competitor Desk */}
+              <div id="competitor-desk">
+                <StudioBlock
+                  title="Competitor Desk"
+                  hint="Mine the top competitors from your voice mining data: Instagram reels and YouTube videos, transcribed and broken down"
+                >
+                  <CompetitorMiner
+                    found={competitorSources}
+                    job={jobs.content_intel ?? null}
+                    clientId={clientId}
+                    invalidate={invalidate}
+                  />
+                  <div className="mt-4">
+                    <IntelDesk reels={intelReels} reportDoc={intelDoc} />
+                  </div>
+                </StudioBlock>
+              </div>
             </>
           )}
 
@@ -685,7 +936,6 @@ export default function ClientStudio() {
               <StudioBlock title="Reel pipeline" hint="One card per reel: draft, approve, posted. Write your own too" frame="border-pink-500/25 bg-pink-500/[0.05]">
                 <DocBoard docs={docsFor("content_ig_extra")} invalidate={invalidate} clientId={clientId} docType="content_ig_extra" />
               </StudioBlock>
-              {intelBlock("border-pink-500/25 bg-pink-500/[0.05]")}
             </>
           )}
 
@@ -698,7 +948,6 @@ export default function ClientStudio() {
               <StudioBlock title="Video pipeline" hint="One card per script: approve what gets filmed, mark posted when live" frame="border-red-500/25 bg-red-500/[0.05]">
                 <DocBoard docs={docsFor("content_yt_extra")} invalidate={invalidate} clientId={clientId} docType="content_yt_extra" />
               </StudioBlock>
-              {intelBlock("border-red-500/25 bg-red-500/[0.05]")}
             </>
           )}
 

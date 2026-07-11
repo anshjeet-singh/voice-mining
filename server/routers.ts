@@ -191,16 +191,44 @@ export const appRouter = router({
           allJobTypes.map((stage, i) => [stage, stageJobs[i] ?? null])
         ) as Record<(typeof allJobTypes)[number], Awaited<ReturnType<typeof getLatestJobForClient>> | null>;
         const assets = await getClientAssetsMeta(input.id);
-        // Instagram handles found in onboarding material: pre-seeds the Intel Desk
-        const igHandles = new Set<string>();
+        // Competitor sources found in the voice-mining research + onboarding material:
+        // platform-tagged, they pre-seed the Competitor Desk's miner.
+        type CompetitorSource = { platform: "instagram" | "youtube"; handle: string; url: string; origin: "research" | "onboarding" };
+        const sources = new Map<string, CompetitorSource>();
+        const IG_NON_HANDLES = ["p", "reel", "reels", "tv", "explore", "stories", "accounts", "direct"];
+        const addSource = (platform: CompetitorSource["platform"], rawHandle: string, origin: CompetitorSource["origin"]) => {
+          const isChannelId = platform === "youtube" && /^UC[A-Za-z0-9_-]{10,}$/.test(rawHandle);
+          const handle = isChannelId ? rawHandle : rawHandle.replace(/^@/, "").toLowerCase();
+          if (!handle || (platform === "instagram" && IG_NON_HANDLES.includes(handle))) return;
+          const key = `${platform}:${handle}`;
+          if (sources.has(key)) return;
+          sources.set(key, {
+            platform,
+            handle,
+            url:
+              platform === "instagram"
+                ? `https://instagram.com/${handle}`
+                : isChannelId
+                  ? `https://youtube.com/channel/${handle}`
+                  : `https://youtube.com/@${handle}`,
+            origin,
+          });
+        };
+        const harvest = (text: string, origin: CompetitorSource["origin"]) => {
+          for (const m of Array.from(text.matchAll(/instagram\.com\/([A-Za-z0-9._]{2,30})/g))) addSource("instagram", m[1], origin);
+          for (const m of Array.from(text.matchAll(/youtube\.com\/(@[A-Za-z0-9._-]{2,30})/g))) addSource("youtube", m[1], origin);
+          for (const m of Array.from(text.matchAll(/youtube\.com\/channel\/(UC[A-Za-z0-9_-]{10,})/g))) addSource("youtube", m[1], origin);
+          for (const m of Array.from(text.matchAll(/youtube\.com\/(?:c|user)\/([A-Za-z0-9._-]{2,30})/g))) addSource("youtube", m[1], origin);
+        };
+        // Research first: the competitor URLs pasted into voice-mining searches
+        for (const sr of searches) {
+          for (const u of (sr.competitorUrls as string[] | null) ?? []) harvest(u, "research");
+        }
         for (const d of documents) {
           if (d.kind !== "onboarding") continue;
-          for (const m of Array.from(d.content.matchAll(/instagram\.com\/([A-Za-z0-9._]{2,30})/g))) {
-            const h = m[1].toLowerCase();
-            if (!["p", "reel", "reels", "tv", "explore", "stories"].includes(h)) igHandles.add(h);
-          }
+          harvest(d.content, "onboarding");
           for (const m of Array.from(d.content.matchAll(/(?:^|[\s(])@([A-Za-z0-9._]{3,30})\b/g))) {
-            igHandles.add(m[1].toLowerCase());
+            addSource("instagram", m[1], "onboarding");
           }
         }
         const completeSearch = searches.find((sr) => sr.status === "complete");
@@ -211,7 +239,7 @@ export const appRouter = router({
           searches,
           jobs,
           assets,
-          suggestedCompetitors: Array.from(igHandles).slice(0, 12),
+          competitorSources: Array.from(sources.values()).slice(0, 20),
           researchReportId: researchReport?.id ?? null,
         };
       }),

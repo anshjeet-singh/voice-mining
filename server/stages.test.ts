@@ -120,4 +120,21 @@ describe("stage registry", () => {
     expect(spec.extraInstructions).toContain("never emit a separate [BOOKING LINK]");
     expect(spec.outputs[0].description).toContain("14-day");
   });
+
+  it("mines both platforms in the content intel contract", () => {
+    const spec = stagePromptSpec("content_intel", "call")!;
+    const desc = spec.outputs[0].description;
+    // Both scrapers, both platforms
+    expect(desc).toContain("BOTH Instagram and YouTube");
+    expect(desc).toContain("ig-scrape.py");
+    expect(desc).toContain("yt-scrape.py");
+    expect(desc).toContain("YOUTUBE_API_KEY");
+    // Structured desk data carries a platform tag
+    expect(desc).toContain('"platform": "instagram"|"youtube"');
+    // Captionless YouTube videos fall back to packaging analysis, never fabricated transcripts
+    expect(desc).toContain("WITHOUT captions");
+    // Spend discipline: Apify costs money, the YouTube Data API does not
+    expect(desc).toContain("keep Instagram at the requested limit");
+    expect(spec.extraInstructions).toContain("no invented views");
+  });
 });

@@ -330,22 +330,6 @@ export const ENGINES: Array<{
       }`,
   },
   {
-    kind: "content_intel",
-    label: "Competitor intel",
-    blurb: "Scrape + transcribe competitor reels: hooks, beats, angles",
-    counts: [3, 5],
-    defaultCount: 3,
-    hasStyles: false,
-    docType: "content_intel_extra",
-    notesPlaceholder: "Instagram handles, comma separated (empty = use onboarding competitor list). e.g. handle1, handle2",
-    compose: (count, _s, notes) =>
-      `Run competitor content intel at ${count} reels per account.${
-        notes
-          ? ` Instagram handles: ${notes}.`
-          : " Extract the Instagram handles from the client's onboarding competitors document."
-      }`,
-  },
-  {
     kind: "more_skool",
     label: "Skool posts",
     blurb: "Value, engagement, proof, and DM-trigger posts",
