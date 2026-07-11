@@ -32,3 +32,7 @@ Accumulated craft lessons applied on every run.
 <!-- 2026-07-11 · job 270013 · client: Trent Kus -->
 - Name the mechanism, never tutorial it, applies to statics too, not just scripts. A static that lays out the entire method flat ("the whole method in three moves") closes the curiosity loop the ad is supposed to open, so "see how it works" then offers the prospect nothing. Keep the mechanism named and the loop open; the funnel does the teach.
 - Match the promise and the emotional target to the audience's actual objection, per batch. Do not put unexplained insider jargon (e.g. calling sweep shops "the mills") on the most important line of a cold ad, and do not answer an objection the prospect does not hold ("it's simpler than you think" to an audience that thinks the system is rigged, not complicated). Every ad in a batch must speak to that batch's real avatar and angle, not a mismatched one.
+
+<!-- 2026-07-11 · job 270013 · client: Trent Kus -->
+- Never give the entire mechanism away flat in the ad ("the whole method in three moves," each step labeled). Once the prospect has read the whole method, "see how it works" offers nothing. Name the mechanism to open a curiosity loop; let the funnel do the full teach.
+- Diagnose the audience's real objection before choosing the reassurance. For an audience that believes the system is rigged, not complicated, "it's simpler than you think" aims at the wrong emotion. Match the promise to the belief in the ICP, not to a generic reassurance.

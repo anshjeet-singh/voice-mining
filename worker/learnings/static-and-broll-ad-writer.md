@@ -28,3 +28,9 @@ Accumulated craft lessons applied on every run.
 - On a problem-aware cold ad, never make "look me up" or "verify me" the ask. A prospect who has never heard of the brand will not spend time on due diligence; that ask only works on solution-aware traffic. Problem-aware statics must route to a low-friction educational next step (a free community, a short training), not a research task.
 - Fee and cost-objection statics win on brevity. The shortest possible framing of the pay-on-results structure ("Small upfront, we only get paid once you get funded") beats a longer worked example. Lead with the structure, cut the math.
 - The "answer engine" native format (ChatGPT, Claude, AI chat) should lead its answer body with the CTA line, not bury the takeaway. Frame the operator as the worked example inside the answer ("X is a great example of someone who does this, click the link below to see how") rather than a passive "the tell is..." close.
+
+<!-- 2026-07-11 · job 270013 · client: Trent Kus -->
+- Every ad ends with the batch's standard CTA line in the format's native slot. A creative that just stops, with no CTA while every other ad in the batch carries the link line, fails.
+- Avoid generic stock visual pairings (anchor plus rocket, "old way vs new way" split panels). Combined with a template layout they read as a stock Canva file with the client's words dropped in.
+- Do not put unexplained insider jargon on the most important element of a cold ad ("THE MILLS" on the key data point). Cold prospects do not know the category's internal terms; confusion at the moment of the pitch kills it. Spell it plainly.
+- Every ad must serve the batch's governing angle for its target avatar. An ad that lectures a different person (debt-responsibility copy aimed at a can't-get-approved audience) is an angle failure, not a design fix. Reject the off-angle concept rather than reskin it.

@@ -78,3 +78,10 @@ Accumulated craft lessons applied on every run.
 - Keep the CTA in the batch's standard slot and convention. A CTA with a novel icon (chart, etc.) or a static that just stops with no CTA both break the set. Every ad ends on the format's designated CTA treatment.
 - No fake UI or decoration with no referent: a status pill attached to nothing, a bar chart with no axis or meaning, a "file status" card that belongs to no real app. Unanchored UI reads as filler. If a UI element appears, it must belong to a real, recognizable interface.
 - Avoid the most generic visual metaphor pairings (anchor-vs-rocket, old-way-vs-new-way split panels with clip art). Combined with a split layout they read as a stock Canva template with the client's words dropped in.
+
+<!-- 2026-07-11 · job 270013 · client: Trent Kus -->
+- Never ship a rendered creative for review with a `[PROOF: ...]` placeholder still baked into the image. A placeholder in a finished PNG is unfinished work sent for review. Gate the render: no asset renders until its proof screenshot is dropped in, or the proof slot is cut.
+- Every static must match a saved reference format. Invented templates (infographic panels, fintech dashboards, neon-glow gaming aesthetics) get clocked as an ad on sight and fail the native test. If no reference format fits the angle, use the closest saved format, do not invent one.
+- Kill dead space. Big empty color blocks, a huge grey block after four cards, two-thirds of a panel blank: if roughly half the canvas does nothing, the layout fails. Tighten the vertical rhythm so the page feels full, like the reference.
+- Do not render fake UI with no referent (a "FUNDED" pill attached to nothing, a bar chart with no axis or meaning, a status card belonging to no real app). Fake UI reads as filler and gets clocked as an ad.
+- A charted metric must be legible and plot its intended meaning. A line that spikes vertically then runs flat reads as a glitch, and no element may bleed past its label box or off the canvas edge.
