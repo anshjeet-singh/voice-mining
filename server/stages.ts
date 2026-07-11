@@ -175,13 +175,69 @@ export const STAGES: Record<string, StageDef> = {
     extraInstructions: (ft) =>
       `ONE AD, ONE ANGLE. Every destination is ${ft === "webinar" ? "[REGISTRATION LINK]" : "[VSL LINK]"}. REAL PROOF ONLY with [PROOF: ...] placeholders. COMPLIANCE GATE for regulated niches. Hooks follow the ad-script-system hook bank: statements over questions, the market's exact self-descriptions, specificity over adjectives. Read every script aloud: contractions, no AI cadence, no em dashes anywhere.`,
   },
+
+  more_content_ig: {
+    type: "more_content_ig",
+    label: "Instagram Content",
+    requires: "ads",
+    motherStep: "Content Engine (Instagram reels)",
+    childSkills: () => ["reel-scripter", "content-repurposer", "organic-carousel", "generic-language-killer (polish pass)"],
+    docs: () => [
+      { docType: "content_ig_extra", filename: "01_ig_content.md", title: "Instagram Reel Scripts", description: "An ON-DEMAND batch of Instagram reel scripts for the client's organic content. THE GENERATION REQUEST (how many, plus any topic or angle direction) is in the REVISION FEEDBACK section: follow it exactly. Each reel: a scroll-stopping HOOK (first 1-2 lines, per the ad-script-system hook bank adapted to organic), the beats word for word, on-screen text notes per beat, a CTA that fits the client's funnel (comment keyword or link in bio to [VSL LINK] / [COMMUNITY LINK]), and the caption with hashtag set. Topics come from the market research's pains, objections, and trending phrases plus the approved foundation docs. Every reel is ONE idea; value first, pitch light" },
+    ],
+    extraInstructions: () =>
+      "Organic content, not ads: the job is watch time and saves, then the soft CTA. Hooks in the market's own words from the research verbatims. The client's voice from the approved brand doc, contractions, no AI cadence, no em dashes anywhere. COMPLIANCE GATE applies to organic too for regulated niches.",
+  },
+  more_content_yt: {
+    type: "more_content_yt",
+    label: "YouTube Content",
+    requires: "ads",
+    motherStep: "Content Engine (YouTube long-form)",
+    childSkills: () => ["youtube-script", "content-repurposer", "generic-language-killer (polish pass)"],
+    docs: () => [
+      { docType: "content_yt_extra", filename: "01_yt_content.md", title: "YouTube Scripts", description: "An ON-DEMAND batch of long-form YouTube scripts per the youtube-script skill. THE GENERATION REQUEST (how many, plus topic direction or a chosen outlier) is in the REVISION FEEDBACK section. Each script: title + thumbnail brief locked first, the 4-beat hook WORD FOR WORD (reinforce packaging, lead with the problem, authority anchor from the CLIENT's rise or price paid, two-part promise), then a story-led body scaffold of 3-5 arcs (each arc: story, tension, teaching payoff, with value + lifestyle + connection layered), the CTA woven in (default: DM keyword lead magnet trigger), and recording notes where the format needs them. Run the skill's anti-pattern audit and include the result" },
+    ],
+    extraInstructions: () =>
+      "The authority is always the CLIENT's, never the agency's. Real proof only with [PROOF: ...] placeholders. Voice from the approved brand doc. No generic openers: delete 'hey guys welcome back' shapes on sight. COMPLIANCE GATE applies for regulated niches. No em dashes anywhere.",
+  },
+  more_emails: {
+    type: "more_emails",
+    label: "Email Copy",
+    requires: "ads",
+    motherStep: "Email Engine (on-demand email copy)",
+    childSkills: () => ["email-campaign-writer", "pre-call-email-writer", "generic-language-killer (polish pass)"],
+    docs: () => [
+      { docType: "emails_extra", filename: "01_email_copy.md", title: "Email Copy", description: "ON-DEMAND email copy: a broadcast, a promo push, a re-engagement blast, or a mini-sequence. THE GENERATION REQUEST (what kind, how many, what occasion or offer) is in the REVISION FEEDBACK section: follow it exactly. Every email follows the cc-email-swipe-style framework skeleton and block layout TO THE LETTER: Send / Subject / Preview text each on its own line, {{ subscriber.first_name }} verbatim, ONE CTA per email (always [VSL LINK] unless the request says otherwise), 'To your success,' sign-off with a fresh topic-matched nickname in quotes, mandatory P.S., bold/italic/<u>underline</u> formatting density, community asset pointers where value beats live" },
+    ],
+    extraInstructions: () =>
+      "ConvertKit format, swipe-file style contract, one core idea per email. Proof anchors from the approved docs or [PROOF: ...]. Casing per the ICP age range. No em dashes anywhere.",
+  },
+  more_skool: {
+    type: "more_skool",
+    label: "Skool Posts",
+    requires: "ads",
+    motherStep: "Skool Engine (community posts)",
+    childSkills: () => ["skool-community-builder", "free-community-pipeline", "generic-language-killer (polish pass)"],
+    docs: () => [
+      { docType: "skool_extra", filename: "01_skool_posts.md", title: "Skool Posts", description: "An ON-DEMAND batch of Skool community posts for the client's FREE community. THE GENERATION REQUEST (how many, plus any focus) is in the REVISION FEEDBACK section. Mix per batch unless directed otherwise: value posts (one insight from the course outline taught in plain language), engagement posts (a question the avatar cannot scroll past), win/proof posts (framed from real results or [PROOF: ...]), and DM-trigger posts ('comment X and I'll send you Y' with the exact DM workflow that follows: keyword, first message, qualification exchange, booking push to [VSL LINK]). Each post: title, full body, and its purpose labeled" },
+    ],
+    extraInstructions: () =>
+      "Posts reference the community's real pinned content and level names from the approved Skool docs. The client's voice, casual and native to Skool. Every DM workflow ends at the VSL page. No em dashes anywhere.",
+  },
 };
 
 /** Stage order for gating and UI. */
 export const STAGE_ORDER = ["foundation", "skool", "funnel", "emails", "ads"] as const;
 
-/** On-demand Ad Engine job types: gated on ads approval, outside the chain. */
-export const ON_DEMAND_TYPES = ["more_statics", "more_scripts"] as const;
+/** On-demand engine job types: gated on ads approval, outside the chain. */
+export const ON_DEMAND_TYPES = [
+  "more_statics",
+  "more_scripts",
+  "more_content_ig",
+  "more_content_yt",
+  "more_emails",
+  "more_skool",
+] as const;
 
 /** The docType -> title contract used to validate a worker's completion. */
 export function stageContract(stageType: string, funnelType: FunnelType): Record<string, string> {

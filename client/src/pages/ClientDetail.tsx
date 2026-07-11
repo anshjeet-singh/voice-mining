@@ -31,7 +31,7 @@ const DOC_TYPES = [
   { id: "other", label: "Other" },
 ] as const;
 
-type StageId = "foundation" | "skool" | "funnel" | "emails" | "ads" | "more_statics" | "more_scripts";
+type StageId = "foundation" | "skool" | "funnel" | "emails" | "ads" | "more_statics" | "more_scripts" | "more_content_ig" | "more_content_yt" | "more_emails" | "more_skool";
 
 /**
  * Worker-run pipeline stages, in mother-skill order. docTypes mirror the
@@ -316,25 +316,121 @@ const AD_STYLE_CATEGORIES = [
   "dr-proof-screenshot",
 ] as const;
 
-/** One on-demand Ad Engine generator: compose a request, run it, review it. */
-function OnDemandGenerator({
-  kind,
+/** The on-demand engines: what each generates and how the request is composed. */
+const ENGINES: Array<{
+  kind: StageId;
+  label: string;
+  blurb: string;
+  counts: number[];
+  defaultCount: number;
+  hasStyles: boolean;
+  docType: string;
+  notesPlaceholder: string;
+  compose: (count: number, styles: string[], notes: string) => string;
+}> = [
+  {
+    kind: "more_statics",
+    label: "Static ads",
+    blurb: "Rendered natives cloned from your reference library",
+    counts: [5, 10, 15],
+    defaultCount: 10,
+    hasStyles: true,
+    docType: "ad_statics_extra",
+    notesPlaceholder: "Optional direction: offer focus, angle, occasion...",
+    compose: (count, styles, notes) =>
+      `Generate EXACTLY ${count} NEW static ads.${
+        styles.length
+          ? ` Clone ONLY from these reference catalog categories: ${styles.join(", ")}. Pick the strongest references within them.`
+          : " Pick the strongest reference categories yourself for maximum batch diversity."
+      }${notes ? ` Operator direction: ${notes}` : ""}`,
+  },
+  {
+    kind: "more_scripts",
+    label: "Video ad scripts",
+    blurb: "Word-for-word paid video scripts on fresh angles",
+    counts: [3, 5, 10],
+    defaultCount: 5,
+    hasStyles: false,
+    docType: "ad_scripts_extra",
+    notesPlaceholder: "Optional direction: angle, format, awareness level...",
+    compose: (count, _s, notes) =>
+      `Write EXACTLY ${count} NEW full-length video ad scripts, new angles, no duplicates of existing scripts.${notes ? ` Operator direction: ${notes}` : ""}`,
+  },
+  {
+    kind: "more_content_ig",
+    label: "Instagram reels",
+    blurb: "Organic reel scripts: hook, beats, on-screen text, caption",
+    counts: [3, 5, 10],
+    defaultCount: 5,
+    hasStyles: false,
+    docType: "content_ig_extra",
+    notesPlaceholder: "Optional: topics, pains to hit, series direction...",
+    compose: (count, _s, notes) =>
+      `Write EXACTLY ${count} Instagram reel scripts.${notes ? ` Operator direction: ${notes}` : " Pick the strongest topics from the research yourself."}`,
+  },
+  {
+    kind: "more_content_yt",
+    label: "YouTube scripts",
+    blurb: "Long-form scripts: 4-beat hook, story arcs, CTA",
+    counts: [1, 2, 3],
+    defaultCount: 1,
+    hasStyles: false,
+    docType: "content_yt_extra",
+    notesPlaceholder: "Optional: topic, outlier to model, format...",
+    compose: (count, _s, notes) =>
+      `Write EXACTLY ${count} long-form YouTube script${count > 1 ? "s" : ""}.${notes ? ` Operator direction: ${notes}` : " Pick the strongest topic from the research yourself."}`,
+  },
+  {
+    kind: "more_emails",
+    label: "Email copy",
+    blurb: "Broadcasts, promos, re-engagement: swipe-file style",
+    counts: [1, 3, 5],
+    defaultCount: 1,
+    hasStyles: false,
+    docType: "emails_extra",
+    notesPlaceholder: "What do you need? e.g. promo broadcast for the workshop, 3-email re-engagement...",
+    compose: (count, _s, notes) =>
+      `Write EXACTLY ${count} email${count > 1 ? "s" : ""}. Request: ${
+        notes || "no specific direction given: write the highest-leverage broadcast for the current funnel"
+      }`,
+  },
+  {
+    kind: "more_skool",
+    label: "Skool posts",
+    blurb: "Value, engagement, proof, and DM-trigger posts",
+    counts: [3, 5, 10],
+    defaultCount: 5,
+    hasStyles: false,
+    docType: "skool_extra",
+    notesPlaceholder: "Optional: focus, lead magnet to push, occasion...",
+    compose: (count, _s, notes) =>
+      `Write EXACTLY ${count} Skool community posts.${notes ? ` Operator direction: ${notes}` : ""}`,
+  },
+];
+
+/** One on-demand engine: compose a request, run it, review the output doc. */
+function EngineCard({
+  engine,
   job,
+  docs,
   clientId,
   invalidate,
 }: {
-  kind: "more_statics" | "more_scripts";
+  engine: (typeof ENGINES)[number];
   job: StageJob;
+  docs: ClientDoc[];
   clientId: number;
   invalidate: () => void;
 }) {
-  const isStatics = kind === "more_statics";
-  const [count, setCount] = useState(isStatics ? 10 : 5);
+  const [count, setCount] = useState(engine.defaultCount);
   const [styles, setStyles] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
+  const [expandedDoc, setExpandedDoc] = useState<number | null>(null);
 
   const generate = trpc.clients.generateStage.useMutation({
     onSuccess: () => {
       invalidate();
+      setNotes("");
       toast.success("Queued. Your Mac worker will pick it up");
     },
     onError: (err) => toast.error(err.message),
@@ -347,22 +443,10 @@ function OnDemandGenerator({
   const status = job?.status ?? null;
   const busy = status === "queued" || status === "running";
 
-  const fire = () => {
-    const feedback = isStatics
-      ? `Generate EXACTLY ${count} NEW static ads.${
-          styles.length
-            ? ` Clone ONLY from these reference catalog categories: ${styles.join(", ")}. Pick the strongest references within them.`
-            : " Pick the strongest reference categories yourself for maximum batch diversity."
-        }`
-      : `Write EXACTLY ${count} NEW full-length video ad scripts, new angles, no duplicates of existing scripts.`;
-    generate.mutate({ clientId, stage: kind, feedback });
-  };
-
   return (
     <div className="rounded-lg border border-border/50 bg-background/40 p-4">
-      <p className="text-xs font-semibold text-foreground mb-2">
-        {isStatics ? "More static ads" : "More video scripts"}
-      </p>
+      <p className="text-xs font-semibold text-foreground">{engine.label}</p>
+      <p className="text-[11px] text-muted-foreground mb-2">{engine.blurb}</p>
 
       {busy ? (
         <div className="flex items-center gap-2">
@@ -375,7 +459,7 @@ function OnDemandGenerator({
         <>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[11px] text-muted-foreground">Count</span>
-            {(isStatics ? [5, 10, 15] : [3, 5, 10]).map((n) => (
+            {engine.counts.map((n) => (
               <button
                 key={n}
                 onClick={() => setCount(n)}
@@ -387,11 +471,9 @@ function OnDemandGenerator({
               </button>
             ))}
           </div>
-          {isStatics && (
-            <div className="mb-3">
-              <p className="text-[11px] text-muted-foreground mb-1.5">
-                Styles (optional: leave empty for a diverse mix)
-              </p>
+          {engine.hasStyles && (
+            <div className="mb-2">
+              <p className="text-[11px] text-muted-foreground mb-1.5">Styles (optional: empty = diverse mix)</p>
               <div className="flex flex-wrap gap-1">
                 {AD_STYLE_CATEGORIES.map((c) => (
                   <button
@@ -411,11 +493,17 @@ function OnDemandGenerator({
               </div>
             </div>
           )}
+          <Textarea
+            placeholder={engine.notesPlaceholder}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="min-h-14 text-[11px] mb-2"
+          />
           <div className="flex items-center gap-2">
             <Button
               size="sm"
               disabled={generate.isPending}
-              onClick={fire}
+              onClick={() => generate.mutate({ clientId, stage: engine.kind, feedback: engine.compose(count, styles, notes.trim()) })}
               className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 text-xs"
             >
               {generate.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
@@ -425,7 +513,7 @@ function OnDemandGenerator({
               <Button
                 size="sm"
                 disabled={review.isPending}
-                onClick={() => review.mutate({ clientId, stage: kind, action: "approve" })}
+                onClick={() => review.mutate({ clientId, stage: engine.kind, action: "approve" })}
                 className="bg-emerald-600 text-white hover:bg-emerald-600/90 h-7 text-xs"
               >
                 <Check className="w-3 h-3 mr-1.5" />
@@ -436,25 +524,53 @@ function OnDemandGenerator({
           {status === "failed" && job?.error && (
             <p className="mt-2 text-[11px] text-destructive">Last run failed: {job.error.slice(0, 200)}</p>
           )}
-          {status === "review" && (
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              New assets are in the Ad Creatives gallery above: approve or reject each there, then mark the batch done.
-            </p>
-          )}
         </>
+      )}
+
+      {docs.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {docs.map((doc) => (
+            <div key={doc.id} className="rounded-lg border border-border/40 bg-card/30">
+              <button
+                onClick={() => setExpandedDoc(expandedDoc === doc.id ? null : doc.id)}
+                className="w-full flex items-center gap-2 p-2 text-left"
+              >
+                <FileText className="w-3 h-3 text-primary flex-shrink-0" />
+                <span className="flex-1 text-[11px] font-medium text-foreground truncate">{doc.title}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+                </span>
+                {expandedDoc === doc.id ? (
+                  <ChevronUp className="w-3 h-3 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                )}
+              </button>
+              {expandedDoc === doc.id && (
+                <div className="px-2 pb-2">
+                  <div className="max-h-96 overflow-y-auto rounded-lg bg-background/40 p-3">
+                    <MarkdownDoc content={doc.content} />
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-/** The Ad Engine: unlocked once the ads stage is approved. */
+/** The Engines dashboard: unlocked once the ads stage is approved. */
 function AdEngine({
   jobs,
+  documents,
   clientId,
   invalidate,
   pipelineComplete,
 }: {
   jobs: Record<string, StageJob | undefined>;
+  documents: ClientDoc[];
   clientId: number;
   invalidate: () => void;
   pipelineComplete: boolean;
@@ -466,17 +582,25 @@ function AdEngine({
           <RefreshCw className="w-3.5 h-3.5 text-primary" />
         </div>
         <div className="flex-1">
-          <h2 className="text-sm font-semibold text-foreground">Ad Engine</h2>
+          <h2 className="text-sm font-semibold text-foreground">Engines</h2>
           <p className="text-xs text-muted-foreground">
             {pipelineComplete
-              ? "Pipeline complete. Generate more creatives on demand: approved ads accumulate in the library above and never get replaced"
-              : "Generate more creatives on demand from the approved foundation"}
+              ? "Pipeline complete. Generate on demand: ads, content, emails, Skool posts. Approved ads accumulate in the library above"
+              : "Generate more assets on demand from the approved foundation"}
           </p>
         </div>
       </div>
-      <div className="mt-3 grid sm:grid-cols-2 gap-3">
-        <OnDemandGenerator kind="more_statics" job={jobs.more_statics ?? null} clientId={clientId} invalidate={invalidate} />
-        <OnDemandGenerator kind="more_scripts" job={jobs.more_scripts ?? null} clientId={clientId} invalidate={invalidate} />
+      <div className="mt-3 grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        {ENGINES.map((engine) => (
+          <EngineCard
+            key={engine.kind}
+            engine={engine}
+            job={jobs[engine.kind] ?? null}
+            docs={documents.filter((d) => d.docType === engine.docType)}
+            clientId={clientId}
+            invalidate={invalidate}
+          />
+        ))}
       </div>
     </div>
   );
@@ -1134,6 +1258,7 @@ export default function ClientDetail() {
           {jobs.ads?.status === "approved" && (
             <AdEngine
               jobs={jobs}
+              documents={documents}
               clientId={clientId}
               invalidate={invalidate}
               pipelineComplete={WORKER_STAGES.every((st) => jobs[st.id]?.status === "approved")}
