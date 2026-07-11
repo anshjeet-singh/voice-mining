@@ -73,6 +73,9 @@ export const clients = mysqlTable("clients", {
   niche: varchar("niche", { length: 300 }).notNull(),
   funnelType: mysqlEnum("funnelType", ["webinar", "call"]).notNull(),
   pricePoint: varchar("pricePoint", { length: 200 }),
+  /** The client's OWN socials, for the live stats card on the Overview. */
+  instagramHandle: varchar("instagramHandle", { length: 200 }),
+  youtubeHandle: varchar("youtubeHandle", { length: 200 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -115,8 +118,24 @@ export const clientAssets = mysqlTable("client_assets", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** Operator-uploaded INPUT images (client cutouts, proof screenshots, testimonials)
+ *  that the ad engine can composite and annotate into rendered statics. */
+export const clientRefImages = mysqlTable("client_ref_images", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  filename: varchar("filename", { length: 300 }).notNull(),
+  mime: varchar("mime", { length: 100 }).notNull().default("image/png"),
+  data: longtext("data").notNull(),
+  /** How to use it: "Trent cutout, no bg", "SoFi $151k approval, circle the number". */
+  note: varchar("note", { length: 500 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type ClientAsset = typeof clientAssets.$inferSelect;
 export type InsertClientAsset = typeof clientAssets.$inferInsert;
+
+export type ClientRefImage = typeof clientRefImages.$inferSelect;
+export type InsertClientRefImage = typeof clientRefImages.$inferInsert;
 
 // Jobs — the queue the local Mac worker polls. Status flow:
 // queued -> running -> review -> approved (or failed; reject requeues a new job).

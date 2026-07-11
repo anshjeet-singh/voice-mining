@@ -3,11 +3,11 @@
  * gallery, and their types. Used by the pipeline page (ClientDetail) and
  * the Client Studio dashboard.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Check, ChevronDown, ChevronUp, FileText, Loader2, RefreshCw, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, FileText, ImagePlus, Loader2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { MarkdownDoc } from "@/components/MarkdownDoc";
@@ -17,11 +17,129 @@ export type StageId =
   | "more_statics" | "more_scripts" | "more_content_ig" | "more_content_yt"
   | "more_emails" | "more_skool" | "content_intel";
 
+/**
+ * The offer ladder every DFY client runs. Fixed three tiers, each with its own
+ * CTA destination. The worker pulls the exact name, price, and guarantee from
+ * the approved Offers doc; the selector only says WHICH rung this piece sells.
+ */
+export const OFFER_LADDER: Array<{ label: string; request: string }> = [
+  {
+    label: "Free community",
+    request:
+      "OFFER: the FREE Skool community (top of funnel, value and nurture). Keep the pitch soft: the CTA points to joining the free community or grabbing a lead magnet, never a hard sell.",
+  },
+  {
+    label: "Paid community",
+    request:
+      "OFFER: the PAID Skool community (low/mid ticket). Pull its exact name, price, and promise from the approved Offers doc. The CTA destination is the paid community join link.",
+  },
+  {
+    label: "High ticket",
+    request:
+      "OFFER: the HIGH TICKET offer. Pull its exact name, price, and guarantee from the approved Offers doc. The CTA destination is ALWAYS [VSL LINK] (the VSL page is the booking page).",
+  },
+];
+
 export type StageJob = {
   status: "queued" | "running" | "review" | "approved" | "failed";
   error?: string | null;
   progress?: string | null;
 } | null;
+
+export interface RefImageMeta {
+  id: number;
+  filename: string;
+  mime: string;
+  note: string | null;
+}
+
+/** Proof/cutout image uploader for the ad engine: client cutouts, approval
+ *  screenshots, testimonials the render session composites into statics. */
+export function RefImagePanel({
+  clientId,
+  images,
+  invalidate,
+}: {
+  clientId: number;
+  images: RefImageMeta[];
+  invalidate: () => void;
+}) {
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const add = trpc.clients.addRefImage.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setNote("");
+      toast.success("Proof image added to the ad engine");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const del = trpc.clients.deleteRefImage.useMutation({
+    onSuccess: () => invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
+
+  const onPick = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 5_000_000) {
+      toast.error("Image is over 5MB — compress it first");
+      return;
+    }
+    setBusy(true);
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+      const base64 = dataUrl.split(",")[1] ?? "";
+      await add.mutateAsync({ clientId, filename: file.name.slice(0, 300), mime: file.type || "image/png", data: base64, note: note.trim() || undefined });
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  return (
+    <div>
+      {images.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
+          {images.map((img) => (
+            <div key={img.id} className="rounded-lg border border-border/50 bg-background/40 overflow-hidden">
+              <img src={`/api/refimages/${img.id}`} alt={img.filename} loading="lazy" className="w-full aspect-square object-cover" />
+              <div className="p-2">
+                <p className="text-[10px] text-muted-foreground truncate" title={img.filename}>{img.filename}</p>
+                {img.note && <p className="text-[10px] text-foreground/80 leading-snug mt-0.5">{img.note}</p>}
+                <button
+                  onClick={() => del.mutate({ id: img.id })}
+                  className="mt-1.5 text-[10px] text-muted-foreground hover:text-destructive"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="rounded-lg border border-dashed border-border/60 bg-background/30 p-3">
+        <input
+          placeholder="How to use it (optional): 'Trent cutout, no bg' · 'circle the $151k on the SoFi approval'"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          className="w-full h-8 rounded-lg border border-border/40 bg-background/40 px-2.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 mb-2"
+        />
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => onPick(e.target.files?.[0])} />
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => fileRef.current?.click()} className="h-8 text-xs">
+          {busy ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5 mr-1.5" />}
+          Attach proof image
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export interface ClientDoc {
   id: number;
@@ -390,14 +508,18 @@ export const ENGINES: Array<{
   {
     kind: "more_skool",
     label: "Skool posts",
-    blurb: "Value, engagement, proof, and DM-trigger posts",
+    blurb: "Value, engagement, proof, and DM-trigger posts that move people up the ladder",
     counts: [3, 5, 10],
     defaultCount: 5,
     hasStyles: false,
     docType: "skool_extra",
+    purposes: ["Pure value / nurture", "Engagement question", "Win / proof", "DM trigger"],
+    purposesLabel: "Post type",
+    hasAudience: true,
+    hasOffer: true,
     notesPlaceholder: "Optional: focus, lead magnet to push, occasion...",
-    compose: (count, _s, notes) =>
-      `Write EXACTLY ${count} Skool community posts.${notes ? ` Operator direction: ${notes}` : ""}`,
+    compose: (count, _s, notes, purpose) =>
+      `Write EXACTLY ${count} Skool community posts.${purpose ? ` POST TYPE: ${purpose}.` : ""}${notes ? ` Operator direction: ${notes}` : ""}`,
   },
 ];
 
@@ -408,16 +530,13 @@ export function EngineCard({
   clientId,
   invalidate,
   avatars = [],
-  offers = [],
 }: {
   engine: (typeof ENGINES)[number];
   job: StageJob;
   clientId: number;
   invalidate: () => void;
-  /** Sub-avatars parsed from the approved ICP doc: multi-select audience. */
-  avatars?: string[];
-  /** Offers parsed from the approved Offers doc: single-select. */
-  offers?: string[];
+  /** Sub-avatars parsed from the approved ICP doc: name + who-they-are hint. */
+  avatars?: Array<{ name: string; hint?: string }>;
 }) {
   const [count, setCount] = useState(engine.defaultCount);
   const [styles, setStyles] = useState<string[]>([]);
@@ -442,8 +561,15 @@ export function EngineCard({
 
   const composeRequest = () => {
     let req = engine.compose(count, styles, notes.trim(), purpose);
-    if (audience.length) req += ` AUDIENCE: ${audience.join(" + ")}.`;
-    if (offer) req += ` OFFER: ${offer}.`;
+    if (audience.length) {
+      const picked = audience.map((n) => {
+        const a = avatars.find((av) => av.name === n);
+        return a?.hint ? `${a.name} (${a.hint})` : n;
+      });
+      req += ` AUDIENCE: ${picked.join(" + ")}.`;
+    }
+    const offerReq = OFFER_LADDER.find((o) => o.label === offer)?.request;
+    if (offerReq) req += ` ${offerReq}`;
     for (const a of engine.addons ?? []) {
       if (addons.includes(a.label)) req += ` ${a.request}`;
     }
@@ -509,22 +635,24 @@ export function EngineCard({
               "Audience (pick one or more sub-avatars, empty = all)",
               avatars.map((av) => (
                 <button
-                  key={av}
-                  onClick={() => setAudience((prev) => (prev.includes(av) ? prev.filter((x) => x !== av) : [...prev, av]))}
-                  className={chip(audience.includes(av))}
+                  key={av.name}
+                  onClick={() =>
+                    setAudience((prev) => (prev.includes(av.name) ? prev.filter((x) => x !== av.name) : [...prev, av.name]))
+                  }
+                  className={`text-left ${chip(audience.includes(av.name))}`}
                 >
-                  {av}
+                  <span className="block font-semibold leading-tight">{av.name}</span>
+                  {av.hint && <span className="block text-[10px] opacity-70 leading-tight font-normal">{av.hint}</span>}
                 </button>
               ))
             )}
 
           {engine.hasOffer &&
-            offers.length > 0 &&
             selectorRow(
-              "Offer (what this sells)",
-              offers.map((of) => (
-                <button key={of} onClick={() => setOffer(offer === of ? "" : of)} className={chip(offer === of)}>
-                  {of}
+              "Offer (which rung of the ladder this sells)",
+              OFFER_LADDER.map((of) => (
+                <button key={of.label} onClick={() => setOffer(offer === of.label ? "" : of.label)} className={chip(offer === of.label)}>
+                  {of.label}
                 </button>
               ))
             )}

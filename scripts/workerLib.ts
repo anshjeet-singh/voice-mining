@@ -36,6 +36,8 @@ export interface ClaimedJob {
   feedback: string;
   /** Operator per-ad verdicts on the previous rendered batch (ads stage). */
   assetReviews?: Array<{ filename: string; status: string; feedback: string | null }>;
+  /** Operator-uploaded proof/cutout images to composite into rendered ads. */
+  refImages?: Array<{ filename: string; mime: string; note: string | null; base64: string }>;
 }
 
 export interface PromptOptions {
@@ -45,6 +47,8 @@ export interface PromptOptions {
   learningsDir: string;
   /** Git-versioned worker/frameworks dir: distilled copywriting playbooks. */
   frameworksDir?: string;
+  /** Absolute dir where worker.ts wrote this job's operator ref images. */
+  refImagesDir?: string;
 }
 
 /** Build the prompt for ONE deliverable of a stage. */
@@ -91,6 +95,13 @@ export function buildDocPrompt(job: ClaimedJob, output: StageOutputSpec, opts: P
       }`
     : "";
 
+  const refImages =
+    job.refImages?.length && opts.refImagesDir
+      ? `\n# OPERATOR PROOF IMAGES (real assets the operator uploaded for THIS client — use them in the statics where they fit)\nThese files are on disk at ${opts.refImagesDir}/. VIEW each one with the Read tool before building. Composite them into the rendered ads exactly as their note directs (a client cutout dropped onto a native format, a proof screenshot annotated with a circle or arrow on the key number, a testimonial framed as a screenshot). These are REAL, so they never count as fabrication: prefer a real proof image over a [PROOF: ...] placeholder whenever one fits the angle.\n${job.refImages
+          .map((r) => `- ${r.filename}${r.note ? `: ${r.note}` : ""}`)
+          .join("\n")}\n`
+      : "";
+
   return `You are running ${stage.motherStep} of the client-onboarding-orchestrator skill for our agency: ${stage.label}. Your job in THIS run is exactly ONE deliverable: ${output.title}.${siblings ? ` (Other runs are producing ${siblings} in parallel; do not produce their content.)` : ""}
 
 # MANDATORY READING (do this FIRST, with the Read tool, before writing a single word)
@@ -108,7 +119,7 @@ This is not optional. The deliverable must VISIBLY follow the skill templates an
 - Niche: ${job.client.niche}
 - Funnel type: ${job.client.funnelType}
 - Price point: ${job.client.pricePoint || "not specified"}
-${lessons}${feedback}${verdicts}${approved}
+${lessons}${feedback}${verdicts}${refImages}${approved}
 # ONBOARDING MATERIAL
 
 ${onboarding}

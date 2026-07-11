@@ -25,6 +25,10 @@ import {
   getAnalysisResultBySearchId,
   getCalendarEntriesByUser,
   getClientAssetById,
+  createRefImage,
+  deleteRefImage,
+  getRefImageById,
+  getRefImagesMeta,
   getClientAssetsMeta,
   getClientById,
   getClientDocumentById,
@@ -49,6 +53,7 @@ import {
   setClientDocumentStatus,
   setJobStatus,
   updateCalendarEntry,
+  updateClient,
   updateClientDocument,
   updateMiningSearchStatus,
   updateReport,
@@ -76,6 +81,7 @@ import type { DeepMarketIntelligence } from "@shared/reportContent";
 import { fetchRelatedSearches } from "./realScraper";
 import { ON_DEMAND_TYPES, STAGE_ORDER, STAGES } from "./stages";
 import { harvestCompetitorSources, resolveYouTubeLabels } from "./competitorSources";
+import { getClientSocialStats } from "./socialStats";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -209,6 +215,7 @@ export const appRouter = router({
           searches,
           jobs,
           assets,
+          refImages: await getRefImagesMeta(input.id),
           competitorSources: await resolveYouTubeLabels(competitorSources),
           researchReportId: researchReport?.id ?? null,
         };
@@ -241,6 +248,66 @@ export const appRouter = router({
         await requireClient(input.id, ctx.user.id);
         await deleteClient(input.id);
         return { ok: true };
+      }),
+
+    /** Upload a proof/cutout image the ad engine can composite into statics. */
+    addRefImage: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          filename: z.string().min(1).max(300),
+          mime: z.string().max(100),
+          // base64 payload without the data: URL prefix; ~5MB decoded cap
+          data: z.string().min(1).max(7_000_000),
+          note: z.string().max(500).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const id = await createRefImage({
+          clientId: input.clientId,
+          filename: input.filename.trim(),
+          mime: input.mime || "image/png",
+          data: input.data,
+          note: input.note?.trim() || null,
+        });
+        return { id };
+      }),
+
+    deleteRefImage: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const img = await getRefImageById(input.id);
+        if (!img) throw new TRPCError({ code: "NOT_FOUND", message: "Image not found" });
+        await requireClient(img.clientId, ctx.user.id);
+        await deleteRefImage(input.id);
+        return { ok: true };
+      }),
+
+    /** Set the client's OWN social handles for the live stats card. */
+    setSocials: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          instagramHandle: z.string().max(200).optional(),
+          youtubeHandle: z.string().max(200).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        await updateClient(input.clientId, {
+          instagramHandle: input.instagramHandle?.trim() || null,
+          youtubeHandle: input.youtubeHandle?.trim() || null,
+        });
+        return { ok: true };
+      }),
+
+    /** Live follower/subscriber stats for the client's own socials (cached 1h). */
+    socialStats: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const client = await requireClient(input.clientId, ctx.user.id);
+        return getClientSocialStats(client);
       }),
 
     addTextDocument: protectedProcedure

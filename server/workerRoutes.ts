@@ -23,6 +23,8 @@ import {
   getClientAssetsMeta,
   getClientDocuments,
   getLatestJobForClient,
+  getRefImageById,
+  getRefImagesWithData,
   getReportBySearchId,
   getSearchesByClient,
   setJobProgress,
@@ -240,6 +242,7 @@ export function registerWorkerRoutes(app: Express) {
         }
       }
       let assetReviews: Array<{ filename: string; status: string; feedback: string | null }> = [];
+      let refImages: Array<{ filename: string; mime: string; note: string | null; base64: string }> = [];
       if (job.type === "ads" || job.type === "more_statics" || job.type === "more_scripts") {
         const foreplay = await fetchForeplayWinningAds(client.niche).catch(() => "");
         if (foreplay) {
@@ -248,6 +251,13 @@ export function registerWorkerRoutes(app: Express) {
         assetReviews = (await getClientAssetsMeta(job.clientId))
           .filter((a) => a.status !== "pending")
           .map((a) => ({ filename: a.filename, status: a.status, feedback: a.feedback }));
+        // Operator-uploaded proof/cutout images the render session composites in
+        refImages = (await getRefImagesWithData(job.clientId)).map((r) => ({
+          filename: r.filename,
+          mime: r.mime,
+          note: r.note,
+          base64: r.data,
+        }));
       }
 
       res.json({
@@ -267,6 +277,7 @@ export function registerWorkerRoutes(app: Express) {
           lessons,
           feedback: job.payload?.feedback ?? "",
           assetReviews,
+          refImages,
         },
       });
     } catch (err) {
@@ -412,6 +423,25 @@ export function registerWorkerRoutes(app: Express) {
     } catch (err) {
       console.error("[assets/get]", err);
       res.status(500).json({ error: "asset fetch failed" });
+    }
+  });
+
+  // Operator-uploaded reference image bytes (owner-only), for UI thumbnails.
+  app.get("/api/refimages/:id", async (req: Request, res: Response) => {
+    try {
+      const { authenticateRequest } = await import("./_core/auth");
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "unauthorized" });
+      const img = await getRefImageById(Number(req.params.id));
+      if (!img) return res.status(404).json({ error: "not found" });
+      const client = await getClientById(img.clientId);
+      if (!client || client.userId !== user.id) return res.status(404).json({ error: "not found" });
+      res.setHeader("Content-Type", img.mime);
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      res.send(Buffer.from(img.data, "base64"));
+    } catch (err) {
+      console.error("[refimages/get]", err);
+      res.status(500).json({ error: "ref image fetch failed" });
     }
   });
 

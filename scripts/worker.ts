@@ -264,11 +264,24 @@ async function runDeliverable(
   shard?: { feedback: string; label: string }
 ) {
   const jobDir = await fs.mkdtemp(path.join(os.tmpdir(), `${job.type}-${job.id}-${output.docType}-`));
+
+  // Operator proof/cutout images: write them to ./refs/ so the render session
+  // can view and composite them. The prompt references them by that path.
+  let refImagesDir: string | undefined;
+  if (job.refImages?.length) {
+    refImagesDir = path.join(jobDir, "refs");
+    await fs.mkdir(refImagesDir, { recursive: true });
+    for (const img of job.refImages) {
+      await fs.writeFile(path.join(refImagesDir, img.filename), Buffer.from(img.base64, "base64")).catch(() => {});
+    }
+  }
+
   const promptJob = shard ? { ...job, feedback: shard.feedback } : job;
   const prompt = buildDocPrompt(promptJob, output, {
     skillsDir: SKILLS_DIR,
     learningsDir: LEARNINGS_DIR,
     frameworksDir: FRAMEWORKS_DIR,
+    refImagesDir,
   });
   const promptFile = path.join(jobDir, "PROMPT.md");
   await fs.writeFile(promptFile, prompt);

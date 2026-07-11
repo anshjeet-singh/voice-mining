@@ -8,8 +8,10 @@ import {
   DocBoard,
   ENGINES,
   EngineCard,
+  RefImagePanel,
   type ClientAssetMeta,
   type ClientDoc,
+  type RefImageMeta,
   type StageJob,
 } from "@/components/engines";
 import {
@@ -42,32 +44,32 @@ const SECTIONS = [
   {
     id: "ads", label: "Ads Engine", icon: Image,
     text: "text-violet-400", chip: "bg-violet-500/15",
-    wash: "bg-gradient-to-b from-violet-500/[0.06] to-transparent", tile: "border-violet-500/25 bg-violet-500/[0.06] hover:border-violet-400/50",
+    wash: "bg-gradient-to-b from-violet-500/[0.07] via-transparent to-violet-500/[0.05]", tile: "border-violet-500/25 bg-violet-500/[0.06] hover:border-violet-400/50",
   },
   {
     id: "shortform", label: "Short-Form Content", icon: MonitorPlay,
     text: "text-pink-400", chip: "bg-pink-500/15",
-    wash: "bg-gradient-to-b from-pink-500/[0.06] to-transparent", tile: "border-pink-500/25 bg-pink-500/[0.06] hover:border-pink-400/50",
+    wash: "bg-gradient-to-b from-pink-500/[0.07] via-transparent to-pink-500/[0.05]", tile: "border-pink-500/25 bg-pink-500/[0.06] hover:border-pink-400/50",
   },
   {
     id: "youtube", label: "YouTube Content", icon: Youtube,
     text: "text-red-400", chip: "bg-red-500/15",
-    wash: "bg-gradient-to-b from-red-500/[0.06] to-transparent", tile: "border-red-500/25 bg-red-500/[0.06] hover:border-red-400/50",
+    wash: "bg-gradient-to-b from-red-500/[0.07] via-transparent to-red-500/[0.05]", tile: "border-red-500/25 bg-red-500/[0.06] hover:border-red-400/50",
   },
   {
     id: "funnel", label: "Funnel", icon: Clapperboard,
     text: "text-sky-400", chip: "bg-sky-500/15",
-    wash: "bg-gradient-to-b from-sky-500/[0.06] to-transparent", tile: "border-sky-500/25 bg-sky-500/[0.06] hover:border-sky-400/50",
+    wash: "bg-gradient-to-b from-sky-500/[0.07] via-transparent to-sky-500/[0.05]", tile: "border-sky-500/25 bg-sky-500/[0.06] hover:border-sky-400/50",
   },
   {
     id: "emails", label: "Email Engine", icon: Mail,
     text: "text-emerald-400", chip: "bg-emerald-500/15",
-    wash: "bg-gradient-to-b from-emerald-500/[0.06] to-transparent", tile: "border-emerald-500/25 bg-emerald-500/[0.06] hover:border-emerald-400/50",
+    wash: "bg-gradient-to-b from-emerald-500/[0.07] via-transparent to-emerald-500/[0.05]", tile: "border-emerald-500/25 bg-emerald-500/[0.06] hover:border-emerald-400/50",
   },
   {
     id: "skool", label: "Skool Engine", icon: Users,
     text: "text-amber-400", chip: "bg-amber-500/15",
-    wash: "bg-gradient-to-b from-amber-500/[0.06] to-transparent", tile: "border-amber-500/25 bg-amber-500/[0.06] hover:border-amber-400/50",
+    wash: "bg-gradient-to-b from-amber-500/[0.07] via-transparent to-amber-500/[0.05]", tile: "border-amber-500/25 bg-amber-500/[0.06] hover:border-amber-400/50",
   },
 ] as const;
 
@@ -673,18 +675,31 @@ function CompetitorMiner({
 const cleanHandle = (h: string) => h.replace(/^@+/, "");
 
 /**
- * Sub-avatar names from the ICP doc: the '## Sub-Avatars' section's child
- * headings, 'Sub-Avatar N: Name' headings anywhere, or bold-led list items
- * inside the section. Tolerant because older ICP docs predate the contract.
+ * Sub-avatars from the ICP doc as { name, hint } where the hint says who they
+ * actually are (occupation, income, situation). Reads the '## Sub-Avatars'
+ * section's child headings and 'Sub-Avatar N: Name' headings, splitting a name
+ * from its descriptor on the first dash/colon; when the heading is a bare name,
+ * the descriptor comes from the first substantive line of the section body.
  */
-function parseSubAvatars(doc?: ClientDoc): string[] {
+interface Avatar {
+  name: string;
+  hint?: string;
+}
+function parseSubAvatars(doc?: ClientDoc): Avatar[] {
   if (!doc) return [];
-  const clean = (s: string) => s.replace(/\*\*/g, "").replace(/[:.]$/, "").trim().slice(0, 60);
-  const out: string[] = [];
+  const tidy = (s: string) => s.replace(/\*\*/g, "").replace(/[:.]\s*$/, "").trim();
+  const splitNameHint = (raw: string): Avatar => {
+    const t = tidy(raw);
+    const m = t.match(/^(.{2,40}?)\s*[—–:\-(]\s*(.+?)\)?$/);
+    if (m) return { name: tidy(m[1]).slice(0, 40), hint: tidy(m[2]).slice(0, 72) };
+    return { name: t.slice(0, 40) };
+  };
+  const out: Avatar[] = [];
+  const lines = doc.content.split("\n");
   let inSection = false;
   let sectionLevel = 0;
-  for (const line of doc.content.split("\n")) {
-    const h = line.match(/^(#{1,4})\s+(.+)$/);
+  for (let i = 0; i < lines.length; i++) {
+    const h = lines[i].match(/^(#{1,4})\s+(.+)$/);
     if (h) {
       const level = h[1].length;
       const text = h[2].trim();
@@ -695,27 +710,160 @@ function parseSubAvatars(doc?: ClientDoc): string[] {
       }
       if (inSection && level <= sectionLevel) inSection = false;
       const named = text.match(/^(?:sub[- ]?)?avatar\s*\d*\s*[:–-]\s*(.+)$/i);
-      if (named) {
-        out.push(clean(named[1]));
-        continue;
+      if (named || (inSection && level > sectionLevel)) {
+        const av = splitNameHint(named ? named[1] : text);
+        if (!av.hint) {
+          for (let j = i + 1; j < lines.length && j < i + 8; j++) {
+            if (/^#{1,4}\s/.test(lines[j])) break;
+            const body = lines[j].replace(/^[-*\d.\s]+/, "").replace(/\*\*/g, "").trim();
+            if (body.length > 12) {
+              av.hint = body.replace(/^(who they are|profile|snapshot)[:\s]+/i, "").split(/(?<=[.!?])\s/)[0].slice(0, 72);
+              break;
+            }
+          }
+        }
+        out.push(av);
       }
-      if (inSection && level > sectionLevel) out.push(clean(text));
     } else if (inSection) {
-      const bullet = line.match(/^\s*(?:[-*]|\d+\.)\s+\*\*([^*]+)\*\*/);
-      if (bullet) out.push(clean(bullet[1]));
+      const bullet = lines[i].match(/^\s*(?:[-*]|\d+\.)\s+\*\*([^*]+)\*\*\s*[:—–-]?\s*(.*)$/);
+      if (bullet) out.push({ name: tidy(bullet[1]).slice(0, 40), hint: bullet[2] ? tidy(bullet[2]).slice(0, 72) : undefined });
     }
   }
-  return Array.from(new Set(out.filter(Boolean))).slice(0, 6);
+  const seen = new Set<string>();
+  return out.filter((a) => a.name && !seen.has(a.name) && seen.add(a.name)).slice(0, 6);
 }
 
-/** Offer names from the Offers doc's section headings, generic sections dropped. */
-function parseOffers(doc?: ClientDoc): string[] {
-  if (!doc) return [];
-  const skip = /math|principle|summary|overview|stack|guarantee|bonus|note|why |how |pricing logic|structure/i;
-  const heads = Array.from(doc.content.matchAll(/^#{2,3}\s+(.+)$/gm))
-    .map((m) => m[1].replace(/^offer\s*\d*\s*[:–-]\s*/i, "").replace(/\*\*/g, "").trim().slice(0, 60))
-    .filter((h) => h && !skip.test(h));
-  return Array.from(new Set(heads)).slice(0, 5);
+/** The client's own live follower/subscriber counts, with inline handle setup. */
+function ClientSocials({
+  clientId,
+  client,
+  invalidate,
+}: {
+  clientId: number;
+  client: { instagramHandle?: string | null; youtubeHandle?: string | null };
+  invalidate: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [ig, setIg] = useState(client.instagramHandle ?? "");
+  const [yt, setYt] = useState(client.youtubeHandle ?? "");
+  const hasHandles = !!(client.instagramHandle || client.youtubeHandle);
+
+  const stats = trpc.clients.socialStats.useQuery({ clientId }, { enabled: hasHandles, staleTime: 60 * 60 * 1000 });
+  const save = trpc.clients.setSocials.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setEditing(false);
+      stats.refetch();
+      toast.success("Socials saved");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (!hasHandles && !editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className="w-full rounded-xl border border-dashed border-border/60 bg-card/20 p-4 flex items-center gap-3 text-left hover:border-border transition-colors"
+      >
+        <div className="w-9 h-9 rounded-lg bg-card/60 flex items-center justify-center flex-shrink-0">
+          <Plus className="w-4 h-4 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground">Add the client's socials</p>
+          <p className="text-[11px] text-muted-foreground">Track their live Instagram and YouTube growth right here</p>
+        </div>
+      </button>
+    );
+  }
+
+  if (editing) {
+    return (
+      <div className="rounded-xl border border-border/50 bg-card/30 p-4 space-y-2.5">
+        <p className="text-sm font-semibold text-foreground">Client socials</p>
+        <div className="grid sm:grid-cols-2 gap-2">
+          <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-background/40 px-2.5">
+            <Instagram className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+            <input
+              value={ig}
+              onChange={(e) => setIg(e.target.value)}
+              placeholder="instagram handle or URL"
+              className="flex-1 h-9 bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+            />
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-background/40 px-2.5">
+            <Youtube className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+            <input
+              value={yt}
+              onChange={(e) => setYt(e.target.value)}
+              placeholder="youtube @handle or URL"
+              className="flex-1 h-9 bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            disabled={save.isPending}
+            onClick={() => save.mutate({ clientId, instagramHandle: ig, youtubeHandle: yt })}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 text-xs"
+          >
+            {save.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+            Save
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="h-7 text-xs">
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-card/30 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-semibold text-foreground">Client socials</p>
+        <button onClick={() => setEditing(true)} className="text-[11px] text-muted-foreground hover:text-foreground">
+          Edit
+        </button>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {(stats.data ?? []).map((s) => (
+          <a
+            key={s.platform}
+            href={s.url}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg border border-border/40 bg-background/40 p-3 flex items-center gap-3 hover:border-border transition-colors"
+          >
+            {s.platform === "youtube" ? (
+              <Youtube className="w-5 h-5 text-red-400 flex-shrink-0" />
+            ) : (
+              <Instagram className="w-5 h-5 text-pink-400 flex-shrink-0" />
+            )}
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-foreground truncate">@{cleanHandle(s.handle)}</p>
+              {s.error ? (
+                <p className="text-[10px] text-muted-foreground">Couldn't load ({s.error})</p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  <span className="text-foreground font-semibold tabular-nums">{fmt(s.followers ?? 0)}</span>{" "}
+                  {s.platform === "youtube" ? "subscribers" : "followers"}
+                  {s.posts != null && ` · ${fmt(s.posts)} posts`}
+                  {s.extra != null && s.extraLabel && ` · ${fmt(s.extra)} ${s.extraLabel}`}
+                </p>
+              )}
+            </div>
+          </a>
+        ))}
+        {stats.isLoading && (
+          <div className="flex items-center gap-2 text-muted-foreground p-3">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span className="text-[11px]">Loading live stats...</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /** Stage documents live with their engines; only Foundation stays on Overview. */
@@ -740,6 +888,7 @@ export default function ClientStudio() {
   const jobs = (data?.jobs ?? {}) as Record<string, StageJob>;
   const documents = (data?.documents ?? []) as ClientDoc[];
   const assets = (data?.assets ?? []) as ClientAssetMeta[];
+  const refImages = (data?.refImages ?? []) as RefImageMeta[];
   const competitorSources = (data?.competitorSources ?? []) as CompetitorSource[];
   const researchReportId = data?.researchReportId ?? null;
 
@@ -759,7 +908,6 @@ export default function ClientStudio() {
   )[0];
   const intelReels = useMemo(() => parseIntelReels(intelDoc), [intelDoc]);
   const avatars = useMemo(() => parseSubAvatars(documents.find((d) => d.docType === "icp_snapshot")), [documents]);
-  const offers = useMemo(() => parseOffers(documents.find((d) => d.docType === "offers")), [documents]);
 
   // Funnel pipeline: split the Video Scripts doc into recordable cards once
   const splitFunnel = trpc.clients.splitFunnelScripts.useMutation({ onSuccess: invalidate });
@@ -862,6 +1010,9 @@ export default function ClientStudio() {
                 </button>
               )}
 
+              {/* The client's own live socials */}
+              <ClientSocials clientId={clientId} client={data.client} invalidate={invalidate} />
+
               {/* Engine tiles */}
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
                 {SECTIONS.filter((sc) => sc.id !== "overview").map((sc) => {
@@ -937,13 +1088,16 @@ export default function ClientStudio() {
               )}
               <div className="grid lg:grid-cols-2 gap-4">
                 <StudioBlock title="Generate static ads" frame="border-violet-500/25 bg-violet-500/[0.05]">
-                  <EngineCard engine={engineByKind("more_statics")} job={jobs.more_statics ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} offers={offers} />
+                  <EngineCard engine={engineByKind("more_statics")} job={jobs.more_statics ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
                 </StudioBlock>
                 <StudioBlock title="Generate video ad scripts" frame="border-violet-500/25 bg-violet-500/[0.05]">
-                  <EngineCard engine={engineByKind("more_scripts")} job={jobs.more_scripts ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} offers={offers} />
+                  <EngineCard engine={engineByKind("more_scripts")} job={jobs.more_scripts ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
                 </StudioBlock>
               </div>
-              <StudioBlock title="Ad library" hint="Grouped by format. Approved ads live here forever; rejections with notes train every future batch" frame="border-violet-500/25 bg-violet-500/[0.05]">
+              <StudioBlock title="Proof images" hint="Client cutouts, approval screenshots, testimonials. The engine composites and annotates these into rendered statics instead of using placeholders" frame="border-violet-500/25 bg-violet-500/[0.05]">
+                <RefImagePanel clientId={clientId} images={refImages} invalidate={invalidate} />
+              </StudioBlock>
+              <StudioBlock title="Ad library" hint="Approved ads live here forever; rejections with notes train every future batch" frame="border-violet-500/25 bg-violet-500/[0.05]">
                 <AssetGallery assets={assets} clientId={clientId} stageId="ads" invalidate={invalidate} canRegenerate />
               </StudioBlock>
               <StudioBlock title="Script pipeline" hint="One card per script: approve what gets recorded, mark posted when live" frame="border-violet-500/25 bg-violet-500/[0.05]">
@@ -994,7 +1148,7 @@ export default function ClientStudio() {
             <>
               <SectionHeader id="shortform" />
               <StudioBlock title="Generate Instagram reels" hint={intelFreshness} frame="border-pink-500/25 bg-pink-500/[0.05]">
-                <EngineCard engine={engineByKind("more_content_ig")} job={jobs.more_content_ig ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} offers={offers} />
+                <EngineCard engine={engineByKind("more_content_ig")} job={jobs.more_content_ig ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
               </StudioBlock>
               <StudioBlock title="Reel pipeline" hint="One card per reel: draft, approve, posted. Write your own too" frame="border-pink-500/25 bg-pink-500/[0.05]">
                 <DocBoard docs={docsFor("content_ig_extra")} invalidate={invalidate} clientId={clientId} docType="content_ig_extra" />
@@ -1006,7 +1160,7 @@ export default function ClientStudio() {
             <>
               <SectionHeader id="youtube" />
               <StudioBlock title="Generate long-form scripts" hint={intelFreshness} frame="border-red-500/25 bg-red-500/[0.05]">
-                <EngineCard engine={engineByKind("more_content_yt")} job={jobs.more_content_yt ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} offers={offers} />
+                <EngineCard engine={engineByKind("more_content_yt")} job={jobs.more_content_yt ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
               </StudioBlock>
               <StudioBlock title="Video pipeline" hint="One card per script: approve what gets filmed, mark posted when live" frame="border-red-500/25 bg-red-500/[0.05]">
                 <DocBoard docs={docsFor("content_yt_extra")} invalidate={invalidate} clientId={clientId} docType="content_yt_extra" />
@@ -1018,7 +1172,7 @@ export default function ClientStudio() {
             <>
               <SectionHeader id="emails" />
               <StudioBlock title="Generate email copy" hint="Pick the purpose, add specifics: swipe-file style, ConvertKit-ready" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
-                <EngineCard engine={engineByKind("more_emails")} job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} offers={offers} />
+                <EngineCard engine={engineByKind("more_emails")} job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
               </StudioBlock>
               <StudioBlock
                 title="Email pipeline"

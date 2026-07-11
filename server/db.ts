@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertClient,
   InsertClientAsset,
+  InsertClientRefImage,
   InsertClientDocument,
   InsertJob,
   InsertMiningSearch,
@@ -13,6 +14,7 @@ import {
   analysisResults,
   calendarEntries,
   clientAssets,
+  clientRefImages,
   clientDocuments,
   clients,
   jobs,
@@ -817,6 +819,53 @@ export async function deleteClientAssetsByTypes(clientId: number, docTypes: stri
   await db
     .delete(clientAssets)
     .where(and(eq(clientAssets.clientId, clientId), inArray(clientAssets.docType, docTypes)));
+}
+
+// ─── Operator-uploaded reference images (proof, client cutouts) ───────────────
+
+export async function createRefImage(data: InsertClientRefImage): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(clientRefImages).values(data);
+  return result[0].insertId;
+}
+
+/** Ref-image metadata for a client (no base64 — thumbnails served via /api/refimages/:id). */
+export async function getRefImagesMeta(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: clientRefImages.id,
+      clientId: clientRefImages.clientId,
+      filename: clientRefImages.filename,
+      mime: clientRefImages.mime,
+      note: clientRefImages.note,
+      createdAt: clientRefImages.createdAt,
+    })
+    .from(clientRefImages)
+    .where(eq(clientRefImages.clientId, clientId))
+    .orderBy(clientRefImages.createdAt);
+}
+
+/** Full ref images incl. base64 payload: the worker ships these into ad jobs. */
+export async function getRefImagesWithData(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(clientRefImages).where(eq(clientRefImages.clientId, clientId));
+}
+
+export async function getRefImageById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(clientRefImages).where(eq(clientRefImages.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function deleteRefImage(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(clientRefImages).where(eq(clientRefImages.id, id));
 }
 
 /** Live one-line status for a running job ("building ad 8 of 15"). */

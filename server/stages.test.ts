@@ -140,6 +140,26 @@ describe("stage registry", () => {
     expect(spec.extraInstructions).toContain("no invented views");
   });
 
+  it("mandates a three-rung offer ladder and rich sub-avatars in the ICP/offers contracts", () => {
+    const found = stagePromptSpec("foundation", "call")!;
+    const icp = found.outputs.find((o) => o.docType === "icp_snapshot")!.description;
+    const offers = found.outputs.find((o) => o.docType === "offers")!.description;
+    // Sub-avatars parse as name + who-they-are descriptor
+    expect(icp).toContain("## Sub-Avatars");
+    expect(icp).toContain("who they actually are");
+    // Offers are exactly the three-rung ladder in order
+    expect(offers).toContain("Free Offer");
+    expect(offers).toContain("Low/Mid Ticket Offer");
+    expect(offers).toContain("High Ticket Offer");
+  });
+
+  it("routes the promoted offer to the right destination in the skool contract", () => {
+    const skool = stagePromptSpec("more_skool", "call")!.outputs[0].description;
+    expect(skool).toContain("HIGH TICKET -> [VSL LINK]");
+    expect(skool).toContain("PAID community -> the paid community join link");
+    expect(skool).toContain("OFFER");
+  });
+
   it("honors REBUILD ONLY on both static ad contracts", () => {
     // Rebuild-rejected must never regenerate the batch: exact filenames, listed ads only
     expect(stagePromptSpec("more_statics", "call")!.outputs[0].description).toContain("REBUILD ONLY");
