@@ -21,6 +21,7 @@ import {
   getClientDocuments,
   getReportBySearchId,
   getSearchesByClient,
+  setJobProgress,
   setJobStatus,
   upsertClientDocumentByType,
 } from "./db";
@@ -244,6 +245,22 @@ export function registerWorkerRoutes(app: Express) {
     } catch (err) {
       console.error("[worker/complete]", err);
       res.status(500).json({ error: "complete failed" });
+    }
+  });
+
+  // Live progress line from the worker while a job runs ("building ad 8 of 15").
+  app.post("/api/worker/progress", async (req: Request, res: Response) => {
+    if (!guard(req, res)) return;
+    try {
+      const { jobId, progress } = req.body as { jobId: number; progress: string };
+      if (!jobId || typeof progress !== "string") {
+        return res.status(400).json({ error: "jobId and progress required" });
+      }
+      await setJobProgress(jobId, progress);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[worker/progress]", err);
+      res.status(500).json({ error: "progress failed" });
     }
   });
 

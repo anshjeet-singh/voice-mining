@@ -129,6 +129,8 @@ export const jobs = mysqlTable("jobs", {
   // No .default() — TiDB rejects literal DEFAULT on JSON columns.
   payload: json("payload").$type<{ feedback?: string }>(),
   error: text("error"),
+  /** Live status line while running ("building ad 8 of 15"), cleared on finish. */
+  progress: varchar("progress", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   startedAt: timestamp("startedAt"),
   finishedAt: timestamp("finishedAt"),

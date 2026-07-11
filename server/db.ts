@@ -742,7 +742,10 @@ export async function setJobStatus(id: number, status: "queued" | "running" | "r
   if (!db) throw new Error("Database not available");
   const patch: Record<string, unknown> = { status };
   if (error !== undefined) patch.error = error;
-  if (status === "review" || status === "approved" || status === "failed") patch.finishedAt = new Date();
+  if (status === "review" || status === "approved" || status === "failed") {
+    patch.finishedAt = new Date();
+    patch.progress = null;
+  }
   await db.update(jobs).set(patch).where(eq(jobs.id, id));
 }
 
@@ -807,4 +810,11 @@ export async function deleteClientAssetsByTypes(clientId: number, docTypes: stri
   await db
     .delete(clientAssets)
     .where(and(eq(clientAssets.clientId, clientId), inArray(clientAssets.docType, docTypes)));
+}
+
+/** Live one-line status for a running job ("building ad 8 of 15"). */
+export async function setJobProgress(id: number, progress: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(jobs).set({ progress: progress.slice(0, 500) }).where(eq(jobs.id, id));
 }

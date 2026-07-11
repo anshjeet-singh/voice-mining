@@ -97,7 +97,11 @@ interface ClientDoc {
   content: string;
   updatedAt: string | Date;
 }
-type StageJob = { status: "queued" | "running" | "review" | "approved" | "failed"; error?: string | null } | null;
+type StageJob = {
+  status: "queued" | "running" | "review" | "approved" | "failed";
+  error?: string | null;
+  progress?: string | null;
+} | null;
 
 /** Numbered circle for each pipeline stage: done, active, or upcoming. */
 function StageMarker({ n, state }: { n: number; state: "done" | "active" | "upcoming" }) {
@@ -415,7 +419,9 @@ function WorkerStageCard({
               {status === "queued" ? "Waiting for your Mac" : `Building ${stage.label.toLowerCase()}`}
             </p>
             <p className="text-[11px] text-muted-foreground">
-              {status === "queued" ? "Make sure the worker is running: npm run worker" : stage.runningNote}
+              {status === "queued"
+                ? "Make sure the worker is running: npm run worker"
+                : job?.progress || stage.runningNote}
             </p>
           </div>
         </div>

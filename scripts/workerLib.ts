@@ -117,6 +117,9 @@ The STRUCTURE comes from the skills, not from this prompt: follow the mother ski
 - Short paragraphs (3 sentences max), bullets for lists, --- between major sections.
 - NO em dashes anywhere. Use commas, colons, or periods instead.
 
+# LIVE PROGRESS (the owner watches this while you work)
+Each time you start a distinct step, APPEND one short present-tense line to ./PROGRESS.log in your working directory (create it on your first step). Examples: "reading the reference ad library (97 images)", "building ad 3 of 15: notes app, dark mode", "QA pass on ad 3: fixing title overflow", "writing video script 2 of 5", "saving batch to Drive". One line per step, newest line last, under 90 characters, no timestamps. Never skip this: it is the only visibility the owner has into a long run.
+
 # LESSONS OUTPUT
 After the deliverable, also write:
 - client_lessons.md — one bullet per lesson SPECIFIC TO THIS CLIENT. Write "none" if nothing.

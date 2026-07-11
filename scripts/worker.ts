@@ -157,8 +157,47 @@ function runClaude(args: string[], cwd: string, timeoutMs: number): Promise<void
   });
 }
 
+/**
+ * Live progress: each deliverable's session appends step lines to
+ * ./PROGRESS.log; we tail the newest line per deliverable, compose one
+ * status string for the job, and post it whenever it changes.
+ */
+function makeProgressReporter(jobId: number) {
+  const lines = new Map<string, string>();
+  let lastPosted = "";
+  const post = async () => {
+    const combined = Array.from(lines.entries())
+      .map(([title, line]) => (lines.size > 1 ? `${title}: ${line}` : line))
+      .join(" · ")
+      .slice(0, 490);
+    if (!combined || combined === lastPosted) return;
+    lastPosted = combined;
+    await api("progress", { jobId, progress: combined }).catch(() => {});
+  };
+  return {
+    watch(title: string, jobDir: string): () => void {
+      const file = path.join(jobDir, "PROGRESS.log");
+      const timer = setInterval(async () => {
+        const raw = await fs.readFile(file, "utf8").catch(() => "");
+        const last = raw.trim().split("\n").filter(Boolean).pop();
+        if (last && lines.get(title) !== last) {
+          lines.set(title, last);
+          await post();
+        }
+      }, 8000);
+      return () => {
+        clearInterval(timer);
+        lines.set(title, "done");
+        void post();
+      };
+    },
+  };
+}
+
+type ProgressReporter = ReturnType<typeof makeProgressReporter>;
+
 /** Run ONE deliverable in its own temp dir with its own headless Claude Code. */
-async function runDeliverable(job: ClaimedJob, output: StageOutputSpec) {
+async function runDeliverable(job: ClaimedJob, output: StageOutputSpec, reporter?: ProgressReporter) {
   const jobDir = await fs.mkdtemp(path.join(os.tmpdir(), `${job.type}-${job.id}-${output.docType}-`));
   const prompt = buildDocPrompt(job, output, {
     skillsDir: SKILLS_DIR,
@@ -169,19 +208,24 @@ async function runDeliverable(job: ClaimedJob, output: StageOutputSpec) {
   await fs.writeFile(promptFile, prompt);
 
   console.log(`[job ${job.id}] ${output.title}: running headless Claude Code (${WORKER_MODEL}, effort ${WORKER_EFFORT}) ...`);
-  await runClaude(
-    [
-      "-p",
-      `Follow the instructions in ${promptFile} exactly.`,
-      "--model",
-      WORKER_MODEL,
-      "--effort",
-      WORKER_EFFORT,
-      "--dangerously-skip-permissions",
-    ],
-    jobDir,
-    CLAUDE_TIMEOUT_MS
-  );
+  const stopWatching = reporter?.watch(output.title, jobDir);
+  try {
+    await runClaude(
+      [
+        "-p",
+        `Follow the instructions in ${promptFile} exactly.`,
+        "--model",
+        WORKER_MODEL,
+        "--effort",
+        WORKER_EFFORT,
+        "--dangerously-skip-permissions",
+      ],
+      jobDir,
+      CLAUDE_TIMEOUT_MS
+    );
+  } finally {
+    stopWatching?.();
+  }
 
   const files = await readJobDir(jobDir);
   const parsed = parseDocOutput(files, output);
@@ -214,7 +258,8 @@ async function runJob(job: ClaimedJob) {
 
   // All deliverables run CONCURRENTLY: separate Claude Code sessions, each
   // focused on one document. Cuts wall time by the number of deliverables.
-  const results = await Promise.all(job.stage.outputs.map((output) => runDeliverable(job, output)));
+  const reporter = makeProgressReporter(job.id);
+  const results = await Promise.all(job.stage.outputs.map((output) => runDeliverable(job, output, reporter)));
 
   const docs = Object.fromEntries(results.map((r) => [r.docType, r.content]));
   const clientLessons = Array.from(new Set(results.flatMap((r) => r.clientLessons)));
