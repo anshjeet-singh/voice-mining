@@ -40,3 +40,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-11 · job 270006 · client: Trent Kus -->
 - On a whole-list broadcast to a burned, skeptical, high-ticket audience, a "verify me before we talk" / due-diligence P.S. (search my name, look up the entity, read the reviews) outperforms an assertive proof claim and is more compliant. The polish pass should recognize this as a deliberate, high-trust move and never flatten it into a generic "click here" CTA or a bolder claim.
+
+<!-- 2026-07-11 · job 270012 · client: Trent Kus -->
+- Add a domain carve-out note: in funding, credit, and investing niches the word "leverage" (and "0%", "positioning", "sequence") is real mechanism language, not banned corporate filler. The default banned-words list (leverage, unlock, empower, elevate, journey, seamless) should flag "leverage" only when it is used as vague hype, never when it names an actual financial mechanism.

@@ -26,3 +26,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-11 · job 270006 · client: Trent Kus -->
 - When the request is "write the single highest-leverage broadcast" with no angle specified, the skill gives no default. The default that should be codified: lead with the funnel's #1 differentiator angle (the one thing competitors cannot say), anchor it to the flagship proof, keep the one CTA on the primary conversion event, and let the strongest single email do the whole job. A broadcast is a standalone asset, not a sequence position, so the "one big idea, never repeat a sequence angle" rule does not constrain it; the constraint is "pick the highest-converting angle you have and swing."
+
+<!-- 2026-07-11 · job 270012 · client: Trent Kus -->
+- For a book-a-call / high-ticket funnel where price is never named in the emails, a "cash injection" or flash-promo cannot use the standard flash-sale mechanic (a price cut with a nameable deadline). The systemic move is a real time-boxed BOOKING window plus a fast-action BONUS that is a splinter of the core offer (never a discount of the core), with the pull coming from cost-of-inaction and honest calendar-cap scarcity. Add a call-funnel variant to the flash-sale / promo entry so this isn't re-derived per client.
