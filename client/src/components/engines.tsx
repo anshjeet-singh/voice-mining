@@ -85,15 +85,32 @@ function AssetGallery({
     ["Approved library", approved],
   ].filter(([, g]) => (g as ClientAssetMeta[]).length > 0) as Array<[string, ClientAssetMeta[]]>;
 
+  /**
+   * Rebuilds route to the engine that OWNS each rejected ad. A rejected
+   * statics-engine ad (ad_statics_extra) requeued as the full ads stage
+   * regenerates the original 15-ad batch instead: the server then skips every
+   * incoming file as already-approved and nothing visibly changes. Grouping
+   * by docType sends each rejection back through its own pipeline, whose
+   * completion sweeps that docType and accepts the rebuilt filenames.
+   */
+  const stageForDocType = (docType: string): StageId => (docType === "ad_statics_extra" ? "more_statics" : "ads");
+
   const regenerateRejected = () => {
-    const feedback = [
-      `REBUILD ONLY these rejected static ads; keep every approved ad IDENTICAL (same angle, format, and copy) and re-render it unchanged:`,
-      ...rejected.map((a) => `- ${a.filename}: ${a.feedback || "rejected, no note"}`),
-      approved.length ? `Approved (do not change): ${approved.map((a) => a.filename).join(", ")}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
-    generate.mutate({ clientId, stage: stageId, feedback });
+    const groups = new Map<StageId, ClientAssetMeta[]>();
+    for (const a of rejected) {
+      const st = stageForDocType(a.docType);
+      groups.set(st, [...(groups.get(st) ?? []), a]);
+    }
+    for (const [stage, group] of Array.from(groups.entries())) {
+      const feedback = [
+        `REBUILD ONLY these rejected static ads (keep each one's EXACT filename); do NOT generate any other ads:`,
+        ...group.map((a) => `- ${a.filename}: ${a.feedback || "rejected, no note"}`),
+        approved.length ? `Approved library (do not touch, do not re-render): ${approved.map((a) => a.filename).join(", ")}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+      generate.mutate({ clientId, stage, feedback });
+    }
   };
 
   return (
@@ -251,8 +268,15 @@ export const ENGINES: Array<{
   hasStyles: boolean;
   docType: string;
   notesPlaceholder: string;
-  /** Structured intent options (e.g. what an email is FOR). */
+  /** Structured intent options (e.g. what an email is FOR, or the awareness level). */
   purposes?: string[];
+  purposesLabel?: string;
+  /** Optional toggles appended to the request when ticked (e.g. "also write the SMS"). */
+  addons?: Array<{ label: string; request: string; default?: boolean }>;
+  /** Show the sub-avatar multi-select (parsed from the ICP doc) on this engine. */
+  hasAudience?: boolean;
+  /** Show the offer select (parsed from the Offers doc) on this engine. */
+  hasOffer?: boolean;
   compose: (count: number, styles: string[], notes: string, purpose?: string) => string;
 }> = [
   {
@@ -263,9 +287,15 @@ export const ENGINES: Array<{
     defaultCount: 10,
     hasStyles: true,
     docType: "ad_statics_extra",
-    notesPlaceholder: "Optional direction: offer focus, angle, occasion...",
-    compose: (count, styles, notes) =>
+    purposes: ["Any mix", "Unaware", "Problem aware", "Solution aware", "Product aware"],
+    purposesLabel: "Awareness level",
+    hasAudience: true,
+    hasOffer: true,
+    notesPlaceholder: "Optional direction: angle, occasion, proof to feature...",
+    compose: (count, styles, notes, purpose) =>
       `Generate EXACTLY ${count} NEW static ads.${
+        purpose && purpose !== "Any mix" ? ` AWARENESS LEVEL: ${purpose}.` : ""
+      }${
         styles.length
           ? ` Clone ONLY from these reference catalog categories: ${styles.join(", ")}. Pick the strongest references within them.`
           : " Pick the strongest reference categories yourself for maximum batch diversity."
@@ -279,9 +309,15 @@ export const ENGINES: Array<{
     defaultCount: 5,
     hasStyles: false,
     docType: "ad_scripts_extra",
-    notesPlaceholder: "Optional direction: angle, format, awareness level...",
-    compose: (count, _s, notes) =>
-      `Write EXACTLY ${count} NEW full-length video ad scripts, new angles, no duplicates of existing scripts.${notes ? ` Operator direction: ${notes}` : ""}`,
+    purposes: ["Any mix", "Unaware", "Problem aware", "Solution aware", "Product aware"],
+    purposesLabel: "Awareness level",
+    hasAudience: true,
+    hasOffer: true,
+    notesPlaceholder: "Optional direction: angle, format, hook archetype...",
+    compose: (count, _s, notes, purpose) =>
+      `Write EXACTLY ${count} NEW full-length video ad scripts, new angles, no duplicates of existing scripts.${
+        purpose && purpose !== "Any mix" ? ` AWARENESS LEVEL: ${purpose}.` : ""
+      }${notes ? ` Operator direction: ${notes}` : ""}`,
   },
   {
     kind: "more_content_ig",
@@ -292,6 +328,9 @@ export const ENGINES: Array<{
     hasStyles: false,
     docType: "content_ig_extra",
     purposes: ["Mixed batch", "Top of funnel (reach)", "Middle (value / mechanism)", "Bottom (proof / offer)"],
+    purposesLabel: "Funnel stage",
+    hasAudience: true,
+    hasOffer: true,
     notesPlaceholder: "Audience (which sub-avatar), offer, topics, pains to hit...",
     compose: (count, _s, notes, purpose) =>
       `Write EXACTLY ${count} Instagram reel scripts.${
@@ -307,6 +346,9 @@ export const ENGINES: Array<{
     hasStyles: false,
     docType: "content_yt_extra",
     purposes: ["Middle (value / mechanism)", "Top of funnel (reach)", "Bottom (case study / proof)"],
+    purposesLabel: "Funnel stage",
+    hasAudience: true,
+    hasOffer: true,
     notesPlaceholder: "Audience (which sub-avatar), offer, topic, outlier to model...",
     compose: (count, _s, notes, purpose) =>
       `Write EXACTLY ${count} long-form YouTube script${count > 1 ? "s" : ""}.${
@@ -323,13 +365,23 @@ export const ENGINES: Array<{
     docType: "emails_extra",
     purposes: [
       "VSL / booking push",
+      "Post-booking",
       "Community nurture",
-      "Cash injection promo",
-      "Webinar push",
-      "Re-engagement",
-      "Newsletter / value",
+      "Cash injection",
+      "Pre-webinar",
+      "Post-webinar",
+      "Newsletter",
     ],
-    notesPlaceholder: "Specifics: the offer (paid community, high ticket), audience, the occasion, the deadline...",
+    purposesLabel: "Campaign",
+    hasAudience: true,
+    hasOffer: true,
+    addons: [
+      {
+        label: "Also write the SMS versions",
+        request: "ALSO write the matching GHL SMS version after every email ({{contact.first_name}} verbatim, under 320 characters, one link max).",
+      },
+    ],
+    notesPlaceholder: "Specifics: the occasion, the deadline, the asset to push...",
     compose: (count, _s, notes, purpose) =>
       `Write EXACTLY ${count} email${count > 1 ? "s" : ""}. PURPOSE: ${purpose || "highest-leverage broadcast for the current funnel"}.${
         notes ? ` Specifics: ${notes}` : ""
@@ -355,16 +407,27 @@ export function EngineCard({
   job,
   clientId,
   invalidate,
+  avatars = [],
+  offers = [],
 }: {
   engine: (typeof ENGINES)[number];
   job: StageJob;
   clientId: number;
   invalidate: () => void;
+  /** Sub-avatars parsed from the approved ICP doc: multi-select audience. */
+  avatars?: string[];
+  /** Offers parsed from the approved Offers doc: single-select. */
+  offers?: string[];
 }) {
   const [count, setCount] = useState(engine.defaultCount);
   const [styles, setStyles] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [purpose, setPurpose] = useState(engine.purposes?.[0] ?? "");
+  const [audience, setAudience] = useState<string[]>([]);
+  const [offer, setOffer] = useState("");
+  const [addons, setAddons] = useState<string[]>(
+    (engine.addons ?? []).filter((a) => a.default).map((a) => a.label)
+  );
 
   const generate = trpc.clients.generateStage.useMutation({
     onSuccess: () => {
@@ -377,10 +440,34 @@ export function EngineCard({
   const status = job?.status ?? null;
   const busy = status === "queued" || status === "running";
 
+  const composeRequest = () => {
+    let req = engine.compose(count, styles, notes.trim(), purpose);
+    if (audience.length) req += ` AUDIENCE: ${audience.join(" + ")}.`;
+    if (offer) req += ` OFFER: ${offer}.`;
+    for (const a of engine.addons ?? []) {
+      if (addons.includes(a.label)) req += ` ${a.request}`;
+    }
+    return req;
+  };
+
+  const chip = (active: boolean) =>
+    `px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+      active
+        ? "bg-primary/20 text-primary border-primary/50"
+        : "bg-card/60 text-muted-foreground border-border/40 hover:text-foreground hover:border-border"
+    }`;
+
+  const selectorRow = (label: string, node: React.ReactNode) => (
+    <div className="mb-2.5">
+      <p className="text-[11px] font-medium text-muted-foreground mb-1.5">{label}</p>
+      <div className="flex flex-wrap gap-1.5">{node}</div>
+    </div>
+  );
+
   return (
     <div className="rounded-lg border border-border/40 bg-card/20 p-4">
       <p className="text-xs font-semibold text-foreground">{engine.label}</p>
-      <p className="text-[11px] text-muted-foreground mb-2">{engine.blurb}</p>
+      <p className="text-[11px] text-muted-foreground mb-2.5">{engine.blurb}</p>
 
       {busy ? (
         <div className="flex items-center gap-2">
@@ -391,7 +478,7 @@ export function EngineCard({
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-2.5">
             <span className="text-[11px] text-muted-foreground w-10">Count</span>
             <input
               type="range"
@@ -401,13 +488,50 @@ export function EngineCard({
               onChange={(e) => setCount(Number(e.target.value))}
               className="flex-1 h-1.5 accent-primary cursor-pointer"
             />
-            <span className="w-8 text-center text-xs font-mono font-semibold text-foreground bg-card/60 rounded px-1.5 py-0.5">
+            <span className="w-8 text-center text-xs font-semibold text-foreground bg-card/60 rounded px-1.5 py-0.5 tabular-nums">
               {count}
             </span>
           </div>
+
+          {engine.purposes &&
+            selectorRow(
+              engine.purposesLabel ?? "Purpose",
+              engine.purposes.map((pu) => (
+                <button key={pu} onClick={() => setPurpose(pu)} className={chip(purpose === pu)}>
+                  {pu}
+                </button>
+              ))
+            )}
+
+          {engine.hasAudience &&
+            avatars.length > 0 &&
+            selectorRow(
+              "Audience (pick one or more sub-avatars, empty = all)",
+              avatars.map((av) => (
+                <button
+                  key={av}
+                  onClick={() => setAudience((prev) => (prev.includes(av) ? prev.filter((x) => x !== av) : [...prev, av]))}
+                  className={chip(audience.includes(av))}
+                >
+                  {av}
+                </button>
+              ))
+            )}
+
+          {engine.hasOffer &&
+            offers.length > 0 &&
+            selectorRow(
+              "Offer (what this sells)",
+              offers.map((of) => (
+                <button key={of} onClick={() => setOffer(offer === of ? "" : of)} className={chip(offer === of)}>
+                  {of}
+                </button>
+              ))
+            )}
+
           {engine.hasStyles && (
-            <div className="mb-2">
-              <p className="text-[11px] text-muted-foreground mb-1.5">Styles (optional: empty = diverse mix)</p>
+            <div className="mb-2.5">
+              <p className="text-[11px] font-medium text-muted-foreground mb-1.5">Styles (optional: empty = diverse mix)</p>
               <div className="flex flex-wrap gap-1">
                 {AD_STYLE_CATEGORIES.map((c) => (
                   <button
@@ -427,34 +551,32 @@ export function EngineCard({
               </div>
             </div>
           )}
-          {engine.purposes && (
-            <div className="flex flex-wrap gap-1 mb-2">
-              {engine.purposes.map((pu) => (
-                <button
-                  key={pu}
-                  onClick={() => setPurpose(pu)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] transition-colors ${
-                    purpose === pu
-                      ? "bg-primary/20 text-primary border border-primary/40"
-                      : "bg-card/60 text-muted-foreground border border-border/40 hover:text-foreground"
-                  }`}
-                >
-                  {pu}
-                </button>
-              ))}
-            </div>
-          )}
+
+          {(engine.addons ?? []).map((a) => (
+            <label key={a.label} className="flex items-center gap-2 mb-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={addons.includes(a.label)}
+                onChange={() =>
+                  setAddons((prev) => (prev.includes(a.label) ? prev.filter((x) => x !== a.label) : [...prev, a.label]))
+                }
+                className="w-3.5 h-3.5 accent-primary cursor-pointer"
+              />
+              <span className="text-xs text-foreground">{a.label}</span>
+            </label>
+          ))}
+
           <Textarea
             placeholder={engine.notesPlaceholder}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="min-h-14 text-[11px] mb-2"
+            className="min-h-14 text-[11px] mb-2.5"
           />
           <div className="flex items-center gap-2">
             <Button
               size="sm"
               disabled={generate.isPending}
-              onClick={() => generate.mutate({ clientId, stage: engine.kind, feedback: engine.compose(count, styles, notes.trim(), purpose) })}
+              onClick={() => generate.mutate({ clientId, stage: engine.kind, feedback: composeRequest() })}
               className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 text-xs"
             >
               {generate.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
@@ -471,6 +593,12 @@ export function EngineCard({
   );
 }
 
+
+/** Funnel-stage tag the content contracts write right under each piece's title. */
+function stageTag(doc: ClientDoc): string | null {
+  const m = doc.content.slice(0, 600).match(/^\*{0,2}Stage:?\*{0,2}\s*(TOF|MOF|BOF)\b/im);
+  return m ? m[1].toUpperCase() : null;
+}
 
 /** Kanban pipeline for deliverable docs: Draft -> Approved -> Posted. */
 const BOARD_COLUMNS = [
@@ -597,6 +725,11 @@ export function DocBoard({
                       >
                         <FileText className="w-3 h-3 text-primary flex-shrink-0" />
                         <span className="flex-1 text-[11px] font-medium text-foreground leading-snug">{doc.title}</span>
+                        {stageTag(doc) && (
+                          <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider bg-primary/15 text-primary">
+                            {stageTag(doc)}
+                          </span>
+                        )}
                         {expanded === doc.id ? (
                           <ChevronUp className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                         ) : (

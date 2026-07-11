@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { AppShell } from "@/components/AppShell";
@@ -161,7 +161,13 @@ interface CompetitorSource {
   handle: string;
   url: string;
   origin: "research" | "onboarding" | "added";
+  /** Resolved channel name for raw YouTube channel ids. */
+  label?: string;
 }
+
+/** Chip text: resolved channel names beat raw UC... ids, and never a double @. */
+const srcDisplay = (s: CompetitorSource) =>
+  s.label ?? (/^UC[A-Za-z0-9_-]{10,}$/.test(s.handle) ? "YouTube channel" : `@${cleanHandle(s.handle)}`);
 
 const srcKey = (s: CompetitorSource) => `${s.platform}:${s.handle}`;
 
@@ -316,7 +322,7 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
           <div className="space-y-1.5">
             {byAccount.map((a, i) => (
               <div key={a.account} className="grid grid-cols-[110px_1fr_56px] gap-2 items-center">
-                <span className="text-[11px] text-muted-foreground truncate">@{a.account}</span>
+                <span className="text-[11px] text-muted-foreground truncate">@{cleanHandle(a.account)}</span>
                 <div className="h-4 rounded bg-card/60 overflow-hidden">
                   <div
                     className={`h-full rounded ${i === 0 ? "bg-primary" : "bg-foreground/30"}`}
@@ -361,7 +367,7 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
         </button>
         {accounts.map((a) => (
           <button key={a} onClick={() => setAccount(account === a ? null : a)} className={chip(account === a)}>
-            @{a}
+            @{cleanHandle(a)}
           </button>
         ))}
         <span className="ml-auto text-[11px] text-muted-foreground">
@@ -384,7 +390,7 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
                 <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                   <PlatformIcon platform={r.platform} className="w-3 h-3 flex-shrink-0" />
                   <span className="truncate">
-                    @{r.account}
+                    @{cleanHandle(r.account)}
                     {r.date ? ` · ${r.date}` : ""} ·{" "}
                     <span className="text-primary">{r.hookStyle}</span> · {r.score}/10
                   </span>
@@ -619,7 +625,7 @@ function CompetitorMiner({
               >
                 <PlatformIcon platform={s.platform} className={`w-3.5 h-3.5 ${on ? "text-primary" : "text-muted-foreground"}`} />
                 <span>
-                  <span className="block text-[11px] font-semibold text-foreground leading-tight">@{s.handle}</span>
+                  <span className="block text-[11px] font-semibold text-foreground leading-tight">{srcDisplay(s)}</span>
                   <span className="block text-[9px] text-muted-foreground leading-tight">{ORIGIN_LABEL[s.origin]}</span>
                 </span>
               </button>
@@ -663,6 +669,55 @@ function CompetitorMiner({
 
 // ─── The Studio ───────────────────────────────────────────────────────────────
 
+/** Scraped accounts sometimes arrive with their own @: never render @@. */
+const cleanHandle = (h: string) => h.replace(/^@+/, "");
+
+/**
+ * Sub-avatar names from the ICP doc: the '## Sub-Avatars' section's child
+ * headings, 'Sub-Avatar N: Name' headings anywhere, or bold-led list items
+ * inside the section. Tolerant because older ICP docs predate the contract.
+ */
+function parseSubAvatars(doc?: ClientDoc): string[] {
+  if (!doc) return [];
+  const clean = (s: string) => s.replace(/\*\*/g, "").replace(/[:.]$/, "").trim().slice(0, 60);
+  const out: string[] = [];
+  let inSection = false;
+  let sectionLevel = 0;
+  for (const line of doc.content.split("\n")) {
+    const h = line.match(/^(#{1,4})\s+(.+)$/);
+    if (h) {
+      const level = h[1].length;
+      const text = h[2].trim();
+      if (/sub[- ]?avatars?\b/i.test(text) && !/^sub[- ]?avatar\s*\d/i.test(text)) {
+        inSection = true;
+        sectionLevel = level;
+        continue;
+      }
+      if (inSection && level <= sectionLevel) inSection = false;
+      const named = text.match(/^(?:sub[- ]?)?avatar\s*\d*\s*[:–-]\s*(.+)$/i);
+      if (named) {
+        out.push(clean(named[1]));
+        continue;
+      }
+      if (inSection && level > sectionLevel) out.push(clean(text));
+    } else if (inSection) {
+      const bullet = line.match(/^\s*(?:[-*]|\d+\.)\s+\*\*([^*]+)\*\*/);
+      if (bullet) out.push(clean(bullet[1]));
+    }
+  }
+  return Array.from(new Set(out.filter(Boolean))).slice(0, 6);
+}
+
+/** Offer names from the Offers doc's section headings, generic sections dropped. */
+function parseOffers(doc?: ClientDoc): string[] {
+  if (!doc) return [];
+  const skip = /math|principle|summary|overview|stack|guarantee|bonus|note|why |how |pricing logic|structure/i;
+  const heads = Array.from(doc.content.matchAll(/^#{2,3}\s+(.+)$/gm))
+    .map((m) => m[1].replace(/^offer\s*\d*\s*[:–-]\s*/i, "").replace(/\*\*/g, "").trim().slice(0, 60))
+    .filter((h) => h && !skip.test(h));
+  return Array.from(new Set(heads)).slice(0, 5);
+}
+
 /** Stage documents live with their engines; only Foundation stays on Overview. */
 const FOUNDATION_DOC_TYPES = ["icp_snapshot", "offers", "brand_positioning", "course_outline"];
 const SKOOL_DOC_TYPES = ["skool_free_community", "skool_paid_community"];
@@ -703,6 +758,20 @@ export default function ClientStudio() {
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   )[0];
   const intelReels = useMemo(() => parseIntelReels(intelDoc), [intelDoc]);
+  const avatars = useMemo(() => parseSubAvatars(documents.find((d) => d.docType === "icp_snapshot")), [documents]);
+  const offers = useMemo(() => parseOffers(documents.find((d) => d.docType === "offers")), [documents]);
+
+  // Funnel pipeline: split the Video Scripts doc into recordable cards once
+  const splitFunnel = trpc.clients.splitFunnelScripts.useMutation({ onSuccess: invalidate });
+  const splitAttempted = useRef(false);
+  const hasScriptsDoc = documents.some((d) => d.docType === "video_scripts");
+  const hasFunnelAssets = documents.some((d) => d.docType === "funnel_asset_extra");
+  useEffect(() => {
+    if (!data || splitAttempted.current || !hasScriptsDoc || hasFunnelAssets) return;
+    splitAttempted.current = true;
+    splitFunnel.mutate({ clientId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, hasScriptsDoc, hasFunnelAssets, clientId]);
   const engineDocCount = ENGINES.reduce((n, e) => n + docsFor(e.docType).length, 0);
   const postedCount = documents.filter((d) => d.docType.endsWith("_extra") && d.status === "posted").length;
 
@@ -868,10 +937,10 @@ export default function ClientStudio() {
               )}
               <div className="grid lg:grid-cols-2 gap-4">
                 <StudioBlock title="Generate static ads" frame="border-violet-500/25 bg-violet-500/[0.05]">
-                  <EngineCard engine={engineByKind("more_statics")} job={jobs.more_statics ?? null} clientId={clientId} invalidate={invalidate} />
+                  <EngineCard engine={engineByKind("more_statics")} job={jobs.more_statics ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} offers={offers} />
                 </StudioBlock>
                 <StudioBlock title="Generate video ad scripts" frame="border-violet-500/25 bg-violet-500/[0.05]">
-                  <EngineCard engine={engineByKind("more_scripts")} job={jobs.more_scripts ?? null} clientId={clientId} invalidate={invalidate} />
+                  <EngineCard engine={engineByKind("more_scripts")} job={jobs.more_scripts ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} offers={offers} />
                 </StudioBlock>
               </div>
               <StudioBlock title="Ad library" hint="Grouped by format. Approved ads live here forever; rejections with notes train every future batch" frame="border-violet-500/25 bg-violet-500/[0.05]">
@@ -894,12 +963,26 @@ export default function ClientStudio() {
             <>
               <SectionHeader id="funnel" />
               <StudioBlock
-                title="Funnel assets"
-                hint="The pages' complete copy and every script to record: the VSL, call-confirmed, and breakout videos"
+                title="Recording pipeline"
+                hint="One card per video to record: the VSL, the call-confirmed video, and every breakout. Mark posted once filmed and live"
+                frame="border-sky-500/25 bg-sky-500/[0.05]"
+              >
+                {splitFunnel.isPending ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <p className="text-[11px]">Breaking the video scripts into recordable cards...</p>
+                  </div>
+                ) : (
+                  <DocBoard docs={docsFor("funnel_asset_extra")} invalidate={invalidate} clientId={clientId} docType="funnel_asset_extra" />
+                )}
+              </StudioBlock>
+              <StudioBlock
+                title="Page copy"
+                hint="The funnel pages' complete final copy"
                 frame="border-sky-500/25 bg-sky-500/[0.05]"
               >
                 <div className="space-y-1.5">
-                  {FUNNEL_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
+                  {["funnel_core", "funnel_structure"].flatMap((t) => docsFor(t)).map((d) => (
                     <DocRow key={d.id} doc={d} />
                   ))}
                 </div>
@@ -911,7 +994,7 @@ export default function ClientStudio() {
             <>
               <SectionHeader id="shortform" />
               <StudioBlock title="Generate Instagram reels" hint={intelFreshness} frame="border-pink-500/25 bg-pink-500/[0.05]">
-                <EngineCard engine={engineByKind("more_content_ig")} job={jobs.more_content_ig ?? null} clientId={clientId} invalidate={invalidate} />
+                <EngineCard engine={engineByKind("more_content_ig")} job={jobs.more_content_ig ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} offers={offers} />
               </StudioBlock>
               <StudioBlock title="Reel pipeline" hint="One card per reel: draft, approve, posted. Write your own too" frame="border-pink-500/25 bg-pink-500/[0.05]">
                 <DocBoard docs={docsFor("content_ig_extra")} invalidate={invalidate} clientId={clientId} docType="content_ig_extra" />
@@ -923,7 +1006,7 @@ export default function ClientStudio() {
             <>
               <SectionHeader id="youtube" />
               <StudioBlock title="Generate long-form scripts" hint={intelFreshness} frame="border-red-500/25 bg-red-500/[0.05]">
-                <EngineCard engine={engineByKind("more_content_yt")} job={jobs.more_content_yt ?? null} clientId={clientId} invalidate={invalidate} />
+                <EngineCard engine={engineByKind("more_content_yt")} job={jobs.more_content_yt ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} offers={offers} />
               </StudioBlock>
               <StudioBlock title="Video pipeline" hint="One card per script: approve what gets filmed, mark posted when live" frame="border-red-500/25 bg-red-500/[0.05]">
                 <DocBoard docs={docsFor("content_yt_extra")} invalidate={invalidate} clientId={clientId} docType="content_yt_extra" />
@@ -935,17 +1018,26 @@ export default function ClientStudio() {
             <>
               <SectionHeader id="emails" />
               <StudioBlock title="Generate email copy" hint="Pick the purpose, add specifics: swipe-file style, ConvertKit-ready" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
-                <EngineCard engine={engineByKind("more_emails")} job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} />
+                <EngineCard engine={engineByKind("more_emails")} job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} offers={offers} />
               </StudioBlock>
-              <StudioBlock title="Email pipeline" hint="One card per email: approve, then mark posted once loaded into ConvertKit" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
-                <DocBoard docs={docsFor("emails_extra")} invalidate={invalidate} clientId={clientId} docType="emails_extra" />
-              </StudioBlock>
-              <StudioBlock title="Live sequences" hint="The approved sequence set from the build: what's loaded into ConvertKit and GHL" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
-                <div className="space-y-1.5">
-                  {EMAIL_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
-                    <DocRow key={d.id} doc={d} />
-                  ))}
-                </div>
+              <StudioBlock
+                title="Email pipeline"
+                hint="One card per email or sequence: the build's approved sequences start in Approved, mark posted once loaded into ConvertKit"
+                frame="border-emerald-500/25 bg-emerald-500/[0.05]"
+              >
+                <DocBoard
+                  docs={[
+                    ...docsFor("emails_extra"),
+                    // The build's sequence set was approved at the stage gate: it starts in the Approved column
+                    ...EMAIL_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => ({
+                      ...d,
+                      status: !d.status || d.status === "draft" ? "approved" : d.status,
+                    })),
+                  ]}
+                  invalidate={invalidate}
+                  clientId={clientId}
+                  docType="emails_extra"
+                />
               </StudioBlock>
             </>
           )}

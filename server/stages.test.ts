@@ -140,6 +140,14 @@ describe("stage registry", () => {
     expect(spec.extraInstructions).toContain("no invented views");
   });
 
+  it("honors REBUILD ONLY on both static ad contracts", () => {
+    // Rebuild-rejected must never regenerate the batch: exact filenames, listed ads only
+    expect(stagePromptSpec("more_statics", "call")!.outputs[0].description).toContain("REBUILD ONLY");
+    expect(stagePromptSpec("ads", "call")!.outputs[0].description).toContain("REBUILD ONLY");
+    expect(stagePromptSpec("more_statics", "call")!.outputs[0].description).toContain("AWARENESS LEVEL");
+    expect(stagePromptSpec("more_scripts", "call")!.outputs[0].description).toContain("AWARENESS LEVEL");
+  });
+
   it("routes funnel stage, audience, and offer selections into the content contracts", () => {
     const ig = stagePromptSpec("more_content_ig", "call")!.outputs[0].description;
     const yt = stagePromptSpec("more_content_yt", "call")!.outputs[0].description;

@@ -75,7 +75,7 @@ import {
 import type { DeepMarketIntelligence } from "@shared/reportContent";
 import { fetchRelatedSearches } from "./realScraper";
 import { ON_DEMAND_TYPES, STAGE_ORDER, STAGES } from "./stages";
-import { harvestCompetitorSources } from "./competitorSources";
+import { harvestCompetitorSources, resolveYouTubeLabels } from "./competitorSources";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -209,7 +209,7 @@ export const appRouter = router({
           searches,
           jobs,
           assets,
-          competitorSources,
+          competitorSources: await resolveYouTubeLabels(competitorSources),
           researchReportId: researchReport?.id ?? null,
         };
       }),
@@ -321,6 +321,47 @@ export const appRouter = router({
       }),
 
     /** Operator-written draft added straight onto an engine's content board. */
+    /**
+     * One-time split of the Video Scripts stage doc into one recordable card
+     * per script (funnel_asset_extra, born approved) so the Funnel section is
+     * a real pipeline: record it, mark it posted. Idempotent.
+     */
+    splitFunnelScripts: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const docs = await getClientDocuments(input.clientId);
+        if (docs.some((d) => d.docType === "funnel_asset_extra")) return { created: 0 };
+        const scriptsDoc = docs.find((d) => d.docType === "video_scripts");
+        if (!scriptsDoc) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No video scripts yet" });
+
+        // Split on the heading level the doc actually uses for scripts
+        const splitBy = (level: string) => {
+          const re = new RegExp(`^${level}\\s+(.+)$`, "gm");
+          const marks = Array.from(scriptsDoc.content.matchAll(re));
+          return marks.map((m, i) => ({
+            title: m[1].trim().slice(0, 280),
+            content: scriptsDoc.content.slice(m.index!, marks[i + 1]?.index ?? scriptsDoc.content.length).trim(),
+          }));
+        };
+        let parts = splitBy("##");
+        if (parts.length < 3) parts = splitBy("###");
+        if (parts.length < 3) parts = splitBy("#");
+        if (!parts.length) parts = [{ title: scriptsDoc.title, content: scriptsDoc.content }];
+
+        for (const p of parts) {
+          await createClientDocument({
+            clientId: input.clientId,
+            kind: "deliverable",
+            docType: "funnel_asset_extra",
+            title: p.title,
+            content: p.content,
+            status: "approved",
+          });
+        }
+        return { created: parts.length };
+      }),
+
     addEngineDraft: protectedProcedure
       .input(
         z.object({

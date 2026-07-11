@@ -9,7 +9,37 @@ export type CompetitorSource = {
   handle: string;
   url: string;
   origin: "research" | "onboarding";
+  /** Human-readable name (resolved channel title for raw YouTube channel ids). */
+  label?: string;
 };
+
+/** Raw UC... channel ids mean nothing to the operator: resolve real channel names. */
+const ytLabelCache = new Map<string, string>();
+export async function resolveYouTubeLabels(sources: CompetitorSource[]): Promise<CompetitorSource[]> {
+  const key = process.env.YOUTUBE_API_KEY;
+  const unresolved = key
+    ? sources.filter((s) => s.platform === "youtube" && /^UC/.test(s.handle) && !ytLabelCache.has(s.handle))
+    : [];
+  if (unresolved.length) {
+    try {
+      const ids = unresolved.map((s) => s.handle).join(",");
+      const res = await fetch(
+        `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${ids}&key=${key}`
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { items?: Array<{ id: string; snippet?: { title?: string } }> };
+        for (const item of data.items ?? []) {
+          if (item.snippet?.title) ytLabelCache.set(item.id, item.snippet.title);
+        }
+      }
+    } catch {
+      /* offline or quota: chips fall back to the raw id */
+    }
+  }
+  return sources.map((s) =>
+    s.platform === "youtube" && ytLabelCache.has(s.handle) ? { ...s, label: ytLabelCache.get(s.handle) } : s
+  );
+}
 
 const IG_NON_HANDLES = ["p", "reel", "reels", "tv", "explore", "stories", "accounts", "direct"];
 
