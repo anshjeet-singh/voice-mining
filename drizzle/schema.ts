@@ -90,6 +90,8 @@ export const clientDocuments = mysqlTable("client_documents", {
   title: varchar("title", { length: 300 }).notNull(),
   content: longtext("content").notNull(),
   source: varchar("source", { length: 300 }),
+  /** Kanban state for deliverables: draft -> approved -> posted; archived = soft delete. */
+  status: varchar("status", { length: 20 }).notNull().default("draft"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

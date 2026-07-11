@@ -129,6 +129,7 @@ The STRUCTURE comes from the skills, not from this prompt: follow the mother ski
 - NO meta preamble: never open with "Client:", "Funnel type:", "Offer:", "Sources:", or notes about what the document contains.
 - NO analysis sections, NO "candidates", NO option lists, NO commentary about your choices. You make the call and ship final copy. The ONLY exception is where the deliverable description above explicitly asks for ranked options.
 - The owner hands this document to the client. Anything that reads like an internal working note is a defect.
+- LESS IS MORE. No internal audits, verification checklists, methodology sections, or process narration inside deliverables unless the contract explicitly requires them. Every section must be something the operator or client USES. When in doubt, cut it.
 
 # FORMATTING RULES (the doc renders in a web app as formatted markdown)
 - Clean heading hierarchy: one # title, ## for sections, ### for subsections. Never skip levels.

@@ -29,6 +29,7 @@ export interface ClientDoc {
   docType: string;
   title: string;
   content: string;
+  status?: string;
   updatedAt: string | Date;
 }
 
@@ -233,7 +234,9 @@ export const ENGINES: Array<{
   hasStyles: boolean;
   docType: string;
   notesPlaceholder: string;
-  compose: (count: number, styles: string[], notes: string) => string;
+  /** Structured intent options (e.g. what an email is FOR). */
+  purposes?: string[];
+  compose: (count: number, styles: string[], notes: string, purpose?: string) => string;
 }> = [
   {
     kind: "more_statics",
@@ -295,10 +298,18 @@ export const ENGINES: Array<{
     defaultCount: 1,
     hasStyles: false,
     docType: "emails_extra",
-    notesPlaceholder: "What do you need? e.g. promo broadcast for the workshop, 3-email re-engagement...",
-    compose: (count, _s, notes) =>
-      `Write EXACTLY ${count} email${count > 1 ? "s" : ""}. Request: ${
-        notes || "no specific direction given: write the highest-leverage broadcast for the current funnel"
+    purposes: [
+      "VSL / booking push",
+      "Community nurture",
+      "Cash injection promo",
+      "Webinar push",
+      "Re-engagement",
+      "Newsletter / value",
+    ],
+    notesPlaceholder: "Specifics: the offer, the occasion, the deadline, the asset to push...",
+    compose: (count, _s, notes, purpose) =>
+      `Write EXACTLY ${count} email${count > 1 ? "s" : ""}. PURPOSE: ${purpose || "highest-leverage broadcast for the current funnel"}.${
+        notes ? ` Specifics: ${notes}` : ""
       }`,
   },
   {
@@ -335,20 +346,18 @@ export const ENGINES: Array<{
 export function EngineCard({
   engine,
   job,
-  docs,
   clientId,
   invalidate,
 }: {
   engine: (typeof ENGINES)[number];
   job: StageJob;
-  docs: ClientDoc[];
   clientId: number;
   invalidate: () => void;
 }) {
   const [count, setCount] = useState(engine.defaultCount);
   const [styles, setStyles] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
-  const [expandedDoc, setExpandedDoc] = useState<number | null>(null);
+  const [purpose, setPurpose] = useState(engine.purposes?.[0] ?? "");
 
   const generate = trpc.clients.generateStage.useMutation({
     onSuccess: () => {
@@ -416,6 +425,23 @@ export function EngineCard({
               </div>
             </div>
           )}
+          {engine.purposes && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {engine.purposes.map((pu) => (
+                <button
+                  key={pu}
+                  onClick={() => setPurpose(pu)}
+                  className={`px-2 py-0.5 rounded-full text-[10px] transition-colors ${
+                    purpose === pu
+                      ? "bg-primary/20 text-primary border border-primary/40"
+                      : "bg-card/60 text-muted-foreground border border-border/40 hover:text-foreground"
+                  }`}
+                >
+                  {pu}
+                </button>
+              ))}
+            </div>
+          )}
           <Textarea
             placeholder={engine.notesPlaceholder}
             value={notes}
@@ -426,7 +452,7 @@ export function EngineCard({
             <Button
               size="sm"
               disabled={generate.isPending}
-              onClick={() => generate.mutate({ clientId, stage: engine.kind, feedback: engine.compose(count, styles, notes.trim()) })}
+              onClick={() => generate.mutate({ clientId, stage: engine.kind, feedback: engine.compose(count, styles, notes.trim(), purpose) })}
               className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 text-xs"
             >
               {generate.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
@@ -450,36 +476,116 @@ export function EngineCard({
         </>
       )}
 
-      {docs.length > 0 && (
-        <div className="mt-3 space-y-1.5">
-          {docs.map((doc) => (
-            <div key={doc.id} className="rounded-lg border border-border/40 bg-card/30">
-              <button
-                onClick={() => setExpandedDoc(expandedDoc === doc.id ? null : doc.id)}
-                className="w-full flex items-center gap-2 p-2 text-left"
-              >
-                <FileText className="w-3 h-3 text-primary flex-shrink-0" />
-                <span className="flex-1 text-[11px] font-medium text-foreground truncate">{doc.title}</span>
-                <span className="text-[10px] text-muted-foreground">
-                  {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
-                </span>
-                {expandedDoc === doc.id ? (
-                  <ChevronUp className="w-3 h-3 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                )}
-              </button>
-              {expandedDoc === doc.id && (
-                <div className="px-2 pb-2">
-                  <div className="max-h-96 overflow-y-auto rounded-lg bg-background/40 p-3">
-                    <MarkdownDoc content={doc.content} />
+    </div>
+  );
+}
+
+
+/** Kanban pipeline for deliverable docs: Draft -> Approved -> Posted. */
+const BOARD_COLUMNS = [
+  { id: "draft", label: "Drafts" },
+  { id: "approved", label: "Approved" },
+  { id: "posted", label: "Posted" },
+] as const;
+
+export function DocBoard({
+  docs,
+  invalidate,
+}: {
+  docs: ClientDoc[];
+  invalidate: () => void;
+}) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const setStatus = trpc.clients.setDocumentStatus.useMutation({
+    onSuccess: () => invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
+  const del = trpc.clients.deleteDocument.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success("Deleted");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const visible = docs.filter((d) => (d.status ?? "draft") !== "archived");
+  if (!visible.length) {
+    return <p className="text-[11px] text-muted-foreground">Nothing here yet: generate above and outputs land on this board.</p>;
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {BOARD_COLUMNS.map((col) => {
+        const items = visible.filter((d) => (d.status ?? "draft") === col.id);
+        return (
+          <div key={col.id} className="rounded-lg border border-border/40 bg-background/30 p-2 min-h-24">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground px-1 pb-1.5">
+              {col.label} · {items.length}
+            </p>
+            <div className="space-y-2">
+              {items.map((doc) => (
+                <div key={doc.id} className="rounded-lg border border-border/50 bg-card/40">
+                  <button
+                    onClick={() => setExpanded(expanded === doc.id ? null : doc.id)}
+                    className="w-full flex items-center gap-2 p-2 text-left"
+                  >
+                    <FileText className="w-3 h-3 text-primary flex-shrink-0" />
+                    <span className="flex-1 text-[11px] font-medium text-foreground truncate">{doc.title}</span>
+                    {expanded === doc.id ? (
+                      <ChevronUp className="w-3 h-3 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                    )}
+                  </button>
+                  <div className="flex items-center gap-1 px-2 pb-2">
+                    {col.id !== "draft" && (
+                      <button
+                        disabled={setStatus.isPending}
+                        onClick={() => setStatus.mutate({ id: doc.id, status: col.id === "approved" ? "draft" : "approved" })}
+                        className="h-5 px-1.5 rounded text-[10px] bg-card/60 text-muted-foreground hover:text-foreground"
+                      >
+                        ←
+                      </button>
+                    )}
+                    {col.id !== "posted" && (
+                      <button
+                        disabled={setStatus.isPending}
+                        onClick={() => setStatus.mutate({ id: doc.id, status: col.id === "draft" ? "approved" : "posted" })}
+                        className={`h-5 px-2 rounded text-[10px] font-medium ${
+                          col.id === "draft"
+                            ? "bg-emerald-600/15 text-emerald-500 hover:bg-emerald-600/25"
+                            : "bg-primary/15 text-primary hover:bg-primary/25"
+                        }`}
+                      >
+                        {col.id === "draft" ? "Approve →" : "Posted →"}
+                      </button>
+                    )}
+                    <span className="flex-1" />
+                    <button
+                      disabled={del.isPending}
+                      onClick={() => {
+                        if (confirm(`Delete "${doc.title}" permanently?`)) del.mutate({ id: doc.id });
+                      }}
+                      className="h-5 px-1.5 rounded text-[10px] text-muted-foreground hover:text-destructive"
+                      title="Delete"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
                   </div>
+                  {expanded === doc.id && (
+                    <div className="px-2 pb-2">
+                      <div className="max-h-96 overflow-y-auto rounded-lg bg-background/40 p-3">
+                        <MarkdownDoc content={doc.content} />
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
+              {!items.length && <p className="text-[10px] text-muted-foreground/60 px-1 pb-1">Empty</p>}
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        );
+      })}
     </div>
   );
 }

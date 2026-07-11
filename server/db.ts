@@ -837,3 +837,10 @@ export async function deleteUnapprovedClientAssetsByTypes(clientId: number, docT
       )
     );
 }
+
+/** Kanban state change for a deliverable document. */
+export async function setClientDocumentStatus(id: number, status: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clientDocuments).set({ status }).where(eq(clientDocuments.id, id));
+}

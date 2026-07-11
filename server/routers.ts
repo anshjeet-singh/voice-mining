@@ -46,6 +46,7 @@ import {
   logActivity,
   reviewClientAsset,
   revokeSharedReport,
+  setClientDocumentStatus,
   setJobStatus,
   updateCalendarEntry,
   updateClientDocument,
@@ -190,7 +191,19 @@ export const appRouter = router({
           allJobTypes.map((stage, i) => [stage, stageJobs[i] ?? null])
         ) as Record<(typeof allJobTypes)[number], Awaited<ReturnType<typeof getLatestJobForClient>> | null>;
         const assets = await getClientAssetsMeta(input.id);
-        return { client, documents, searches, jobs, assets };
+        // Instagram handles found in onboarding material: pre-seeds the Intel Desk
+        const igHandles = new Set<string>();
+        for (const d of documents) {
+          if (d.kind !== "onboarding") continue;
+          for (const m of Array.from(d.content.matchAll(/instagram\.com\/([A-Za-z0-9._]{2,30})/g))) {
+            const h = m[1].toLowerCase();
+            if (!["p", "reel", "reels", "tv", "explore", "stories"].includes(h)) igHandles.add(h);
+          }
+          for (const m of Array.from(d.content.matchAll(/(?:^|[\s(])@([A-Za-z0-9._]{3,30})\b/g))) {
+            igHandles.add(m[1].toLowerCase());
+          }
+        }
+        return { client, documents, searches, jobs, assets, suggestedCompetitors: Array.from(igHandles).slice(0, 12) };
       }),
 
     /** Approve or reject ONE rendered asset (static ad) with optional feedback. */
@@ -296,6 +309,17 @@ export const appRouter = router({
         if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
         await requireClient(doc.clientId, ctx.user.id);
         await deleteClientDocument(input.id);
+        return { ok: true };
+      }),
+
+    /** Move a deliverable through the kanban: draft -> approved -> posted -> archived. */
+    setDocumentStatus: protectedProcedure
+      .input(z.object({ id: z.number(), status: z.enum(["draft", "approved", "posted", "archived"]) }))
+      .mutation(async ({ ctx, input }) => {
+        const doc = await getClientDocumentById(input.id);
+        if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireClient(doc.clientId, ctx.user.id);
+        await setClientDocumentStatus(input.id, input.status);
         return { ok: true };
       }),
 
