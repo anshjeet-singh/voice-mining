@@ -23,3 +23,8 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-11 · job 270002 · client: Trent Kus -->
 - Match the CTA's required awareness to the ad's awareness level. A "look me up / verify me / search my name" ask only converts solution-aware traffic that already has a reason to research the founder. On a cold, problem-aware static it dies, because a problem-aware viewer will not go do homework. For problem-aware placements, make the ask a low-friction next step (join the free community, see how it works), and save due-diligence asks for warmer, solution-aware surfaces.
+
+<!-- 2026-07-11 · job 270002 · client: Trent Kus -->
+- On a problem-aware cold ad, never make "look me up" or "verify me" the ask. A prospect who has never heard of the brand will not spend time on due diligence; that ask only works on solution-aware traffic. Problem-aware statics must route to a low-friction educational next step (a free community, a short training), not a research task.
+- Fee and cost-objection statics win on brevity. The shortest possible framing of the pay-on-results structure ("Small upfront, we only get paid once you get funded") beats a longer worked example. Lead with the structure, cut the math.
+- The "answer engine" native format (ChatGPT, Claude, AI chat) should lead its answer body with the CTA line, not bury the takeaway. Frame the operator as the worked example inside the answer ("X is a great example of someone who does this, click the link below to see how") rather than a passive "the tell is..." close.

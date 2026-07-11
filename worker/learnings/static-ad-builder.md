@@ -48,3 +48,6 @@ Accumulated craft lessons applied on every run.
 <!-- 2026-07-11 · job 270002 · client: Trent Kus -->
 - Never SVG-trace a UI reaction-icon row (ChatGPT/Claude copy, thumbs-up, thumbs-down, read-aloud, regenerate). Hand-drawn icon glyphs read as fake next to real composited chrome and get rejected on sight. Either composite a real cropped icon strip from the assets, or end the answer clean and let the real input bar plus disclaimer carry the native frame. Cropping a chat screenshot right after the answer text is a normal, native-looking screenshot.
 - On a "$0 up front / no fees" style claim, verify it is literally true before baking it onto a static. If the real offer has any start fee, render "small upfront" plus the pay-on-results line, not "$0 up front." A false zero is both a compliance risk and weaker than the honest "small upfront, paid when it works" contrast.
+
+<!-- 2026-07-11 · job 270002 · client: Trent Kus -->
+- Decorative app-icon rows and stock brand icons on native "answer engine" and chat formats read as fake and get rejected on sight. Render these formats with the real UI chrome only (compose bar, input field, timestamps) and zero decorative icon strips.
