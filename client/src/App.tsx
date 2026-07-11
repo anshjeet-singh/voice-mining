@@ -10,6 +10,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
+import ClientStudio from "./pages/ClientStudio";
 import NewSearch from "./pages/NewSearch";
 import SearchResults from "./pages/SearchResults";
 import ReportView from "./pages/ReportView";
@@ -34,6 +35,7 @@ function Router() {
             <Route path="/" component={Home} />
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/clients" component={Clients} />
+            <Route path="/clients/:id/studio" component={ClientStudio} />
             <Route path="/clients/:id" component={ClientDetail} />
             <Route path="/search/new" component={NewSearch} />
             <Route path="/search/:id" component={SearchResults} />

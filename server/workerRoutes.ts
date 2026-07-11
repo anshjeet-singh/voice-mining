@@ -26,9 +26,9 @@ import {
   setJobStatus,
   upsertClientDocumentByType,
 } from "./db";
-import { normalizeInsights } from "@shared/reportContent";
+import { normalizeHooks, normalizeInsights } from "@shared/reportContent";
 import type { InsightList } from "../drizzle/schema";
-import { stageAllDocTypes, stageContract, stagePromptSpec, type FunnelType } from "./stages";
+import { ON_DEMAND_TYPES, stageAllDocTypes, stageContract, stagePromptSpec, type FunnelType } from "./stages";
 import { fetchForeplayWinningAds } from "./foreplay";
 
 /** True when the request carries the correct worker bearer token. */
@@ -102,6 +102,89 @@ async function renderResearchForClient(clientId: number): Promise<string> {
   return parts.join("\n");
 }
 
+/**
+ * The research report's GENERATED content assets: hooks, scripts, posts, and
+ * emails already written FOR this market with the agency frameworks. Engines
+ * repackage and extend these instead of starting cold.
+ */
+async function renderContentAssetsForClient(clientId: number): Promise<string> {
+  const searches = await getSearchesByClient(clientId);
+  const complete = searches.find((s) => s.status === "complete");
+  if (!complete) return "";
+  const report = await getReportBySearchId(complete.id);
+  if (!report) return "";
+
+  const parts: string[] = [];
+
+  const hooks = normalizeHooks(report.viralHooks as never).slice(0, 25);
+  if (hooks.length) {
+    parts.push(
+      `## VIRAL HOOK BANK (proven for THIS market: use them, adapt them, extend the patterns)\n${hooks
+        .map((h) => `- [${h.category} / ${h.hookType}] ${h.hook} (why it works: ${h.whyThisWorks})`)
+        .join("\n")}`
+    );
+  }
+
+  const ths = ((report.talkingHeadScripts as unknown as Array<Record<string, string>>) ?? []).slice(0, 10);
+  if (ths.length) {
+    parts.push(
+      `## TALKING-HEAD SCRIPTS (the house short-form structure: pattern interrupt, hook, mind-read, twist tease, CTA before payoff, payoff, closing CTA with comment keyword. THIS IS THE FLOOR for any short-form content: match the structure, beat the execution)\n${ths
+        .map(
+          (t, i) =>
+            `### ${i + 1}. ${t.title}\n${t.patternInterrupt ? `Pattern interrupt: ${t.patternInterrupt}\n` : ""}Hook: ${t.hook}\nMind-read: ${t.mindRead}\nTwist tease: ${t.twistTease}\nCTA before payoff: ${t.ctaBeforePayoff}\nPayoff: ${t.payoff}\nClosing CTA: ${t.closingCta} (comment keyword: ${t.commentKeyword})`
+        )
+        .join("\n\n")}`
+    );
+  }
+
+  const yts = ((report.youtubeIdeas as unknown as Array<Record<string, unknown>>) ?? []).slice(0, 8);
+  if (yts.length) {
+    parts.push(
+      `## YOUTUBE PACKAGING (outlier-modeled titles and hooks for this niche)\n${yts
+        .map((y) => {
+          const bullets = Array.isArray(y.contentBullets) ? ` | covers: ${(y.contentBullets as string[]).join("; ")}` : "";
+          return `- ${y.title}${y.basedOn ? ` (modeled on: ${y.basedOn})` : ""}${y.hook ? `\n  Hook: ${y.hook}` : ""}${bullets}`;
+        })
+        .join("\n")}`
+    );
+  }
+
+  const skool = ((report.skoolPosts as unknown as Array<Record<string, unknown>>) ?? []).slice(0, 8);
+  if (skool.length) {
+    parts.push(
+      `## SKOOL POSTS (proven post copy + DM workflows for this market)\n${skool
+        .map((p, i) => {
+          const dm = Array.isArray(p.dmWorkflow)
+            ? (p.dmWorkflow as Array<Record<string, string>>).map((m) => m.message ?? m.text ?? "").filter(Boolean).slice(0, 3).join(" -> ")
+            : "";
+          return `### ${i + 1}. [${p.postType}]${p.commentKeyword ? ` keyword: ${p.commentKeyword}` : ""}\n${p.postCopy}${dm ? `\nDM flow: ${dm}` : ""}`;
+        })
+        .join("\n\n")}`
+    );
+  }
+
+  const seq = report.emailSequence as unknown as { sequenceName?: string; emails?: Array<Record<string, unknown>> } | null;
+  if (seq?.emails?.length) {
+    parts.push(
+      `## EMAIL SEQUENCE BASELINE (${seq.sequenceName ?? "sequence"}: proven subjects and arcs for this market)\n${seq.emails
+        .slice(0, 14)
+        .map((e) => `- Day ${e.dayNumber}: "${e.subject}" (preview: ${e.previewText})`)
+        .join("\n")}`
+    );
+  }
+
+  const ads = ((report.adCopyIdeas as unknown as Array<Record<string, unknown>>) ?? []).slice(0, 8);
+  if (ads.length) {
+    parts.push(
+      `## AD COPY IDEAS (proven angles and headlines for this market)\n${ads
+        .map((a) => `- [${a.awarenessLevel}] ${a.headline}: ${String(a.body ?? "").slice(0, 200)} (CTA: ${a.cta})`)
+        .join("\n")}`
+    );
+  }
+
+  return parts.join("\n\n");
+}
+
 export function registerWorkerRoutes(app: Express) {
   const guard = (req: Request, res: Response): boolean => {
     if (!isWorkerAuthorized(req.headers.authorization, ENV.workerSecret)) {
@@ -145,6 +228,13 @@ export function registerWorkerRoutes(app: Express) {
       // Ads stage: attach live Foreplay winners for the niche as pattern
       // models (angles and hooks, never words to copy), plus the operator's
       // per-ad verdicts from the previous batch (the calibration loop).
+      const isEngineJob = job.type === "ads" || (ON_DEMAND_TYPES as readonly string[]).includes(job.type);
+      if (isEngineJob) {
+        const contentAssets = await renderContentAssetsForClient(job.clientId).catch(() => "");
+        if (contentAssets) {
+          research = `${research}\n\n# PROVEN CONTENT ASSETS FROM THE RESEARCH REPORT (already written FOR this market with the agency frameworks. This is your FLOOR: repackage, extend, and beat it. Match its voice and hook patterns; never contradict it)\n\n${contentAssets}`;
+        }
+      }
       let assetReviews: Array<{ filename: string; status: string; feedback: string | null }> = [];
       if (job.type === "ads" || job.type === "more_statics" || job.type === "more_scripts") {
         const foreplay = await fetchForeplayWinningAds(client.niche).catch(() => "");

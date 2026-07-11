@@ -50,6 +50,12 @@ Ads (scripts, hooks, batches):
 - haynes-scaling-systems.md section 1 (the Forester architecture around the DR campaign)
 - brunson-traffic-secrets.md (dream 100, hook-story-offer), hooks-and-proof.md, acq-prompt-playbook.md
 
+Short-form + YouTube content (reels, talking heads, YT scripts):
+- THE RESEARCH REPORT'S PROVEN CONTENT ASSETS section (viral hook bank, talking-head scripts, YouTube packaging) is the floor: repackage and beat it, never start cold
+- ad-script-system.md (hook bank + 8 archetypes adapted to organic), hooks-and-proof.md
+- brunson-traffic-secrets.md (hook-story-offer), mclaughlin-language-patterns.md section 12 (universal experiences as openers, future pacing)
+- Any Competitor Content Intel deliverable: model winning hook styles, exploit the named gaps
+
 Sales scripts + AI voice agent:
 - rackham-spin-selling.md (the question sequence, Advance vs Continuation, objection PREVENTION)
 - mclaughlin-language-patterns.md section 8 (Sleight of Mouth: pick 3 to 5 reframes per objection), suby-doctor-close.md, hormozi-closing.md
