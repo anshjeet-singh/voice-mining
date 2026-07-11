@@ -31,3 +31,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 210001 · client: Trent Kus -->
 - The SKILL.md is a near-empty stub; its real substance (the banned-word list, the AI-tell patterns, the read-aloud/contractions rules, and the critical "preserve deliberate bluntness and locked lines" guardrail) lives only in copy-quality-bar and the learnings file. Populate the skill body with at least the banned-word list and the locked-line/domain-term carve-out (e.g. financial "leverage" in a 0%-funding niche is real mechanism language, not fluff) so the skill is usable on its own.
+
+<!-- 2026-07-11 · job 270001 · client: Trent Kus -->
+- On proof and trust copy, protest-too-much language is a defect the polish pass should catch: the same qualifier word repeated three or four times in one asset ("real client, real disputes, real before/after, real result"), or a tiny grey "results vary" disclaimer sitting directly under a giant claim, both read as trying to have it both ways to a burned buyer. Make the claim cleanly or cut it; do not hedge a big number with fine print in the same frame.
