@@ -34,3 +34,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-11 · job 270001 · client: Trent Kus -->
 - On proof and trust copy, protest-too-much language is a defect the polish pass should catch: the same qualifier word repeated three or four times in one asset ("real client, real disputes, real before/after, real result"), or a tiny grey "results vary" disclaimer sitting directly under a giant claim, both read as trying to have it both ways to a burned buyer. Make the claim cleanly or cut it; do not hedge a big number with fine print in the same frame.
+
+<!-- 2026-07-11 · job 270003 · client: Trent Kus -->
+- Cut protest-too-much repetition ("real disputes, real results, real before/after") and any tiny "results vary" disclaimer bolted under a big claim. Make the claim cleanly and gate the proof, or cut it. Both patterns read as insecurity and weaken trust-led copy.
