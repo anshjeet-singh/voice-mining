@@ -73,7 +73,7 @@ import {
 } from "./aiAnalysis";
 import type { DeepMarketIntelligence } from "@shared/reportContent";
 import { fetchRelatedSearches } from "./realScraper";
-import { STAGE_ORDER, STAGES } from "./stages";
+import { ON_DEMAND_TYPES, STAGE_ORDER, STAGES } from "./stages";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -180,14 +180,15 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const client = await requireClient(input.id, ctx.user.id);
+        const allJobTypes = [...STAGE_ORDER, ...ON_DEMAND_TYPES];
         const [documents, searches, ...stageJobs] = await Promise.all([
           getClientDocuments(input.id),
           getSearchesByClient(input.id),
-          ...STAGE_ORDER.map((stage) => getLatestJobForClient(input.id, stage)),
+          ...allJobTypes.map((stage) => getLatestJobForClient(input.id, stage)),
         ]);
         const jobs = Object.fromEntries(
-          STAGE_ORDER.map((stage, i) => [stage, stageJobs[i] ?? null])
-        ) as Record<(typeof STAGE_ORDER)[number], Awaited<ReturnType<typeof getLatestJobForClient>> | null>;
+          allJobTypes.map((stage, i) => [stage, stageJobs[i] ?? null])
+        ) as Record<(typeof allJobTypes)[number], Awaited<ReturnType<typeof getLatestJobForClient>> | null>;
         const assets = await getClientAssetsMeta(input.id);
         return { client, documents, searches, jobs, assets };
       }),
@@ -307,7 +308,7 @@ export const appRouter = router({
       .input(
         z.object({
           clientId: z.number(),
-          stage: z.enum(["foundation", "skool", "funnel", "emails", "ads"]),
+          stage: z.enum(["foundation", "skool", "funnel", "emails", "ads", "more_statics", "more_scripts"]),
           feedback: z.string().max(10000).optional(),
         })
       )
@@ -347,7 +348,7 @@ export const appRouter = router({
       .input(
         z.object({
           clientId: z.number(),
-          stage: z.enum(["foundation", "skool", "funnel", "emails", "ads"]),
+          stage: z.enum(["foundation", "skool", "funnel", "emails", "ads", "more_statics", "more_scripts"]),
           action: z.enum(["approve", "reject"]),
           feedback: z.string().max(10000).optional(),
         })

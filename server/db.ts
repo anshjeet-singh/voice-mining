@@ -818,3 +818,22 @@ export async function setJobProgress(id: number, progress: string) {
   if (!db) throw new Error("Database not available");
   await db.update(jobs).set({ progress: progress.slice(0, 500) }).where(eq(jobs.id, id));
 }
+
+/**
+ * Sweep a client's NON-approved assets for the given docTypes. Approved
+ * assets persist across regenerations: they are the accumulating ad library.
+ */
+export async function deleteUnapprovedClientAssetsByTypes(clientId: number, docTypes: string[]) {
+  if (!docTypes.length) return;
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .delete(clientAssets)
+    .where(
+      and(
+        eq(clientAssets.clientId, clientId),
+        inArray(clientAssets.docType, docTypes),
+        inArray(clientAssets.status, ["pending", "rejected"])
+      )
+    );
+}

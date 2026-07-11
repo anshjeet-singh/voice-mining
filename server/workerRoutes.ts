@@ -13,8 +13,8 @@ import {
   claimNextQueuedJob,
   createClientAsset,
   createClientDocument,
-  deleteClientAssetsByTypes,
   deleteClientDocumentsByTypes,
+  deleteUnapprovedClientAssetsByTypes,
   getAnalysisResultBySearchId,
   getClientAssetById,
   getClientById,
@@ -22,7 +22,6 @@ import {
   getClientDocuments,
   getReportBySearchId,
   getSearchesByClient,
-  reviewClientAsset,
   setJobProgress,
   setJobStatus,
   upsertClientDocumentByType,
@@ -147,7 +146,7 @@ export function registerWorkerRoutes(app: Express) {
       // models (angles and hooks, never words to copy), plus the operator's
       // per-ad verdicts from the previous batch (the calibration loop).
       let assetReviews: Array<{ filename: string; status: string; feedback: string | null }> = [];
-      if (job.type === "ads") {
+      if (job.type === "ads" || job.type === "more_statics" || job.type === "more_scripts") {
         const foreplay = await fetchForeplayWinningAds(client.niche).catch(() => "");
         if (foreplay) {
           research = `${research}\n\n# FOREPLAY WINNING ADS IN THIS NICHE (live, longest-running: proven spenders. Model the angles and proof types, never copy the words)\n\n${foreplay}`;
@@ -219,21 +218,22 @@ export function registerWorkerRoutes(app: Express) {
       const stale = stageAllDocTypes(job.type).filter((t) => !(t in contract));
       await deleteClientDocumentsByTypes(job.clientId, stale);
 
-      // Rendered assets: replace the previous batch for this stage's docTypes,
-      // then store the new set (base64, served via /api/assets/:id). Approved
-      // verdicts survive a rebuild: a new asset with the same filename as a
-      // previously approved one arrives pre-approved (rebuilds are told to
-      // keep approved ads identical).
+      // Rendered assets: sweep only the NON-approved assets for this stage's
+      // docTypes (approved ads persist forever: the accumulating ad library),
+      // then store the new set. An incoming filename that already exists as
+      // an approved asset is skipped: the blessed original stays canonical.
       if (assets?.length) {
-        const prev = await getClientAssetsMeta(job.clientId);
-        const prevApproved = new Map(
-          prev.filter((p) => p.status === "approved").map((p) => [p.filename, p.feedback])
+        const prevApproved = new Set(
+          (await getClientAssetsMeta(job.clientId))
+            .filter((p) => p.status === "approved")
+            .map((p) => p.filename)
         );
-        await deleteClientAssetsByTypes(job.clientId, stageAllDocTypes(job.type));
+        await deleteUnapprovedClientAssetsByTypes(job.clientId, stageAllDocTypes(job.type));
         for (const a of assets) {
           if (!a.filename || !a.base64 || !(a.docType in contract)) continue;
           const filename = a.filename.slice(0, 300);
-          const id = await createClientAsset({
+          if (prevApproved.has(filename)) continue;
+          await createClientAsset({
             clientId: job.clientId,
             jobId,
             docType: a.docType,
@@ -241,9 +241,6 @@ export function registerWorkerRoutes(app: Express) {
             mime: a.mime?.slice(0, 100) || "image/png",
             data: a.base64,
           });
-          if (prevApproved.has(filename)) {
-            await reviewClientAsset(id, "approved", prevApproved.get(filename) ?? null);
-          }
         }
       }
 

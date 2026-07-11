@@ -31,7 +31,7 @@ const DOC_TYPES = [
   { id: "other", label: "Other" },
 ] as const;
 
-type StageId = "foundation" | "skool" | "funnel" | "emails" | "ads";
+type StageId = "foundation" | "skool" | "funnel" | "emails" | "ads" | "more_statics" | "more_scripts";
 
 /**
  * Worker-run pipeline stages, in mother-skill order. docTypes mirror the
@@ -83,7 +83,7 @@ const WORKER_STAGES: Array<{
     id: "ads",
     label: "Ad Creatives",
     blurb: "15 rendered statics + 5 b-roll + 5 video scripts in one creative doc, plus the campaign plan (matrix, targeting, budget). Review each ad below",
-    docTypes: ["ad_scripts", "ad_statics", "ad_campaign_plan"],
+    docTypes: ["ad_scripts", "ad_statics", "ad_campaign_plan", "ad_statics_extra", "ad_scripts_extra"],
     runningNote: "Building 15 statics through the render pipeline with visual QA, writing scripts and the campaign plan",
   },
 ];
@@ -301,6 +301,183 @@ function AssetGallery({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/** Style categories from the reference-ads catalog (Ad Creative System). */
+const AD_STYLE_CATEGORIES = [
+  "notes-light", "notes-dark", "imessage", "chat-bubbles", "discord-win", "tweet",
+  "reddit-thread", "chatgpt-ui", "claude-ui", "question-sticker", "photo-caption-chips",
+  "search-bar", "occupation-callout", "big-text-highlight", "offer-poster", "whiteboard",
+  "napkin-handwriting", "two-panel-cartoon", "old-vs-new-split", "ui-vs-ui-split",
+  "comparison-table", "chart-comparison", "three-step-infographic", "flywheel-diagram",
+  "tombstone-shock", "lead-magnet-mock", "dr-workshop", "dr-results-checklist",
+  "dr-proof-screenshot",
+] as const;
+
+/** One on-demand Ad Engine generator: compose a request, run it, review it. */
+function OnDemandGenerator({
+  kind,
+  job,
+  clientId,
+  invalidate,
+}: {
+  kind: "more_statics" | "more_scripts";
+  job: StageJob;
+  clientId: number;
+  invalidate: () => void;
+}) {
+  const isStatics = kind === "more_statics";
+  const [count, setCount] = useState(isStatics ? 10 : 5);
+  const [styles, setStyles] = useState<string[]>([]);
+
+  const generate = trpc.clients.generateStage.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success("Queued. Your Mac worker will pick it up");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const review = trpc.clients.reviewStage.useMutation({
+    onSuccess: () => invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
+
+  const status = job?.status ?? null;
+  const busy = status === "queued" || status === "running";
+
+  const fire = () => {
+    const feedback = isStatics
+      ? `Generate EXACTLY ${count} NEW static ads.${
+          styles.length
+            ? ` Clone ONLY from these reference catalog categories: ${styles.join(", ")}. Pick the strongest references within them.`
+            : " Pick the strongest reference categories yourself for maximum batch diversity."
+        }`
+      : `Write EXACTLY ${count} NEW full-length video ad scripts, new angles, no duplicates of existing scripts.`;
+    generate.mutate({ clientId, stage: kind, feedback });
+  };
+
+  return (
+    <div className="rounded-lg border border-border/50 bg-background/40 p-4">
+      <p className="text-xs font-semibold text-foreground mb-2">
+        {isStatics ? "More static ads" : "More video scripts"}
+      </p>
+
+      {busy ? (
+        <div className="flex items-center gap-2">
+          <Loader2 className="w-3.5 h-3.5 text-primary animate-spin flex-shrink-0" />
+          <p className="text-[11px] text-muted-foreground">
+            {status === "queued" ? "Waiting for your Mac worker" : job?.progress || "Generating..."}
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] text-muted-foreground">Count</span>
+            {(isStatics ? [5, 10, 15] : [3, 5, 10]).map((n) => (
+              <button
+                key={n}
+                onClick={() => setCount(n)}
+                className={`h-6 px-2.5 rounded text-[11px] font-medium transition-colors ${
+                  count === n ? "bg-primary text-primary-foreground" : "bg-card/60 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+          {isStatics && (
+            <div className="mb-3">
+              <p className="text-[11px] text-muted-foreground mb-1.5">
+                Styles (optional: leave empty for a diverse mix)
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {AD_STYLE_CATEGORIES.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() =>
+                      setStyles((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))
+                    }
+                    className={`px-2 py-0.5 rounded-full text-[10px] transition-colors ${
+                      styles.includes(c)
+                        ? "bg-primary/20 text-primary border border-primary/40"
+                        : "bg-card/60 text-muted-foreground border border-border/40 hover:text-foreground"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              disabled={generate.isPending}
+              onClick={fire}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 text-xs"
+            >
+              {generate.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+              Generate {count}
+            </Button>
+            {status === "review" && (
+              <Button
+                size="sm"
+                disabled={review.isPending}
+                onClick={() => review.mutate({ clientId, stage: kind, action: "approve" })}
+                className="bg-emerald-600 text-white hover:bg-emerald-600/90 h-7 text-xs"
+              >
+                <Check className="w-3 h-3 mr-1.5" />
+                Mark batch done
+              </Button>
+            )}
+          </div>
+          {status === "failed" && job?.error && (
+            <p className="mt-2 text-[11px] text-destructive">Last run failed: {job.error.slice(0, 200)}</p>
+          )}
+          {status === "review" && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              New assets are in the Ad Creatives gallery above: approve or reject each there, then mark the batch done.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** The Ad Engine: unlocked once the ads stage is approved. */
+function AdEngine({
+  jobs,
+  clientId,
+  invalidate,
+  pipelineComplete,
+}: {
+  jobs: Record<string, StageJob | undefined>;
+  clientId: number;
+  invalidate: () => void;
+  pipelineComplete: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="w-7 h-7 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center flex-shrink-0">
+          <RefreshCw className="w-3.5 h-3.5 text-primary" />
+        </div>
+        <div className="flex-1">
+          <h2 className="text-sm font-semibold text-foreground">Ad Engine</h2>
+          <p className="text-xs text-muted-foreground">
+            {pipelineComplete
+              ? "Pipeline complete. Generate more creatives on demand: approved ads accumulate in the library above and never get replaced"
+              : "Generate more creatives on demand from the approved foundation"}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 grid sm:grid-cols-2 gap-3">
+        <OnDemandGenerator kind="more_statics" job={jobs.more_statics ?? null} clientId={clientId} invalidate={invalidate} />
+        <OnDemandGenerator kind="more_scripts" job={jobs.more_scripts ?? null} clientId={clientId} invalidate={invalidate} />
+      </div>
     </div>
   );
 }
@@ -953,6 +1130,15 @@ export default function ClientDetail() {
               />
             );
           })}
+
+          {jobs.ads?.status === "approved" && (
+            <AdEngine
+              jobs={jobs}
+              clientId={clientId}
+              invalidate={invalidate}
+              pipelineComplete={WORKER_STAGES.every((st) => jobs[st.id]?.status === "approved")}
+            />
+          )}
 
         </div>
       </div>

@@ -145,10 +145,43 @@ export const STAGES: Record<string, StageDef> = {
     extraInstructions: (ft) =>
       `ONE AD, ONE ANGLE: hook, body, and CTA all serve a single angle for a single sub-avatar; if a hook could sit on another ad's body, the batch fails. Every destination is ${ft === "webinar" ? "[REGISTRATION LINK] (the webinar registration page)" : "[VSL LINK] (the VSL page, which IS the booking page)"}. REAL PROOF ONLY: named people, real numbers, real timeframes from the approved docs and research, [PROOF: ...] placeholders where proof is pending, never fabricated results, students, or scarcity. COMPLIANCE GATE: for regulated niches (funding, credit, finance, health), strip quantified approval-adjacent claims and provider-performance ratios from ad copy even when the client says them; replace with capability statements and 'run your own numbers' invitations, and flag every risky line in the campaign plan's compliance section. Hooks follow the ad-script-system hook bank: statements over questions, the market's exact self-descriptions from the research, specificity over adjectives, never 'if you're an agency owner' style category call-outs. Name the mechanism, never tutorial it: the funnel does the teach. Write in the client's voice from the approved brand doc. Read every script aloud: contractions throughout, no AI cadence, no em dashes anywhere. STATIC ADS ARE RENDERED DELIVERABLES: the native test for every static is 'would this pass as something a mate screenshotted and sent you?': one broken element (brand header, designed gradient, ad-speak headline) fails the ad. A FOREPLAY WINNING ADS section may appear in the research: treat those as proven pattern models for angles, proof types, and formats in this exact niche, never as words to copy.`,
   },
+  // ─── Ad Engine: on-demand jobs, outside the stage chain ─────────────────────
+  more_statics: {
+    type: "more_statics",
+    label: "More Static Ads",
+    requires: "ads",
+    motherStep: "Ad Engine (on-demand static batch)",
+    childSkills: () => [
+      "static-ad-builder",
+      "static-and-broll-ad-writer",
+      "meta-ad-restrictions-prep",
+      "generic-language-killer (polish pass)",
+    ],
+    docs: () => [
+      { docType: "ad_statics_extra", filename: "01_more_statics.md", title: "More Static Ads (RENDERED)", description: "An ON-DEMAND batch of NEW native static ads. THE GENERATION REQUEST (how many ads and which styles/categories from the reference library) is in the REVISION FEEDBACK section: follow it exactly. Same hard contract as the main batch: static-render-rules framework, clone doctrine (each ad declares 'Reference: <filename>' from '/Users/anshjeetsingh/Library/CloudStorage/GoogleDrive-anshjeets@gmail.com/My Drive/Cashflow Coaches/Ad Creative System/reference-ads/catalog.md' and replicates that exact image, copy swapped only), the skill's own build pipeline, the visual QA loop with a QA line per ad, COPY FINAL PNGs INTO ./assets/, and save sources + output/ + brief.md to the client's Drive 'Ads/AdsBatch_<YYYY-MM-DD>/'. Angles come from the approved Campaign Plan's angle matrix. NEVER duplicate an ad that already exists in the OPERATOR AD VERDICTS list: new copy, new angle-format pairings. Never AI-generate a human; [PROOF: ...] where real screenshots are pending" },
+    ],
+    extraInstructions: (ft) =>
+      `ONE AD, ONE ANGLE. Every destination is ${ft === "webinar" ? "[REGISTRATION LINK]" : "[VSL LINK] (the VSL page, which IS the booking page)"}. REAL PROOF ONLY with [PROOF: ...] placeholders. COMPLIANCE GATE for regulated niches: no quantified approval-adjacent claims or provider-performance ratios. The approved ads in OPERATOR AD VERDICTS are the quality bar: view them, clone their standard, never their content. The native test: would this pass as something a mate screenshotted and sent you?`,
+  },
+  more_scripts: {
+    type: "more_scripts",
+    label: "More Video Scripts",
+    requires: "ads",
+    motherStep: "Ad Engine (on-demand video ad scripts)",
+    childSkills: () => ["ad-script-writer", "meta-ad-restrictions-prep", "generic-language-killer (polish pass)"],
+    docs: () => [
+      { docType: "ad_scripts_extra", filename: "01_more_scripts.md", title: "More Video Ad Scripts", description: "An ON-DEMAND batch of NEW full-length video ad scripts (30-90s spoken, ~60s ideal), written word for word: hook, body, CTA, each headed by sub-avatar, angle, format, hook archetype, awareness level, and destination. THE GENERATION REQUEST (how many, and any angle or format focus) is in the REVISION FEEDBACK section: follow it exactly. Angles come from the approved Campaign Plan's angle matrix, extended with fresh buying reasons where needed. Never duplicate an existing script's angle-hook pairing: the batch must pass the hook-swap test against the approved scripts too" },
+    ],
+    extraInstructions: (ft) =>
+      `ONE AD, ONE ANGLE. Every destination is ${ft === "webinar" ? "[REGISTRATION LINK]" : "[VSL LINK]"}. REAL PROOF ONLY with [PROOF: ...] placeholders. COMPLIANCE GATE for regulated niches. Hooks follow the ad-script-system hook bank: statements over questions, the market's exact self-descriptions, specificity over adjectives. Read every script aloud: contractions, no AI cadence, no em dashes anywhere.`,
+  },
 };
 
 /** Stage order for gating and UI. */
 export const STAGE_ORDER = ["foundation", "skool", "funnel", "emails", "ads"] as const;
+
+/** On-demand Ad Engine job types: gated on ads approval, outside the chain. */
+export const ON_DEMAND_TYPES = ["more_statics", "more_scripts"] as const;
 
 /** The docType -> title contract used to validate a worker's completion. */
 export function stageContract(stageType: string, funnelType: FunnelType): Record<string, string> {
