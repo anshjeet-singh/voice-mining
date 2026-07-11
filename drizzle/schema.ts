@@ -97,6 +97,25 @@ export const clientDocuments = mysqlTable("client_documents", {
 export type ClientDocument = typeof clientDocuments.$inferSelect;
 export type InsertClientDocument = typeof clientDocuments.$inferInsert;
 
+// Client assets — rendered binaries (static ad PNGs) posted by the worker
+// alongside a stage's docs. data is base64; served via /api/assets/:id.
+// Reviewed per-asset: approve / reject with feedback feeds regeneration.
+export const clientAssets = mysqlTable("client_assets", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  jobId: int("jobId").notNull(),
+  docType: varchar("docType", { length: 50 }).notNull(),
+  filename: varchar("filename", { length: 300 }).notNull(),
+  mime: varchar("mime", { length: 100 }).notNull().default("image/png"),
+  data: longtext("data").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).notNull().default("pending"),
+  feedback: longtext("feedback"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ClientAsset = typeof clientAssets.$inferSelect;
+export type InsertClientAsset = typeof clientAssets.$inferInsert;
+
 // Jobs — the queue the local Mac worker polls. Status flow:
 // queued -> running -> review -> approved (or failed; reject requeues a new job).
 export const jobs = mysqlTable("jobs", {

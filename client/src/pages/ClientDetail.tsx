@@ -82,9 +82,9 @@ const WORKER_STAGES: Array<{
   {
     id: "ads",
     label: "Ad Creatives",
-    blurb: "Angles + 10 video ad scripts, 10 rendered statics + 5 b-rolls (PNGs land in the client's Drive Ads folder), Forester campaign plan",
+    blurb: "15 rendered statics + 5 b-roll + 5 video scripts in one creative doc, plus the campaign plan (matrix, targeting, budget). Review each ad below",
     docTypes: ["ad_scripts", "ad_statics", "ad_campaign_plan"],
-    runningNote: "Writing the angle matrix and 10 scripts, rendering the statics via ad-factory, building the campaign plan",
+    runningNote: "Building 15 statics through the render pipeline with visual QA, writing scripts and the campaign plan",
   },
 ];
 
@@ -121,12 +121,193 @@ function StageMarker({ n, state }: { n: number; state: "done" | "active" | "upco
   );
 }
 
+/** Rendered asset metadata from clients.get (image bytes served via /api/assets/:id). */
+interface ClientAssetMeta {
+  id: number;
+  docType: string;
+  filename: string;
+  status: "pending" | "approved" | "rejected";
+  feedback: string | null;
+}
+
+/** Per-ad review gallery: view each rendered static, approve or reject with feedback. */
+function AssetGallery({
+  assets,
+  clientId,
+  stageId,
+  invalidate,
+  canRegenerate,
+}: {
+  assets: ClientAssetMeta[];
+  clientId: number;
+  stageId: StageId;
+  invalidate: () => void;
+  canRegenerate: boolean;
+}) {
+  const [lightbox, setLightbox] = useState<number | null>(null);
+  const [rejectingAsset, setRejectingAsset] = useState<number | null>(null);
+  const [assetFeedback, setAssetFeedback] = useState("");
+
+  const reviewAsset = trpc.clients.reviewAsset.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setRejectingAsset(null);
+      setAssetFeedback("");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const generate = trpc.clients.generateStage.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success("Regeneration queued: rejected ads get rebuilt per your feedback");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const rejected = assets.filter((a) => a.status === "rejected");
+  const approved = assets.filter((a) => a.status === "approved");
+
+  const regenerateRejected = () => {
+    const feedback = [
+      `REBUILD ONLY these rejected static ads; keep every approved ad IDENTICAL (same angle, format, and copy) and re-render it unchanged:`,
+      ...rejected.map((a) => `- ${a.filename}: ${a.feedback || "rejected, no note"}`),
+      approved.length ? `Approved (do not change): ${approved.map((a) => a.filename).join(", ")}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    generate.mutate({ clientId, stage: stageId, feedback });
+  };
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-foreground">
+          Rendered ads · {approved.length}/{assets.length} approved
+          {rejected.length > 0 && ` · ${rejected.length} rejected`}
+        </p>
+        {canRegenerate && rejected.length > 0 && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={generate.isPending}
+            onClick={regenerateRejected}
+            className="h-7 text-xs text-muted-foreground hover:text-foreground"
+          >
+            {generate.isPending ? (
+              <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+            ) : (
+              <RefreshCw className="w-3 h-3 mr-1.5" />
+            )}
+            Rebuild {rejected.length} rejected
+          </Button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        {assets.map((a) => (
+          <div
+            key={a.id}
+            className={`rounded-lg border overflow-hidden bg-background/40 ${
+              a.status === "approved"
+                ? "border-emerald-500/50"
+                : a.status === "rejected"
+                  ? "border-destructive/50"
+                  : "border-border/50"
+            }`}
+          >
+            <button className="block w-full" onClick={() => setLightbox(lightbox === a.id ? null : a.id)}>
+              <img
+                src={`/api/assets/${a.id}`}
+                alt={a.filename}
+                loading="lazy"
+                className="w-full aspect-[4/5] object-cover"
+              />
+            </button>
+            <div className="p-2 space-y-1.5">
+              <p className="text-[10px] text-muted-foreground truncate" title={a.filename}>
+                {a.filename}
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={reviewAsset.isPending}
+                  onClick={() => reviewAsset.mutate({ assetId: a.id, action: "approve" })}
+                  className={`flex-1 h-6 rounded text-[10px] font-medium flex items-center justify-center gap-1 transition-colors ${
+                    a.status === "approved"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-card/60 text-muted-foreground hover:bg-emerald-600/20 hover:text-emerald-500"
+                  }`}
+                >
+                  <Check className="w-2.5 h-2.5" />
+                  {a.status === "approved" ? "Approved" : "Approve"}
+                </button>
+                <button
+                  disabled={reviewAsset.isPending}
+                  onClick={() => {
+                    setRejectingAsset(rejectingAsset === a.id ? null : a.id);
+                    setAssetFeedback(a.feedback ?? "");
+                  }}
+                  className={`flex-1 h-6 rounded text-[10px] font-medium flex items-center justify-center gap-1 transition-colors ${
+                    a.status === "rejected"
+                      ? "bg-destructive text-white"
+                      : "bg-card/60 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+                  }`}
+                >
+                  <X className="w-2.5 h-2.5" />
+                  {a.status === "rejected" ? "Rejected" : "Reject"}
+                </button>
+              </div>
+              {rejectingAsset === a.id && (
+                <div className="space-y-1.5">
+                  <Textarea
+                    autoFocus
+                    placeholder="Why? Kill the idea entirely, or say how to fix it."
+                    value={assetFeedback}
+                    onChange={(e) => setAssetFeedback(e.target.value)}
+                    className="min-h-16 text-[11px]"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={reviewAsset.isPending}
+                    onClick={() =>
+                      reviewAsset.mutate({ assetId: a.id, action: "reject", feedback: assetFeedback })
+                    }
+                    className="w-full h-6 text-[10px] bg-destructive text-white hover:bg-destructive/90"
+                  >
+                    Reject with note
+                  </Button>
+                </div>
+              )}
+              {a.status === "rejected" && a.feedback && rejectingAsset !== a.id && (
+                <p className="text-[10px] text-destructive/80 line-clamp-2" title={a.feedback}>
+                  {a.feedback}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      {lightbox !== null && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8 cursor-zoom-out"
+          onClick={() => setLightbox(null)}
+        >
+          <img
+            src={`/api/assets/${lightbox}`}
+            alt="Ad preview"
+            className="max-h-full max-w-full rounded-lg shadow-2xl"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** One worker-run pipeline stage: generate, wait, review with editable docs, approve or reject. */
 function WorkerStageCard({
   n,
   stage,
   job,
   docs,
+  assets,
   unlocked,
   unlockHint,
   clientId,
@@ -136,6 +317,7 @@ function WorkerStageCard({
   stage: (typeof WORKER_STAGES)[number];
   job: StageJob;
   docs: ClientDoc[];
+  assets: ClientAssetMeta[];
   unlocked: boolean;
   unlockHint: string;
   clientId: number;
@@ -237,6 +419,16 @@ function WorkerStageCard({
             </p>
           </div>
         </div>
+      )}
+
+      {(status === "review" || status === "approved") && assets.length > 0 && (
+        <AssetGallery
+          assets={assets}
+          clientId={clientId}
+          stageId={stage.id}
+          invalidate={invalidate}
+          canRegenerate={status === "review" || status === "approved"}
+        />
       )}
 
       {(status === "review" || status === "approved") && docs.length > 0 && (
@@ -481,7 +673,7 @@ export default function ClientDetail() {
 
   return (
     <AppShell>
-      <div className="p-6 lg:p-8 max-w-3xl mx-auto">
+      <div className="p-6 lg:p-10 max-w-none">
         <div className="flex items-center gap-3 mb-8">
           <button
             onClick={() => navigate("/clients")}
@@ -747,6 +939,7 @@ export default function ClientDetail() {
                 stage={stage}
                 job={jobs[stage.id] ?? null}
                 docs={stageDocs(stage.docTypes)}
+                assets={(data?.assets ?? []).filter((a) => stage.docTypes.includes(a.docType))}
                 unlocked={unlocked}
                 unlockHint={unlockHint}
                 clientId={clientId}

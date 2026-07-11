@@ -24,6 +24,8 @@ import {
   getActiveShareForReport,
   getAnalysisResultBySearchId,
   getCalendarEntriesByUser,
+  getClientAssetById,
+  getClientAssetsMeta,
   getClientById,
   getClientDocumentById,
   getClientDocuments,
@@ -42,6 +44,7 @@ import {
   getVaultItemCount,
   getVaultItemsByUser,
   logActivity,
+  reviewClientAsset,
   revokeSharedReport,
   setJobStatus,
   updateCalendarEntry,
@@ -185,7 +188,29 @@ export const appRouter = router({
         const jobs = Object.fromEntries(
           STAGE_ORDER.map((stage, i) => [stage, stageJobs[i] ?? null])
         ) as Record<(typeof STAGE_ORDER)[number], Awaited<ReturnType<typeof getLatestJobForClient>> | null>;
-        return { client, documents, searches, jobs };
+        const assets = await getClientAssetsMeta(input.id);
+        return { client, documents, searches, jobs, assets };
+      }),
+
+    /** Approve or reject ONE rendered asset (static ad) with optional feedback. */
+    reviewAsset: protectedProcedure
+      .input(
+        z.object({
+          assetId: z.number(),
+          action: z.enum(["approve", "reject"]),
+          feedback: z.string().max(5000).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const asset = await getClientAssetById(input.assetId);
+        if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
+        await requireClient(asset.clientId, ctx.user.id);
+        await reviewClientAsset(
+          input.assetId,
+          input.action === "approve" ? "approved" : "rejected",
+          input.feedback?.trim() || null
+        );
+        return { ok: true };
       }),
 
     delete: protectedProcedure

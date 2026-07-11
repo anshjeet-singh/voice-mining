@@ -182,9 +182,25 @@ async function runDeliverable(job: ClaimedJob, output: StageOutputSpec) {
 
   const files = await readJobDir(jobDir);
   const parsed = parseDocOutput(files, output);
+
+  // Rendered binaries: the session copies final PNGs into ./assets/ so the
+  // app can display them for per-ad review. Collected before jobDir cleanup.
+  const assets: Array<{ docType: string; filename: string; mime: string; base64: string }> = [];
+  const assetsDir = path.join(jobDir, "assets");
+  const assetFiles = await fs.readdir(assetsDir).catch(() => [] as string[]);
+  for (const f of assetFiles.sort()) {
+    const ext = path.extname(f).toLowerCase();
+    if (![".png", ".jpg", ".jpeg", ".webp"].includes(ext)) continue;
+    const buf = await fs.readFile(path.join(assetsDir, f)).catch(() => null);
+    if (!buf || !buf.length) continue;
+    const mime = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+    assets.push({ docType: output.docType, filename: f, mime, base64: buf.toString("base64") });
+  }
+  if (assets.length) console.log(`[job ${job.id}] ${output.title}: ${assets.length} rendered assets collected`);
+
   await fs.rm(jobDir, { recursive: true, force: true });
   console.log(`[job ${job.id}] ${output.title}: done (${parsed.content.length.toLocaleString()} chars)`);
-  return { docType: output.docType, ...parsed };
+  return { docType: output.docType, assets, ...parsed };
 }
 
 async function runJob(job: ClaimedJob) {
@@ -199,8 +215,9 @@ async function runJob(job: ClaimedJob) {
 
   const docs = Object.fromEntries(results.map((r) => [r.docType, r.content]));
   const clientLessons = Array.from(new Set(results.flatMap((r) => r.clientLessons)));
+  const assets = results.flatMap((r) => r.assets);
 
-  await api("complete", { jobId: job.id, docs, clientLessons });
+  await api("complete", { jobId: job.id, docs, clientLessons, assets });
   console.log(
     `[job ${job.id}] complete in ${Math.round((Date.now() - started) / 60000)}m — ${results.length} docs posted, ${clientLessons.length} client lessons`
   );

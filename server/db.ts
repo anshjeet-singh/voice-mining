@@ -2,6 +2,7 @@ import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertClient,
+  InsertClientAsset,
   InsertClientDocument,
   InsertJob,
   InsertMiningSearch,
@@ -11,6 +12,7 @@ import {
   activityLog,
   analysisResults,
   calendarEntries,
+  clientAssets,
   clientDocuments,
   clients,
   jobs,
@@ -748,4 +750,61 @@ export async function getSearchesByClient(clientId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(miningSearches).where(eq(miningSearches.clientId, clientId)).orderBy(desc(miningSearches.createdAt));
+}
+
+// ─── Client assets (rendered ad binaries) ────────────────────────────────────
+
+export async function createClientAsset(data: InsertClientAsset): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(clientAssets).values(data);
+  return result[0].insertId;
+}
+
+/** Asset metadata for a client (no base64 payload — served via /api/assets/:id). */
+export async function getClientAssetsMeta(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: clientAssets.id,
+      clientId: clientAssets.clientId,
+      jobId: clientAssets.jobId,
+      docType: clientAssets.docType,
+      filename: clientAssets.filename,
+      mime: clientAssets.mime,
+      status: clientAssets.status,
+      feedback: clientAssets.feedback,
+      createdAt: clientAssets.createdAt,
+    })
+    .from(clientAssets)
+    .where(eq(clientAssets.clientId, clientId))
+    .orderBy(clientAssets.filename);
+}
+
+export async function getClientAssetById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(clientAssets).where(eq(clientAssets.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function reviewClientAsset(
+  id: number,
+  status: "approved" | "rejected",
+  feedback: string | null
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clientAssets).set({ status, feedback }).where(eq(clientAssets.id, id));
+}
+
+/** Replace a client's assets for the given docTypes with a new job's set. */
+export async function deleteClientAssetsByTypes(clientId: number, docTypes: string[]) {
+  if (!docTypes.length) return;
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .delete(clientAssets)
+    .where(and(eq(clientAssets.clientId, clientId), inArray(clientAssets.docType, docTypes)));
 }

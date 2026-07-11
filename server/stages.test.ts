@@ -14,17 +14,18 @@ describe("stage registry", () => {
   it("defines the ads contract with the batch quality gates", () => {
     const call = stagePromptSpec("ads", "call")!;
     const webinar = stagePromptSpec("ads", "webinar")!;
-    expect(call.outputs.map((o) => o.docType)).toEqual([
-      "ad_scripts",
-      "ad_statics",
-      "ad_campaign_plan",
-    ]);
-    // Angles + scripts merged into one doc
-    expect(call.outputs[0].description).toContain("THE ANGLE MATRIX");
-    expect(call.outputs[0].description).toContain("EXACTLY 10");
-    expect(call.outputs[0].description).toContain("verification checklist");
-    expect(call.outputs[1].description).toContain("FULLY RENDERED");
-    expect(call.outputs[2].description).toContain("Forester");
+    // Two docs: the full creative batch + the campaign plan (matrix absorbed)
+    expect(call.outputs.map((o) => o.docType)).toEqual(["ad_scripts", "ad_campaign_plan"]);
+    expect(call.outputs[0].description).toContain("15 NATIVE STATIC ADS");
+    expect(call.outputs[0].description).toContain("FULLY RENDERED");
+    expect(call.outputs[0].description).toContain("5 B-ROLL");
+    expect(call.outputs[0].description).toContain("5 full-length video ad scripts");
+    expect(call.outputs[0].description).toContain("reference-ads");
+    expect(call.outputs[0].description).toContain("./assets/");
+    expect(call.outputs[0].description).toContain("VISUAL QA LOOP");
+    expect(call.outputs[1].description).toContain("ANGLE MATRIX");
+    expect(call.outputs[1].description).toContain("Forester");
+    expect(call.outputs[1].description).toContain("budget allocation");
     expect(call.extraInstructions).toContain("ONE AD, ONE ANGLE");
     expect(call.extraInstructions).toContain("[VSL LINK]");
     expect(webinar.extraInstructions).toContain("[REGISTRATION LINK]");
@@ -32,6 +33,7 @@ describe("stage registry", () => {
     expect(call.childSkills.join()).toContain("ad-script-writer");
     // Retired docTypes still get swept
     expect(stageAllDocTypes("ads")).toContain("ad_angles");
+    expect(stageAllDocTypes("ads")).toContain("ad_statics");
   });
 
   it("branches the funnel contract on funnel type", () => {

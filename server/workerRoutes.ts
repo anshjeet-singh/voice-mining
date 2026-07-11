@@ -11,9 +11,12 @@ import type { Express, Request, Response } from "express";
 import { ENV } from "./_core/env";
 import {
   claimNextQueuedJob,
+  createClientAsset,
   createClientDocument,
+  deleteClientAssetsByTypes,
   deleteClientDocumentsByTypes,
   getAnalysisResultBySearchId,
+  getClientAssetById,
   getClientById,
   getClientDocuments,
   getReportBySearchId,
@@ -173,10 +176,12 @@ export function registerWorkerRoutes(app: Express) {
   app.post("/api/worker/complete", async (req: Request, res: Response) => {
     if (!guard(req, res)) return;
     try {
-      const { jobId, docs, clientLessons } = req.body as {
+      const { jobId, docs, clientLessons, assets } = req.body as {
         jobId: number;
         docs: Record<string, string>;
         clientLessons?: string[];
+        /** Rendered binaries (static ad PNGs): base64, keyed to a docType. */
+        assets?: Array<{ docType: string; filename: string; mime?: string; base64: string }>;
       };
       if (!jobId || !docs) return res.status(400).json({ error: "jobId and docs required" });
 
@@ -205,6 +210,23 @@ export function registerWorkerRoutes(app: Express) {
       const stale = stageAllDocTypes(job.type).filter((t) => !(t in contract));
       await deleteClientDocumentsByTypes(job.clientId, stale);
 
+      // Rendered assets: replace the previous batch for this stage's docTypes,
+      // then store the new set (base64, served via /api/assets/:id).
+      if (assets?.length) {
+        await deleteClientAssetsByTypes(job.clientId, stageAllDocTypes(job.type));
+        for (const a of assets) {
+          if (!a.filename || !a.base64 || !(a.docType in contract)) continue;
+          await createClientAsset({
+            clientId: job.clientId,
+            jobId,
+            docType: a.docType,
+            filename: a.filename.slice(0, 300),
+            mime: a.mime?.slice(0, 100) || "image/png",
+            data: a.base64,
+          });
+        }
+      }
+
       for (const lesson of clientLessons ?? []) {
         if (lesson.trim().length > 5) {
           await createClientDocument({
@@ -222,6 +244,25 @@ export function registerWorkerRoutes(app: Express) {
     } catch (err) {
       console.error("[worker/complete]", err);
       res.status(500).json({ error: "complete failed" });
+    }
+  });
+
+  // Serve a rendered asset to the logged-in owner (img src="/api/assets/:id").
+  app.get("/api/assets/:id", async (req: Request, res: Response) => {
+    try {
+      const { authenticateRequest } = await import("./_core/auth");
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) return res.status(401).json({ error: "unauthorized" });
+      const asset = await getClientAssetById(Number(req.params.id));
+      if (!asset) return res.status(404).json({ error: "not found" });
+      const client = await getClientById(asset.clientId);
+      if (!client || client.userId !== user.id) return res.status(404).json({ error: "not found" });
+      res.setHeader("Content-Type", asset.mime);
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      res.send(Buffer.from(asset.data, "base64"));
+    } catch (err) {
+      console.error("[assets/get]", err);
+      res.status(500).json({ error: "asset fetch failed" });
     }
   });
 

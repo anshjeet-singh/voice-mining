@@ -34,7 +34,7 @@ An ad that was never viewed is an ad that does not ship.
 ## 5. Spec fidelity beats improvisation
 
 - Read the format spec IN FULL before building that format (notes-format-spec.md rev 7 for Notes, native-formats.md for the rest). The spec's casing rules (sentence case for Notes, lowercase for chat formats), background rules (pure #FFFFFF or #000000), garnish limits (max one), and layout skeletons are hard constraints, not inspiration.
-- View 2 or 3 approved outputs from past batches on Drive (Cashflow Coaches/<Client>/Ads/) and the skill's reference screenshots BEFORE building the first ad, with the Read tool. Calibrate on what the operator has already accepted.
+- VIEW EVERY IMAGE in the operator's winning-ad library BEFORE building the first ad: '/Users/anshjeetsingh/Library/CloudStorage/GoogleDrive-anshjeets@gmail.com/My Drive/Cashflow Coaches/Ad Creative System/reference-ads/' (Read tool, all of them). These are the bar: match their look, text density, spacing, and CTA treatment. Also view the skill's reference screenshots and any previously APPROVED batch outputs on Drive (Cashflow Coaches/<Client>/Ads/). Calibrate on pictures, not just prose specs.
 - Every concept that the spec says ships in both modes ships in both modes (Notes: light AND dark).
 
 ## Where this maps in our pipeline
