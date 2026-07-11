@@ -18,9 +18,11 @@ import {
   getAnalysisResultBySearchId,
   getClientAssetById,
   getClientById,
+  getClientAssetsMeta,
   getClientDocuments,
   getReportBySearchId,
   getSearchesByClient,
+  reviewClientAsset,
   setJobProgress,
   setJobStatus,
   upsertClientDocumentByType,
@@ -142,12 +144,17 @@ export function registerWorkerRoutes(app: Express) {
               .map((d) => ({ title: d.title, docType: d.docType, content: d.content }));
       let research = await renderResearchForClient(job.clientId);
       // Ads stage: attach live Foreplay winners for the niche as pattern
-      // models (angles and hooks, never words to copy).
+      // models (angles and hooks, never words to copy), plus the operator's
+      // per-ad verdicts from the previous batch (the calibration loop).
+      let assetReviews: Array<{ filename: string; status: string; feedback: string | null }> = [];
       if (job.type === "ads") {
         const foreplay = await fetchForeplayWinningAds(client.niche).catch(() => "");
         if (foreplay) {
           research = `${research}\n\n# FOREPLAY WINNING ADS IN THIS NICHE (live, longest-running: proven spenders. Model the angles and proof types, never copy the words)\n\n${foreplay}`;
         }
+        assetReviews = (await getClientAssetsMeta(job.clientId))
+          .filter((a) => a.status !== "pending")
+          .map((a) => ({ filename: a.filename, status: a.status, feedback: a.feedback }));
       }
 
       res.json({
@@ -166,6 +173,7 @@ export function registerWorkerRoutes(app: Express) {
           research,
           lessons,
           feedback: job.payload?.feedback ?? "",
+          assetReviews,
         },
       });
     } catch (err) {
@@ -212,19 +220,30 @@ export function registerWorkerRoutes(app: Express) {
       await deleteClientDocumentsByTypes(job.clientId, stale);
 
       // Rendered assets: replace the previous batch for this stage's docTypes,
-      // then store the new set (base64, served via /api/assets/:id).
+      // then store the new set (base64, served via /api/assets/:id). Approved
+      // verdicts survive a rebuild: a new asset with the same filename as a
+      // previously approved one arrives pre-approved (rebuilds are told to
+      // keep approved ads identical).
       if (assets?.length) {
+        const prev = await getClientAssetsMeta(job.clientId);
+        const prevApproved = new Map(
+          prev.filter((p) => p.status === "approved").map((p) => [p.filename, p.feedback])
+        );
         await deleteClientAssetsByTypes(job.clientId, stageAllDocTypes(job.type));
         for (const a of assets) {
           if (!a.filename || !a.base64 || !(a.docType in contract)) continue;
-          await createClientAsset({
+          const filename = a.filename.slice(0, 300);
+          const id = await createClientAsset({
             clientId: job.clientId,
             jobId,
             docType: a.docType,
-            filename: a.filename.slice(0, 300),
+            filename,
             mime: a.mime?.slice(0, 100) || "image/png",
             data: a.base64,
           });
+          if (prevApproved.has(filename)) {
+            await reviewClientAsset(id, "approved", prevApproved.get(filename) ?? null);
+          }
         }
       }
 

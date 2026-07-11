@@ -34,6 +34,8 @@ export interface ClaimedJob {
   research: string;
   lessons: string[];
   feedback: string;
+  /** Operator per-ad verdicts on the previous rendered batch (ads stage). */
+  assetReviews?: Array<{ filename: string; status: string; feedback: string | null }>;
 }
 
 export interface PromptOptions {
@@ -71,6 +73,24 @@ export function buildDocPrompt(job: ClaimedJob, output: StageOutputSpec, opts: P
     ? `\n# REVISION FEEDBACK (this is a regeneration — the previous version was rejected; fix these issues)\n\n${job.feedback.trim()}\n`
     : "";
 
+  const approvedAds = (job.assetReviews ?? []).filter((r) => r.status === "approved");
+  const rejectedAds = (job.assetReviews ?? []).filter((r) => r.status === "rejected");
+  const verdicts = job.assetReviews?.length
+    ? `\n# OPERATOR AD VERDICTS FROM THE PREVIOUS BATCH (the calibration loop — this outranks your own taste)\n${
+        approvedAds.length
+          ? `\nAPPROVED (the operator's bar. VIEW these PNGs with the Read tool in the client's most recent AdsBatch output folder on Drive before building anything; they are positive reference examples. If this run rebuilds the batch, reproduce these ads IDENTICALLY — same angle, format, copy, pixels):\n${approvedAds
+              .map((r) => `- ${r.filename}${r.feedback ? ` (note: ${r.feedback})` : ""}`)
+              .join("\n")}\n`
+          : ""
+      }${
+        rejectedAds.length
+          ? `\nREJECTED (each note is a hard rule for this run; never repeat the mistake it names):\n${rejectedAds
+              .map((r) => `- ${r.filename}: ${r.feedback || "rejected without a note"}`)
+              .join("\n")}\n`
+          : ""
+      }`
+    : "";
+
   return `You are running ${stage.motherStep} of the client-onboarding-orchestrator skill for our agency: ${stage.label}. Your job in THIS run is exactly ONE deliverable: ${output.title}.${siblings ? ` (Other runs are producing ${siblings} in parallel; do not produce their content.)` : ""}
 
 # MANDATORY READING (do this FIRST, with the Read tool, before writing a single word)
@@ -88,7 +108,7 @@ This is not optional. The deliverable must VISIBLY follow the skill templates an
 - Niche: ${job.client.niche}
 - Funnel type: ${job.client.funnelType}
 - Price point: ${job.client.pricePoint || "not specified"}
-${lessons}${feedback}${approved}
+${lessons}${feedback}${verdicts}${approved}
 # ONBOARDING MATERIAL
 
 ${onboarding}
@@ -123,7 +143,7 @@ Each time you start a distinct step, APPEND one short present-tense line to ./PR
 # LESSONS OUTPUT
 After the deliverable, also write:
 - client_lessons.md — one bullet per lesson SPECIFIC TO THIS CLIENT. Write "none" if nothing.
-- craft_lessons.md — lessons that would improve the SKILLS THEMSELVES. Format strictly as sections:
+- craft_lessons.md — lessons that would improve the SKILLS THEMSELVES. If the revision feedback or operator ad verdicts above contain a SYSTEMIC rule (one that is true for every client, not this client's taste), you MUST distill it here for the relevant skill so it becomes permanent: this is how operator rejections compound into the system. Format strictly as sections:
 ## skill: <skill-folder-name>
 - <lesson>
 Write "none" if nothing. Be conservative.
