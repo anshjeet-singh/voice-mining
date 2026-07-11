@@ -61,7 +61,10 @@ function resolveClaudeBin(): string {
 }
 const CLAUDE_BIN = resolveClaudeBin();
 const POLL_MS = 5_000;
-const CLAUDE_TIMEOUT_MS = 30 * 60 * 1000; // deliverables are long runs
+// Deliverables are long runs. The ads creative deliverable views ~100
+// reference images and visual-QA-loops 15 rendered statics: 30 minutes is
+// not enough. Configurable via WORKER_TIMEOUT_MIN.
+const CLAUDE_TIMEOUT_MS = Number(process.env.WORKER_TIMEOUT_MIN ?? 90) * 60 * 1000;
 
 if (!WORKER_SECRET) {
   console.error("WORKER_SECRET is not set. Add it to .env or export it, matching Render.");
