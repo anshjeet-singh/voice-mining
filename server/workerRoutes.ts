@@ -300,7 +300,28 @@ export function registerWorkerRoutes(app: Express) {
           await setJobStatus(jobId, "failed", `Worker returned empty or too-short doc: ${docType}`);
           return res.status(400).json({ error: `missing doc: ${docType}` });
         }
-        await upsertClientDocumentByType(job.clientId, kind, docType, title, content.trim());
+        // Engine batches split into ONE document per piece (reel, script,
+        // email, post): each lands on the kanban as its own card. Units are
+        // separated by an <!-- SPLIT --> line; title comes from the unit's
+        // first heading. Stage docs keep upsert-by-type semantics.
+        if (docType.endsWith("_extra") && content.includes("<!-- SPLIT -->")) {
+          const units = content
+            .split(/<!--\s*SPLIT\s*-->/)
+            .map((u) => u.trim())
+            .filter((u) => u.length > 40);
+          for (const unit of units) {
+            const heading = unit.match(/^#\s+(.+)$/m)?.[1]?.trim();
+            await createClientDocument({
+              clientId: job.clientId,
+              kind,
+              docType,
+              title: (heading || title).slice(0, 300),
+              content: unit,
+            });
+          }
+        } else {
+          await upsertClientDocumentByType(job.clientId, kind, docType, title, content.trim());
+        }
       }
 
       // Sweep stale docs whose docType left this stage's contract (contract

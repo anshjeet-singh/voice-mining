@@ -26,27 +26,77 @@ import {
   Youtube,
 } from "lucide-react";
 
-/** Studio sections: the client dashboard's left nav. */
+/** Studio sections with their color identities (literal classes for Tailwind JIT). */
 const SECTIONS = [
-  { id: "overview", label: "Overview", icon: Sparkles },
-  { id: "ads", label: "Ads Engine", icon: Image },
-  { id: "shortform", label: "Short-Form Content", icon: MonitorPlay },
-  { id: "youtube", label: "YouTube Content", icon: Youtube },
-  { id: "emails", label: "Email Engine", icon: Mail },
-  { id: "skool", label: "Skool Engine", icon: Users },
+  {
+    id: "overview", label: "Overview", icon: Sparkles,
+    text: "text-foreground", chip: "bg-card/60",
+    wash: "", tile: "border-border/50 bg-card/30 hover:border-primary/40",
+  },
+  {
+    id: "ads", label: "Ads Engine", icon: Image,
+    text: "text-violet-400", chip: "bg-violet-500/15",
+    wash: "bg-gradient-to-b from-violet-500/[0.06] to-transparent", tile: "border-violet-500/25 bg-violet-500/[0.06] hover:border-violet-400/50",
+  },
+  {
+    id: "shortform", label: "Short-Form Content", icon: MonitorPlay,
+    text: "text-pink-400", chip: "bg-pink-500/15",
+    wash: "bg-gradient-to-b from-pink-500/[0.06] to-transparent", tile: "border-pink-500/25 bg-pink-500/[0.06] hover:border-pink-400/50",
+  },
+  {
+    id: "youtube", label: "YouTube Content", icon: Youtube,
+    text: "text-red-400", chip: "bg-red-500/15",
+    wash: "bg-gradient-to-b from-red-500/[0.06] to-transparent", tile: "border-red-500/25 bg-red-500/[0.06] hover:border-red-400/50",
+  },
+  {
+    id: "emails", label: "Email Engine", icon: Mail,
+    text: "text-emerald-400", chip: "bg-emerald-500/15",
+    wash: "bg-gradient-to-b from-emerald-500/[0.06] to-transparent", tile: "border-emerald-500/25 bg-emerald-500/[0.06] hover:border-emerald-400/50",
+  },
+  {
+    id: "skool", label: "Skool Engine", icon: Users,
+    text: "text-amber-400", chip: "bg-amber-500/15",
+    wash: "bg-gradient-to-b from-amber-500/[0.06] to-transparent", tile: "border-amber-500/25 bg-amber-500/[0.06] hover:border-amber-400/50",
+  },
 ] as const;
+
+const sectionById = (id: string) => SECTIONS.find((sc) => sc.id === id)!;
 
 type SectionId = (typeof SECTIONS)[number]["id"];
 
 const engineByKind = (kind: string) => ENGINES.find((e) => e.kind === kind)!;
 
-/** A titled studio block. */
-function StudioBlock({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+/** A titled studio block, optionally carrying the section's color identity. */
+function StudioBlock({
+  title,
+  hint,
+  children,
+  frame,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+  frame?: string;
+}) {
   return (
-    <div className="rounded-xl border border-border/50 bg-card/30 p-5">
+    <div className={`rounded-xl border p-5 ${frame || "border-border/50 bg-card/30"}`}>
       <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+/** Section header with the engine's color identity. */
+function SectionHeader({ id }: { id: string }) {
+  const sec = sectionById(id);
+  const Icon = sec.icon;
+  return (
+    <div className="flex items-center gap-3">
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${sec.chip}`}>
+        <Icon className={`w-4.5 h-4.5 ${sec.text}`} />
+      </div>
+      <h1 className="text-lg font-semibold text-foreground">{sec.label}</h1>
     </div>
   );
 }
@@ -350,6 +400,41 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
 
 // ─── The Studio ───────────────────────────────────────────────────────────────
 
+/** Foundation library folders: the build's documents grouped like a drive. */
+const DOC_FOLDERS: Array<{ label: string; docTypes: string[] }> = [
+  { label: "Foundation", docTypes: ["icp_snapshot", "offers", "brand_positioning", "course_outline"] },
+  { label: "Skool", docTypes: ["skool_free_community", "skool_paid_community"] },
+  { label: "Funnel", docTypes: ["funnel_core", "funnel_structure", "video_scripts"] },
+  { label: "Emails", docTypes: ["email_sequence_14day", "email_postbooking", "email_noshow_followup", "email_prewebinar", "email_postwebinar", "sms_set"] },
+  { label: "Ads", docTypes: ["ad_scripts", "ad_statics", "ad_campaign_plan"] },
+];
+
+function FolderCard({ label, docs }: { label: string; docs: ClientDoc[] }) {
+  const [open, setOpen] = useState(false);
+  if (!docs.length) return null;
+  return (
+    <div className={`rounded-xl border transition-colors ${open ? "border-primary/40 bg-card/50" : "border-border/50 bg-card/30 hover:border-border"}`}>
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 p-4 text-left">
+        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+          <FileText className="w-4 h-4 text-primary" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-foreground">{label}</p>
+          <p className="text-[11px] text-muted-foreground">{docs.length} document{docs.length > 1 ? "s" : ""}</p>
+        </div>
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="px-3 pb-3 space-y-1.5">
+          {docs.map((d) => (
+            <DocRow key={d.id} doc={d} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ClientStudio() {
   const params = useParams<{ id: string }>();
   const clientId = Number(params.id);
@@ -366,6 +451,7 @@ export default function ClientStudio() {
   const documents = (data?.documents ?? []) as ClientDoc[];
   const assets = (data?.assets ?? []) as ClientAssetMeta[];
   const suggested = (data?.suggestedCompetitors ?? []) as string[];
+  const researchReportId = data?.researchReportId ?? null;
 
   const hasActiveJob = Object.values(jobs).some((j) => j?.status === "queued" || j?.status === "running");
   useEffect(() => {
@@ -382,8 +468,13 @@ export default function ClientStudio() {
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   )[0];
   const intelReels = useMemo(() => parseIntelReels(intelDoc), [intelDoc]);
-  const foundationDocs = documents.filter((d) => d.kind === "foundation" || (d.kind === "deliverable" && !d.docType.endsWith("_extra")));
+  const winningStyle = useMemo(() => {
+    const agg = new Map<string, number>();
+    for (const r of intelReels) agg.set(r.hookStyle, (agg.get(r.hookStyle) ?? 0) + r.views);
+    return Array.from(agg.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  }, [intelReels]);
   const engineDocCount = ENGINES.reduce((n, e) => n + docsFor(e.docType).length, 0);
+  const postedCount = documents.filter((d) => d.docType.endsWith("_extra") && d.status === "posted").length;
 
   if (isLoading || !data) {
     return (
@@ -395,10 +486,13 @@ export default function ClientStudio() {
     );
   }
 
-  const intelBlock = (
+  const sec = sectionById(section);
+
+  const intelBlock = (frame: string) => (
     <StudioBlock
       title="Competitor Desk"
       hint="Scrape + transcribe competitor reels: who pulls reach, which hooks win, and the exact gaps to fill"
+      frame={frame}
     >
       {suggested.length > 0 && (
         <p className="text-[10px] font-mono text-muted-foreground mb-2">
@@ -417,7 +511,7 @@ export default function ClientStudio() {
     <AppShell>
       <div className="flex min-h-screen">
         {/* ── Studio nav ── */}
-        <div className="w-56 flex-shrink-0 border-r border-border/40 p-4 space-y-1">
+        <div className="w-60 flex-shrink-0 border-r border-border/40 p-4 space-y-1">
           <button
             onClick={() => navigate(`/clients/${clientId}`)}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-4"
@@ -426,139 +520,197 @@ export default function ClientStudio() {
             Build pipeline
           </button>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground px-2 pb-1">{data.client.name}</p>
-          {SECTIONS.map((sec) => {
-            const Icon = sec.icon;
+          {SECTIONS.map((sc) => {
+            const Icon = sc.icon;
             return (
               <button
-                key={sec.id}
-                onClick={() => setSection(sec.id)}
+                key={sc.id}
+                onClick={() => setSection(sc.id)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  section === sec.id
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-card/60"
+                  section === sc.id ? `${sc.chip} ${sc.id === "overview" ? "text-foreground" : sc.text}` : "text-muted-foreground hover:text-foreground hover:bg-card/60"
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
-                {sec.label}
+                {sc.label}
               </button>
             );
           })}
         </div>
 
         {/* ── Section content ── */}
-        <div className="flex-1 p-6 lg:p-8 space-y-4 min-w-0">
+        <div className={`flex-1 p-6 lg:p-8 space-y-4 min-w-0 ${sec.wash}`}>
           {section === "overview" && (
             <>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">{data.client.name} Studio</h1>
-                <p className="text-xs text-muted-foreground">
-                  {data.client.niche} · {data.client.funnelType} funnel
-                </p>
+              <div className="rounded-2xl border border-border/50 bg-gradient-to-r from-primary/10 via-card/40 to-transparent p-6">
+                <h1 className="text-xl font-semibold text-foreground">{data.client.name}</h1>
+                <p className="text-xs text-muted-foreground">{data.client.niche} · {data.client.funnelType} funnel</p>
+                <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[
+                    { label: "Approved ads", value: approvedAds.length },
+                    { label: "Content pieces", value: engineDocCount },
+                    { label: "Posted / live", value: postedCount },
+                    { label: "Intel reels analyzed", value: intelReels.length },
+                  ].map((kpi) => (
+                    <div key={kpi.label} className="rounded-xl bg-background/40 border border-border/40 p-3.5">
+                      <p className="text-2xl font-semibold text-foreground tabular-nums">{kpi.value}</p>
+                      <p className="text-[11px] text-muted-foreground">{kpi.label}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { label: "Approved ads in library", value: approvedAds.length },
-                  { label: "Engine documents", value: engineDocCount },
-                  { label: "Intel reels analyzed", value: intelReels.length },
-                  { label: "Foundation + pipeline docs", value: foundationDocs.length },
-                ].map((kpi) => (
-                  <div key={kpi.label} className="rounded-xl border border-border/50 bg-card/30 p-4">
-                    <p className="text-2xl font-semibold text-foreground">{kpi.value}</p>
-                    <p className="text-[11px] text-muted-foreground">{kpi.label}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {SECTIONS.filter((sec) => sec.id !== "overview").map((sec) => {
-                  const Icon = sec.icon;
-                  return (
+
+              <div className="grid lg:grid-cols-2 gap-3">
+                {/* Research */}
+                <div className="rounded-xl border border-border/50 bg-card/30 p-5">
+                  <h3 className="text-sm font-semibold text-foreground">Voice mining research</h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    The market intelligence everything is built on: pains, hooks, scripts, competitor intel
+                  </p>
+                  {researchReportId ? (
                     <button
-                      key={sec.id}
-                      onClick={() => setSection(sec.id)}
-                      className="rounded-xl border border-border/50 bg-card/30 p-4 text-left hover:border-primary/40 transition-colors"
+                      onClick={() => navigate(`/report/${researchReportId}`)}
+                      className="text-xs font-medium text-primary border border-primary/40 rounded-lg px-3 py-1.5 hover:bg-primary/10"
                     >
-                      <Icon className="w-4 h-4 text-primary mb-2" />
-                      <p className="text-sm font-medium text-foreground">{sec.label}</p>
+                      Open the full research report →
+                    </button>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">No completed research linked yet</p>
+                  )}
+                </div>
+                {/* Intel snapshot */}
+                <div className="rounded-xl border border-pink-500/25 bg-pink-500/[0.06] p-5">
+                  <h3 className="text-sm font-semibold text-foreground">Competitor pulse</h3>
+                  {intelReels.length ? (
+                    <>
+                      <p className="text-xs text-muted-foreground">
+                        {intelReels.length} reels analyzed · winning hook style:{" "}
+                        <span className="text-pink-400 font-mono font-semibold">{winningStyle}</span>
+                      </p>
+                      <button
+                        onClick={() => setSection("shortform")}
+                        className="mt-3 text-xs font-medium text-pink-400 border border-pink-500/40 rounded-lg px-3 py-1.5 hover:bg-pink-500/10"
+                      >
+                        Open the Competitor Desk →
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground">No intel yet: mine the niche's reels to see who pulls reach and which hooks win</p>
+                      <button
+                        onClick={() => setSection("shortform")}
+                        className="mt-3 text-xs font-medium text-pink-400 border border-pink-500/40 rounded-lg px-3 py-1.5 hover:bg-pink-500/10"
+                      >
+                        Run competitor intel →
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Engine tiles */}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {SECTIONS.filter((sc) => sc.id !== "overview").map((sc) => {
+                  const Icon = sc.icon;
+                  const count =
+                    sc.id === "ads"
+                      ? approvedAds.length
+                      : sc.id === "shortform"
+                        ? docsFor("content_ig_extra").length
+                        : sc.id === "youtube"
+                          ? docsFor("content_yt_extra").length
+                          : sc.id === "emails"
+                            ? docsFor("emails_extra").length
+                            : docsFor("skool_extra").length;
+                  return (
+                    <button key={sc.id} onClick={() => setSection(sc.id)} className={`rounded-xl border p-4 text-left transition-colors ${sc.tile}`}>
+                      <Icon className={`w-4 h-4 mb-2 ${sc.text}`} />
+                      <p className="text-sm font-semibold text-foreground">{sc.label}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {count} {sc.id === "ads" ? "approved ads" : "pieces"}
+                      </p>
                     </button>
                   );
                 })}
               </div>
-              <StudioBlock title="Foundation + pipeline documents" hint="Everything the build produced: ICP, offers, Skool, funnel, emails">
-                <div className="grid md:grid-cols-2 gap-2">
-                  {foundationDocs.map((doc) => (
-                    <DocRow key={doc.id} doc={doc} />
+
+              {/* Document library as folders */}
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-2">Document library</h3>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {DOC_FOLDERS.map((f) => (
+                    <FolderCard key={f.label} label={f.label} docs={documents.filter((d) => f.docTypes.includes(d.docType))} />
                   ))}
                 </div>
-              </StudioBlock>
+              </div>
             </>
           )}
 
           {section === "ads" && (
             <>
-              <h1 className="text-lg font-semibold text-foreground">Ads Engine</h1>
+              <SectionHeader id="ads" />
               <div className="grid lg:grid-cols-2 gap-4">
-                <StudioBlock title="Generate static ads">
+                <StudioBlock title="Generate static ads" frame="border-violet-500/25 bg-violet-500/[0.05]">
                   <EngineCard engine={engineByKind("more_statics")} job={jobs.more_statics ?? null} clientId={clientId} invalidate={invalidate} />
                 </StudioBlock>
-                <StudioBlock title="Generate video ad scripts">
+                <StudioBlock title="Generate video ad scripts" frame="border-violet-500/25 bg-violet-500/[0.05]">
                   <EngineCard engine={engineByKind("more_scripts")} job={jobs.more_scripts ?? null} clientId={clientId} invalidate={invalidate} />
                 </StudioBlock>
               </div>
-              <StudioBlock title="Ad library" hint="Approved ads live here forever. Reject with notes and rebuild: verdicts train every future batch">
+              <StudioBlock title="Ad library" hint="Grouped by format. Approved ads live here forever; rejections with notes train every future batch" frame="border-violet-500/25 bg-violet-500/[0.05]">
                 <AssetGallery assets={assets} clientId={clientId} stageId="ads" invalidate={invalidate} canRegenerate />
               </StudioBlock>
-              <StudioBlock title="Script pipeline" hint="Video ad script batches: approve what Trent should record, mark posted when live">
-                <DocBoard docs={[...docsFor("ad_scripts_extra"), ...docsFor("ad_scripts")]} invalidate={invalidate} />
+              <StudioBlock title="Script pipeline" hint="One card per script: approve what gets recorded, mark posted when live" frame="border-violet-500/25 bg-violet-500/[0.05]">
+                <DocBoard docs={[...docsFor("ad_scripts_extra")]} invalidate={invalidate} clientId={clientId} docType="ad_scripts_extra" />
               </StudioBlock>
             </>
           )}
 
           {section === "shortform" && (
             <>
-              <h1 className="text-lg font-semibold text-foreground">Short-Form Content</h1>
-              <StudioBlock title="Generate Instagram reels" hint="Built on the house talking-head structure, the proven hook bank, and fresh competitor intel">
+              <SectionHeader id="shortform" />
+              <StudioBlock title="Generate Instagram reels" hint="House talking-head structure + the proven hook bank + fresh competitor intel" frame="border-pink-500/25 bg-pink-500/[0.05]">
                 <EngineCard engine={engineByKind("more_content_ig")} job={jobs.more_content_ig ?? null} clientId={clientId} invalidate={invalidate} />
               </StudioBlock>
-              <StudioBlock title="Content pipeline" hint="Draft to approved to posted: the reel production board">
-                <DocBoard docs={docsFor("content_ig_extra")} invalidate={invalidate} />
+              <StudioBlock title="Reel pipeline" hint="One card per reel: draft, approve, posted. Write your own too" frame="border-pink-500/25 bg-pink-500/[0.05]">
+                <DocBoard docs={docsFor("content_ig_extra")} invalidate={invalidate} clientId={clientId} docType="content_ig_extra" />
               </StudioBlock>
-              {intelBlock}
+              {intelBlock("border-pink-500/25 bg-pink-500/[0.05]")}
             </>
           )}
 
           {section === "youtube" && (
             <>
-              <h1 className="text-lg font-semibold text-foreground">YouTube Content</h1>
-              <StudioBlock title="Generate long-form scripts" hint="Outlier-modeled packaging, 4-beat hooks, story-arc bodies">
+              <SectionHeader id="youtube" />
+              <StudioBlock title="Generate long-form scripts" hint="Outlier-modeled packaging, 4-beat hooks, story-arc bodies" frame="border-red-500/25 bg-red-500/[0.05]">
                 <EngineCard engine={engineByKind("more_content_yt")} job={jobs.more_content_yt ?? null} clientId={clientId} invalidate={invalidate} />
               </StudioBlock>
-              <StudioBlock title="Content pipeline" hint="Draft to approved to posted: the video production board">
-                <DocBoard docs={docsFor("content_yt_extra")} invalidate={invalidate} />
+              <StudioBlock title="Video pipeline" hint="One card per script: approve what gets filmed, mark posted when live" frame="border-red-500/25 bg-red-500/[0.05]">
+                <DocBoard docs={docsFor("content_yt_extra")} invalidate={invalidate} clientId={clientId} docType="content_yt_extra" />
               </StudioBlock>
-              {intelBlock}
+              {intelBlock("border-red-500/25 bg-red-500/[0.05]")}
             </>
           )}
 
           {section === "emails" && (
             <>
-              <h1 className="text-lg font-semibold text-foreground">Email Engine</h1>
-              <StudioBlock title="Generate email copy" hint="Pick the purpose, add specifics: swipe-file style, ConvertKit-ready">
+              <SectionHeader id="emails" />
+              <StudioBlock title="Generate email copy" hint="Pick the purpose, add specifics: swipe-file style, ConvertKit-ready" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
                 <EngineCard engine={engineByKind("more_emails")} job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} />
               </StudioBlock>
-              <StudioBlock title="Email pipeline" hint="Approve, then mark posted once loaded into ConvertKit">
-                <DocBoard docs={docsFor("emails_extra")} invalidate={invalidate} />
+              <StudioBlock title="Email pipeline" hint="One card per email: approve, then mark posted once loaded into ConvertKit" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
+                <DocBoard docs={docsFor("emails_extra")} invalidate={invalidate} clientId={clientId} docType="emails_extra" />
               </StudioBlock>
             </>
           )}
 
           {section === "skool" && (
             <>
-              <h1 className="text-lg font-semibold text-foreground">Skool Engine</h1>
-              <StudioBlock title="Generate community posts" hint="Value, engagement, proof, and DM-trigger posts from the proven post bank">
+              <SectionHeader id="skool" />
+              <StudioBlock title="Generate community posts" hint="Value, engagement, proof, and DM-trigger posts from the proven post bank" frame="border-amber-500/25 bg-amber-500/[0.05]">
                 <EngineCard engine={engineByKind("more_skool")} job={jobs.more_skool ?? null} clientId={clientId} invalidate={invalidate} />
               </StudioBlock>
-              <StudioBlock title="Post pipeline" hint="Approve, then mark posted once live in the community">
-                <DocBoard docs={docsFor("skool_extra")} invalidate={invalidate} />
+              <StudioBlock title="Post pipeline" hint="One card per post: approve, then mark posted once live in the community" frame="border-amber-500/25 bg-amber-500/[0.05]">
+                <DocBoard docs={docsFor("skool_extra")} invalidate={invalidate} clientId={clientId} docType="skool_extra" />
               </StudioBlock>
             </>
           )}

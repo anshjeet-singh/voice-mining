@@ -203,7 +203,17 @@ export const appRouter = router({
             igHandles.add(m[1].toLowerCase());
           }
         }
-        return { client, documents, searches, jobs, assets, suggestedCompetitors: Array.from(igHandles).slice(0, 12) };
+        const completeSearch = searches.find((sr) => sr.status === "complete");
+        const researchReport = completeSearch ? await getReportBySearchId(completeSearch.id) : null;
+        return {
+          client,
+          documents,
+          searches,
+          jobs,
+          assets,
+          suggestedCompetitors: Array.from(igHandles).slice(0, 12),
+          researchReportId: researchReport?.id ?? null,
+        };
       }),
 
     /** Approve or reject ONE rendered asset (static ad) with optional feedback. */
@@ -310,6 +320,28 @@ export const appRouter = router({
         await requireClient(doc.clientId, ctx.user.id);
         await deleteClientDocument(input.id);
         return { ok: true };
+      }),
+
+    /** Operator-written draft added straight onto an engine's content board. */
+    addEngineDraft: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          docType: z.string().regex(/^[a-z_]+_extra$/),
+          title: z.string().min(1).max(300),
+          content: z.string().min(1).max(500_000),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const id = await createClientDocument({
+          clientId: input.clientId,
+          kind: "deliverable",
+          docType: input.docType,
+          title: input.title.trim(),
+          content: input.content,
+        });
+        return { id };
       }),
 
     /** Move a deliverable through the kanban: draft -> approved -> posted -> archived. */
