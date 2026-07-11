@@ -648,6 +648,17 @@ export default function ClientStudio() {
           {section === "ads" && (
             <>
               <SectionHeader id="ads" />
+              {(jobs.ads?.status === "queued" || jobs.ads?.status === "running") && (
+                <div className="rounded-xl border border-violet-500/40 bg-violet-500/10 p-4 flex items-center gap-3">
+                  <Loader2 className="w-4 h-4 text-violet-400 animate-spin flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">Rebuilding rejected ads</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {jobs.ads?.status === "queued" ? "Waiting for your Mac worker" : jobs.ads?.progress || "Working..."}
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="grid lg:grid-cols-2 gap-4">
                 <StudioBlock title="Generate static ads" frame="border-violet-500/25 bg-violet-500/[0.05]">
                   <EngineCard engine={engineByKind("more_statics")} job={jobs.more_statics ?? null} clientId={clientId} invalidate={invalidate} />

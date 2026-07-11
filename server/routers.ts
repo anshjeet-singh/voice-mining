@@ -373,7 +373,26 @@ export const appRouter = router({
         const stageDef = STAGES[input.stage];
         if (stageDef.requires) {
           const prev = await getLatestJobForClient(input.clientId, stageDef.requires);
-          if (!prev || prev.status !== "approved") {
+          const prevApproved = prev?.status === "approved";
+          // On-demand engines stay unlocked once the required stage has EVER
+          // shipped docs: a rebuild putting the stage back into running must
+          // not re-lock the whole studio.
+          const isOnDemand = (ON_DEMAND_TYPES as readonly string[]).includes(input.stage);
+          if (!prevApproved && isOnDemand) {
+            const docs = await getClientDocuments(input.clientId);
+            const requiredTypes = new Set(
+              Object.keys(
+                (await import("./stages")).stageContract(stageDef.requires, "call")
+              ).concat(Object.keys((await import("./stages")).stageContract(stageDef.requires, "webinar")))
+            );
+            const everCompleted = docs.some((d) => requiredTypes.has(d.docType));
+            if (!everCompleted) {
+              throw new TRPCError({
+                code: "PRECONDITION_FAILED",
+                message: `Complete ${STAGES[stageDef.requires].label} first`,
+              });
+            }
+          } else if (!prevApproved) {
             throw new TRPCError({
               code: "PRECONDITION_FAILED",
               message: `Approve ${STAGES[stageDef.requires].label} first`,

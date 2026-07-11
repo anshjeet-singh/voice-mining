@@ -367,7 +367,8 @@ export function registerWorkerRoutes(app: Express) {
         }
       }
 
-      await setJobStatus(jobId, "review");
+      const isOnDemand = (ON_DEMAND_TYPES as readonly string[]).includes(job.type);
+      await setJobStatus(jobId, isOnDemand ? "approved" : "review");
       res.json({ ok: true });
     } catch (err) {
       console.error("[worker/complete]", err);

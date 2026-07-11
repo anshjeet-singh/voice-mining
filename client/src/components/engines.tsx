@@ -79,18 +79,11 @@ function AssetGallery({
   const rejected = assets.filter((a) => a.status === "rejected");
   const approved = assets.filter((a) => a.status === "approved");
 
-  /** Format family from the house filename convention (TK_Ad03_Notes_... -> Notes). */
-  const formatOf = (filename: string) => {
-    const parts = filename.replace(/\.[a-z]+$/i, "").split("_");
-    const seg = parts.length >= 3 ? parts[2] : parts[0];
-    return seg?.replace(/([a-z])([A-Z])/g, "$1 $2") || "Other";
-  };
-  const groups = new Map<string, ClientAssetMeta[]>();
-  for (const a of assets) {
-    const f = formatOf(a.filename);
-    groups.set(f, [...(groups.get(f) ?? []), a]);
-  }
-  const grouped = Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length);
+  /** Two groups: the working batch (pending + rejected) and the approved library. */
+  const grouped: Array<[string, ClientAssetMeta[]]> = [
+    ["New this batch", assets.filter((a) => a.status !== "approved")],
+    ["Approved library", approved],
+  ].filter(([, g]) => (g as ClientAssetMeta[]).length > 0) as Array<[string, ClientAssetMeta[]]>;
 
   const regenerateRejected = () => {
     const feedback = [
@@ -391,16 +384,11 @@ export function EngineCard({
     },
     onError: (err) => toast.error(err.message),
   });
-  const review = trpc.clients.reviewStage.useMutation({
-    onSuccess: () => invalidate(),
-    onError: (err) => toast.error(err.message),
-  });
-
   const status = job?.status ?? null;
   const busy = status === "queued" || status === "running";
 
   return (
-    <div className="rounded-lg border border-border/50 bg-background/40 p-4">
+    <div className="rounded-lg border border-border/40 bg-card/20 p-4">
       <p className="text-xs font-semibold text-foreground">{engine.label}</p>
       <p className="text-[11px] text-muted-foreground mb-2">{engine.blurb}</p>
 
@@ -482,17 +470,6 @@ export function EngineCard({
               {generate.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
               Generate {count}
             </Button>
-            {status === "review" && (
-              <Button
-                size="sm"
-                disabled={review.isPending}
-                onClick={() => review.mutate({ clientId, stage: engine.kind, action: "approve" })}
-                className="bg-emerald-600 text-white hover:bg-emerald-600/90 h-7 text-xs"
-              >
-                <Check className="w-3 h-3 mr-1.5" />
-                Mark batch done
-              </Button>
-            )}
           </div>
           {status === "failed" && job?.error && (
             <p className="mt-2 text-[11px] text-destructive">Last run failed: {job.error.slice(0, 200)}</p>

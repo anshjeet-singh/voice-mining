@@ -31,7 +31,11 @@ Rendering without looking is how a broken tweet layout ships. For EVERY rendered
 5. Log one QA line per ad in the deliverable doc: what was checked, what was fixed.
 An ad that was never viewed is an ad that does not ship.
 
-## 5. CLONE the reference, never "take inspiration"
+## 5. NATIVE-FIRST batch mix (operator taste, learned from two review rounds)
+
+The operator's approved library skews HEAVILY to phone-native formats: chat threads, notes app, search bar, calendar, email inbox, reddit thread, chatgpt/claude UI, reminders, napkin handwriting, big-text callouts. The DR-poster family (dark designed posters, three-step infographics, chart comparisons, offer posters) got batch-rejected TWICE even when well executed. Default batches are NATIVE-DOMINANT: at least 80% phone-native formats. DR-poster formats only when the generation request names them explicitly. When in doubt: would a designer be proud of it? Then it probably fails the native test.
+
+## 6. CLONE the reference, never "take inspiration"
 
 The single most important rule in this file. The operator's verdict on batches that merely resembled the references: not at par.
 - Every static ad DECLARES its reference: pick ONE image from the reference-ads library (use catalog.md there when it exists, otherwise browse) that matches the planned format, and record "Reference: <filename>" in the ad's spec.
@@ -39,7 +43,7 @@ The single most important rule in this file. The operator's verdict on batches t
 - The QA test is side by side: view your render and the reference together. If a stranger would not believe they came from the same designer's same template, the ad fails. Rebuild until it passes.
 - Inventing a new composition is allowed ONLY when no reference exists for the format, and the doc must say so explicitly on that ad.
 
-## 6. Spec fidelity beats improvisation
+## 7. Spec fidelity beats improvisation
 
 - Read the format spec IN FULL before building that format (notes-format-spec.md rev 7 for Notes, native-formats.md for the rest). The spec's casing rules (sentence case for Notes, lowercase for chat formats), background rules (pure #FFFFFF or #000000), garnish limits (max one), and layout skeletons are hard constraints, not inspiration.
 - VIEW EVERY IMAGE in the operator's winning-ad library BEFORE building the first ad: '/Users/anshjeetsingh/Library/CloudStorage/GoogleDrive-anshjeets@gmail.com/My Drive/Cashflow Coaches/Ad Creative System/reference-ads/' (Read tool, all of them). These are the bar: match their look, text density, spacing, and CTA treatment. Also view the skill's reference screenshots and any previously APPROVED batch outputs on Drive (Cashflow Coaches/<Client>/Ads/). Calibrate on pictures, not just prose specs.
