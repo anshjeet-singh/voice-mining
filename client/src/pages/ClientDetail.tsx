@@ -31,7 +31,8 @@ const DOC_TYPES = [
   { id: "other", label: "Other" },
 ] as const;
 
-type StageId = "foundation" | "skool" | "funnel" | "emails" | "ads" | "more_statics" | "more_scripts" | "more_content_ig" | "more_content_yt" | "more_emails" | "more_skool";
+type StageId = "foundation" | "skool" | "funnel" | "emails" | "ads" | "more_statics" | "more_scripts" | "more_content_ig" | "more_content_yt" | "more_emails" | "more_skool"
+  | "content_intel";
 
 /**
  * Worker-run pipeline stages, in mother-skill order. docTypes mirror the
@@ -392,6 +393,22 @@ const ENGINES: Array<{
     compose: (count, _s, notes) =>
       `Write EXACTLY ${count} email${count > 1 ? "s" : ""}. Request: ${
         notes || "no specific direction given: write the highest-leverage broadcast for the current funnel"
+      }`,
+  },
+  {
+    kind: "content_intel",
+    label: "Competitor intel",
+    blurb: "Scrape + transcribe competitor reels: hooks, beats, angles",
+    counts: [3, 5],
+    defaultCount: 3,
+    hasStyles: false,
+    docType: "content_intel_extra",
+    notesPlaceholder: "Instagram handles, comma separated (empty = use onboarding competitor list). e.g. handle1, handle2",
+    compose: (count, _s, notes) =>
+      `Run competitor content intel at ${count} reels per account.${
+        notes
+          ? ` Instagram handles: ${notes}.`
+          : " Extract the Instagram handles from the client's onboarding competitors document."
       }`,
   },
   {

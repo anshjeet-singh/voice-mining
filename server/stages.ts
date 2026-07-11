@@ -224,6 +224,19 @@ export const STAGES: Record<string, StageDef> = {
     extraInstructions: () =>
       "Posts reference the community's real pinned content and level names from the approved Skool docs. The client's voice, casual and native to Skool. Every DM workflow ends at the VSL page. No em dashes anywhere.",
   },
+
+  content_intel: {
+    type: "content_intel",
+    label: "Competitor Intel",
+    requires: "ads",
+    motherStep: "Intel Engine (competitor reel analysis)",
+    childSkills: () => ["reel-scripter (for hook vocabulary)", "generic-language-killer"],
+    docs: () => [
+      { docType: "content_intel_extra", filename: "01_competitor_intel.md", title: "Competitor Content Intel", description: "A competitor reel intelligence report. PROCESS: (1) Determine the Instagram handles: THE GENERATION REQUEST in the REVISION FEEDBACK section may list handles and reels-per-account; if it does not, extract competitor Instagram handles from the client's onboarding competitors document. (2) SCRAPE + TRANSCRIBE by running 'python3 /Users/anshjeetsingh/voice-mining/scripts/ig-scrape.py --accounts <handle1> <handle2> ... --limit <N> --out ./staging' from your working directory (APIFY_TOKEN and ELEVENLABS_API_KEY load from the repo .env automatically; if the requests package is missing run pip3 install requests). (3) Read the staged batch JSON it writes. (4) ANALYZE every reel: score relevance to THIS client's niche 1-10 (10 = exact topics, 7-9 adjacent same-audience, below 7 = discard from the report but list in a one-line rejects table); for every keeper split the transcript VERBATIM into Hook / Beat 1..N / CTA with a one-phrase note per section on what the beat is doing ('names the pain', 'FOMO close'); tag each hook with a hookStyle from [problem-promise, contrarian-claim, list-tease, demo-first, story-frame, data-shock, identity-call, other]. (5) The report: a summary dashboard section first (reach by account table, hook-style leaderboard by combined views, the 3 biggest patterns worth copying), then one section per keeper (account, views/likes/comments, sectioned transcript, and an ANGLE SUGGESTION: an honest content angle for THIS client that exploits a gap the competitor left open, mapped to the client's offer and mechanism, never a copy of the reel). This report is research: the transcripts are signal, never content to republish" },
+    ],
+    extraInstructions: () =>
+      "Research discipline: verbatim transcript splits, real numbers, no invented views or engagement. The angle suggestions must connect to THIS client's approved offer and mechanism, not generic advice. Keep total Apify spend sane: never scrape more than the requested reels-per-account. No em dashes anywhere.",
+  },
 };
 
 /** Stage order for gating and UI. */
@@ -237,6 +250,7 @@ export const ON_DEMAND_TYPES = [
   "more_content_yt",
   "more_emails",
   "more_skool",
+  "content_intel",
 ] as const;
 
 /** The docType -> title contract used to validate a worker's completion. */
