@@ -272,14 +272,17 @@ export default function ReportView() {
   return (
     <AppShell>
       <div className="p-6 lg:p-8 max-w-6xl mx-auto">
-        {/* Header */}
+        {/* Header: opened from a client studio, back goes to that studio */}
         <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={() => navigate("/reports")}
+            onClick={() => {
+              const fromClient = new URLSearchParams(window.location.search).get("client");
+              navigate(fromClient ? `/clients/${fromClient}/studio` : "/reports");
+            }}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
-            Reports
+            {new URLSearchParams(window.location.search).get("client") ? "Back to the studio" : "Reports"}
           </button>
         </div>
 

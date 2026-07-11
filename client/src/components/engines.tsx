@@ -286,26 +286,32 @@ export const ENGINES: Array<{
   {
     kind: "more_content_ig",
     label: "Instagram reels",
-    blurb: "Organic reel scripts: hook, beats, on-screen text, caption",
+    blurb: "Organic reel scripts fed by the freshest competitor intel: hook, beats, on-screen text, caption",
     counts: [3, 5, 10],
     defaultCount: 5,
     hasStyles: false,
     docType: "content_ig_extra",
-    notesPlaceholder: "Optional: topics, pains to hit, series direction...",
-    compose: (count, _s, notes) =>
-      `Write EXACTLY ${count} Instagram reel scripts.${notes ? ` Operator direction: ${notes}` : " Pick the strongest topics from the research yourself."}`,
+    purposes: ["Mixed batch", "Top of funnel (reach)", "Middle (value / mechanism)", "Bottom (proof / offer)"],
+    notesPlaceholder: "Audience (which sub-avatar), offer, topics, pains to hit...",
+    compose: (count, _s, notes, purpose) =>
+      `Write EXACTLY ${count} Instagram reel scripts.${
+        purpose && purpose !== "Mixed batch" ? ` FUNNEL STAGE: ${purpose}.` : " Mix funnel stages for a balanced batch."
+      } Model the freshest Competitor Content Intel in the approved docs.${notes ? ` Operator direction: ${notes}` : " Pick the strongest topics from the research yourself."}`,
   },
   {
     kind: "more_content_yt",
     label: "YouTube scripts",
-    blurb: "Long-form scripts: 4-beat hook, story arcs, CTA",
+    blurb: "Long-form scripts fed by competitor intel: 4-beat hook, story arcs, CTA",
     counts: [1, 2, 3],
     defaultCount: 1,
     hasStyles: false,
     docType: "content_yt_extra",
-    notesPlaceholder: "Optional: topic, outlier to model, format...",
-    compose: (count, _s, notes) =>
-      `Write EXACTLY ${count} long-form YouTube script${count > 1 ? "s" : ""}.${notes ? ` Operator direction: ${notes}` : " Pick the strongest topic from the research yourself."}`,
+    purposes: ["Middle (value / mechanism)", "Top of funnel (reach)", "Bottom (case study / proof)"],
+    notesPlaceholder: "Audience (which sub-avatar), offer, topic, outlier to model...",
+    compose: (count, _s, notes, purpose) =>
+      `Write EXACTLY ${count} long-form YouTube script${count > 1 ? "s" : ""}.${
+        purpose ? ` FUNNEL STAGE: ${purpose}.` : ""
+      } Model the freshest Competitor Content Intel in the approved docs.${notes ? ` Operator direction: ${notes}` : " Pick the strongest topic from the research yourself."}`,
   },
   {
     kind: "more_emails",
@@ -323,7 +329,7 @@ export const ENGINES: Array<{
       "Re-engagement",
       "Newsletter / value",
     ],
-    notesPlaceholder: "Specifics: the offer, the occasion, the deadline, the asset to push...",
+    notesPlaceholder: "Specifics: the offer (paid community, high ticket), audience, the occasion, the deadline...",
     compose: (count, _s, notes, purpose) =>
       `Write EXACTLY ${count} email${count > 1 ? "s" : ""}. PURPOSE: ${purpose || "highest-leverage broadcast for the current funnel"}.${
         notes ? ` Specifics: ${notes}` : ""

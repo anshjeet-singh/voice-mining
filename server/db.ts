@@ -597,6 +597,13 @@ export async function getClientsByUser(userId: number) {
   return db.select().from(clients).where(eq(clients.userId, userId)).orderBy(desc(clients.updatedAt));
 }
 
+/** Every client across all owners: powers the worker's auto-refresh mining. */
+export async function getAllClients() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(clients).orderBy(desc(clients.updatedAt));
+}
+
 export async function getClientById(id: number) {
   const db = await getDb();
   if (!db) return undefined;

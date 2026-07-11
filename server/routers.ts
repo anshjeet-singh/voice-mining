@@ -75,6 +75,7 @@ import {
 import type { DeepMarketIntelligence } from "@shared/reportContent";
 import { fetchRelatedSearches } from "./realScraper";
 import { ON_DEMAND_TYPES, STAGE_ORDER, STAGES } from "./stages";
+import { harvestCompetitorSources } from "./competitorSources";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
@@ -172,6 +173,8 @@ export const appRouter = router({
             onboardingCount: docs.filter((d) => d.kind === "onboarding").length,
             reportCount: searches.filter((s) => s.status === "complete").length,
             foundationStatus: job?.status ?? null,
+            // Studio is the home once the build shipped ad creatives
+            studioReady: docs.some((d) => ["ad_scripts", "ad_statics"].includes(d.docType)),
           };
         })
       );
@@ -191,55 +194,22 @@ export const appRouter = router({
           allJobTypes.map((stage, i) => [stage, stageJobs[i] ?? null])
         ) as Record<(typeof allJobTypes)[number], Awaited<ReturnType<typeof getLatestJobForClient>> | null>;
         const assets = await getClientAssetsMeta(input.id);
-        // Competitor sources found in the voice-mining research + onboarding material:
-        // platform-tagged, they pre-seed the Competitor Desk's miner.
-        type CompetitorSource = { platform: "instagram" | "youtube"; handle: string; url: string; origin: "research" | "onboarding" };
-        const sources = new Map<string, CompetitorSource>();
-        const IG_NON_HANDLES = ["p", "reel", "reels", "tv", "explore", "stories", "accounts", "direct"];
-        const addSource = (platform: CompetitorSource["platform"], rawHandle: string, origin: CompetitorSource["origin"]) => {
-          const isChannelId = platform === "youtube" && /^UC[A-Za-z0-9_-]{10,}$/.test(rawHandle);
-          const handle = isChannelId ? rawHandle : rawHandle.replace(/^@/, "").toLowerCase();
-          if (!handle || (platform === "instagram" && IG_NON_HANDLES.includes(handle))) return;
-          const key = `${platform}:${handle}`;
-          if (sources.has(key)) return;
-          sources.set(key, {
-            platform,
-            handle,
-            url:
-              platform === "instagram"
-                ? `https://instagram.com/${handle}`
-                : isChannelId
-                  ? `https://youtube.com/channel/${handle}`
-                  : `https://youtube.com/@${handle}`,
-            origin,
-          });
-        };
-        const harvest = (text: string, origin: CompetitorSource["origin"]) => {
-          for (const m of Array.from(text.matchAll(/instagram\.com\/([A-Za-z0-9._]{2,30})/g))) addSource("instagram", m[1], origin);
-          for (const m of Array.from(text.matchAll(/youtube\.com\/(@[A-Za-z0-9._-]{2,30})/g))) addSource("youtube", m[1], origin);
-          for (const m of Array.from(text.matchAll(/youtube\.com\/channel\/(UC[A-Za-z0-9_-]{10,})/g))) addSource("youtube", m[1], origin);
-          for (const m of Array.from(text.matchAll(/youtube\.com\/(?:c|user)\/([A-Za-z0-9._-]{2,30})/g))) addSource("youtube", m[1], origin);
-        };
-        // Research first: the competitor URLs pasted into voice-mining searches
-        for (const sr of searches) {
-          for (const u of (sr.competitorUrls as string[] | null) ?? []) harvest(u, "research");
-        }
-        for (const d of documents) {
-          if (d.kind !== "onboarding") continue;
-          harvest(d.content, "onboarding");
-          for (const m of Array.from(d.content.matchAll(/(?:^|[\s(])@([A-Za-z0-9._]{3,30})\b/g))) {
-            addSource("instagram", m[1], "onboarding");
-          }
-        }
         const completeSearch = searches.find((sr) => sr.status === "complete");
         const researchReport = completeSearch ? await getReportBySearchId(completeSearch.id) : null;
+        // Platform-tagged competitor sources pre-seed the Competitor Desk's miner.
+        // The research report's competitor intel section carries channel links too.
+        const competitorSources = harvestCompetitorSources({
+          researchUrls: searches.flatMap((sr) => (sr.competitorUrls as string[] | null) ?? []),
+          researchText: researchReport ? JSON.stringify(researchReport) : undefined,
+          onboardingTexts: documents.filter((d) => d.kind === "onboarding").map((d) => d.content),
+        });
         return {
           client,
           documents,
           searches,
           jobs,
           assets,
-          competitorSources: Array.from(sources.values()).slice(0, 20),
+          competitorSources,
           researchReportId: researchReport?.id ?? null,
         };
       }),

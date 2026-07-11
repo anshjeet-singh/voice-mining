@@ -13,19 +13,23 @@ import {
   claimNextQueuedJob,
   createClientAsset,
   createClientDocument,
+  createJob,
   deleteClientDocumentsByTypes,
   deleteUnapprovedClientAssetsByTypes,
+  getAllClients,
   getAnalysisResultBySearchId,
   getClientAssetById,
   getClientById,
   getClientAssetsMeta,
   getClientDocuments,
+  getLatestJobForClient,
   getReportBySearchId,
   getSearchesByClient,
   setJobProgress,
   setJobStatus,
   upsertClientDocumentByType,
 } from "./db";
+import { composeMineRequest, harvestCompetitorSources } from "./competitorSources";
 import { normalizeHooks, normalizeInsights } from "@shared/reportContent";
 import type { InsightList } from "../drizzle/schema";
 import { ON_DEMAND_TYPES, stageAllDocTypes, stageContract, stagePromptSpec, type FunnelType } from "./stages";
@@ -421,6 +425,50 @@ export function registerWorkerRoutes(app: Express) {
     } catch (err) {
       console.error("[worker/fail]", err);
       res.status(500).json({ error: "fail failed" });
+    }
+  });
+
+  /**
+   * Auto-refresh mining: the worker pings this a few times a day. For every
+   * client whose desk was mined at least once but whose freshest intel is
+   * older than 3 days, queue a new deep-mine job (roughly 2x/week per client).
+   * Never first-runs a client — the operator kicks off the first mine.
+   */
+  app.post("/api/worker/auto-intel", async (req: Request, res: Response) => {
+    if (!guard(req, res)) return;
+    try {
+      const STALE_MS = 3 * 24 * 60 * 60 * 1000;
+      const queued: number[] = [];
+      for (const client of await getAllClients()) {
+        const docs = await getClientDocuments(client.id);
+        const intelDocs = docs.filter((d) => d.docType === "content_intel_extra");
+        if (!intelDocs.length) continue; // never auto-run before the operator's first mine
+        const freshest = Math.max(...intelDocs.map((d) => new Date(d.updatedAt).getTime()));
+        if (Date.now() - freshest < STALE_MS) continue;
+        const active = await getLatestJobForClient(client.id, "content_intel");
+        if (active && (active.status === "queued" || active.status === "running")) continue;
+        const searches = await getSearchesByClient(client.id);
+        const completeSearch = searches.find((sr) => sr.status === "complete");
+        const report = completeSearch ? await getReportBySearchId(completeSearch.id) : null;
+        const sources = harvestCompetitorSources({
+          researchUrls: searches.flatMap((sr) => (sr.competitorUrls as string[] | null) ?? []),
+          researchText: report ? JSON.stringify(report) : undefined,
+          onboardingTexts: docs.filter((d) => d.kind === "onboarding").map((d) => d.content),
+        });
+        const jobId = await createJob({
+          clientId: client.id,
+          userId: client.userId,
+          type: "content_intel",
+          status: "queued",
+          payload: { feedback: composeMineRequest(sources) },
+        });
+        queued.push(jobId);
+        console.log(`[worker/auto-intel] queued refresh mine for client ${client.id} (${client.name}), job ${jobId}`);
+      }
+      res.json({ ok: true, queued });
+    } catch (err) {
+      console.error("[worker/auto-intel]", err);
+      res.status(500).json({ error: "auto-intel failed" });
     }
   });
 }

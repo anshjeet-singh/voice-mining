@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronUp,
+  Clapperboard,
   FileText,
   Image,
   Instagram,
@@ -52,6 +53,11 @@ const SECTIONS = [
     id: "youtube", label: "YouTube Content", icon: Youtube,
     text: "text-red-400", chip: "bg-red-500/15",
     wash: "bg-gradient-to-b from-red-500/[0.06] to-transparent", tile: "border-red-500/25 bg-red-500/[0.06] hover:border-red-400/50",
+  },
+  {
+    id: "funnel", label: "Funnel", icon: Clapperboard,
+    text: "text-sky-400", chip: "bg-sky-500/15",
+    wash: "bg-gradient-to-b from-sky-500/[0.06] to-transparent", tile: "border-sky-500/25 bg-sky-500/[0.06] hover:border-sky-400/50",
   },
   {
     id: "emails", label: "Email Engine", icon: Mail,
@@ -402,39 +408,48 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
               </span>
             </button>
             {openReel === reelKey(r) && (
-              <div className="border-t border-border/40 p-4 grid lg:grid-cols-[3fr_2fr] gap-5">
+              <div className="border-t border-border/40 bg-card/20 p-5 grid lg:grid-cols-[3fr_2fr] gap-6">
                 {/* Script rail */}
-                <div className="relative pl-5 space-y-3 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-px before:bg-border">
-                  {(r.sections ?? []).map((sec, si) => (
-                    <div key={si} className="relative">
-                      <span
-                        className={`absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full border-2 ${
-                          sec.label === "Hook"
-                            ? "bg-primary border-primary"
-                            : sec.label === "CTA"
-                              ? "bg-foreground border-foreground"
-                              : "bg-background border-muted-foreground"
-                        }`}
-                      />
-                      <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        {sec.label}
-                        {sec.note && <span className="normal-case tracking-normal italic"> · {sec.note}</span>}
-                      </p>
-                      <p className="text-xs text-foreground/90 leading-relaxed">{sec.text}</p>
-                    </div>
-                  ))}
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                    {(r.platform ?? "instagram") === "youtube" && !(r.sections ?? []).some((s) => s.label === "Hook")
+                      ? "Packaging breakdown"
+                      : "Script breakdown"}
+                  </p>
+                  <div className="relative pl-5 space-y-4 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-px before:bg-border">
+                    {(r.sections ?? []).map((sec, si) => (
+                      <div key={si} className="relative">
+                        <span
+                          className={`absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full border-2 ${
+                            sec.label === "Hook"
+                              ? "bg-primary border-primary"
+                              : sec.label === "CTA"
+                                ? "bg-foreground border-foreground"
+                                : "bg-background border-muted-foreground"
+                          }`}
+                        />
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-primary/80">
+                          {sec.label}
+                          {sec.note && (
+                            <span className="normal-case tracking-normal font-normal italic text-muted-foreground"> · {sec.note}</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-foreground/90 leading-relaxed mt-0.5">{sec.text}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 {/* Angle + caption */}
                 <div className="space-y-3">
                   {r.angle && (
-                    <div className="rounded-lg bg-foreground text-background p-3">
-                      <p className="text-[9px] font-semibold uppercase tracking-wider opacity-60 mb-1">Your angle</p>
-                      <p className="text-xs leading-relaxed">{r.angle}</p>
+                    <div className="rounded-xl border border-primary/40 bg-primary/10 p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-1.5">Your angle: the gap they left open</p>
+                      <p className="text-xs text-foreground leading-relaxed">{r.angle}</p>
                     </div>
                   )}
                   {r.caption && (
-                    <div className="border-l-2 border-border pl-2.5">
-                      <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Caption</p>
+                    <div className="rounded-xl border border-border/40 bg-background/40 p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Caption</p>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">{r.caption}</p>
                     </div>
                   )}
@@ -443,9 +458,9 @@ function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?: Clien
                       href={r.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[11px] text-primary underline underline-offset-2"
+                      className="inline-block text-[11px] font-medium text-primary underline underline-offset-2"
                     >
-                      open original ↗
+                      Open the original ↗
                     </a>
                   )}
                 </div>
@@ -568,7 +583,8 @@ function CompetitorMiner({
       `Run competitor content intel.` +
       (ig.length ? ` INSTAGRAM accounts: ${ig.join(", ")}.` : "") +
       (yt.length ? ` YOUTUBE channels: ${yt.join(", ")}.` : "") +
-      ` Mine the TOP content for every source: 3 reels per Instagram account, and as many recent long-form videos per YouTube channel as the run allows (minimum 3).`;
+      ` Mine DEEP on every source: 10 reels per Instagram account blending its top performers with its newest posts, and 10 recent long-form videos per YouTube channel.` +
+      ` If the total source count is under 10, DISCOVER more top competitors in this niche (research report competitor intel + web search) until you have at least 10 sources across both platforms, and mine those too.`;
     generate.mutate({ clientId, stage: "content_intel", feedback: request });
   };
 
@@ -647,40 +663,12 @@ function CompetitorMiner({
 
 // ─── The Studio ───────────────────────────────────────────────────────────────
 
-/** Foundation library folders: the build's documents grouped like a drive. */
-const DOC_FOLDERS: Array<{ label: string; docTypes: string[] }> = [
-  { label: "Foundation", docTypes: ["icp_snapshot", "offers", "brand_positioning", "course_outline"] },
-  { label: "Skool", docTypes: ["skool_free_community", "skool_paid_community"] },
-  { label: "Funnel", docTypes: ["funnel_core", "funnel_structure", "video_scripts"] },
-  { label: "Emails", docTypes: ["email_sequence_14day", "email_postbooking", "email_noshow_followup", "email_prewebinar", "email_postwebinar", "sms_set"] },
-  { label: "Ads", docTypes: ["ad_scripts", "ad_statics", "ad_campaign_plan"] },
-];
-
-function FolderCard({ label, docs }: { label: string; docs: ClientDoc[] }) {
-  const [open, setOpen] = useState(false);
-  if (!docs.length) return null;
-  return (
-    <div className={`rounded-xl border transition-colors ${open ? "border-primary/40 bg-card/50" : "border-border/50 bg-card/30 hover:border-border"}`}>
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 p-4 text-left">
-        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-          <FileText className="w-4 h-4 text-primary" />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-foreground">{label}</p>
-          <p className="text-[11px] text-muted-foreground">{docs.length} document{docs.length > 1 ? "s" : ""}</p>
-        </div>
-        {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
-      </button>
-      {open && (
-        <div className="px-3 pb-3 space-y-1.5">
-          {docs.map((d) => (
-            <DocRow key={d.id} doc={d} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+/** Stage documents live with their engines; only Foundation stays on Overview. */
+const FOUNDATION_DOC_TYPES = ["icp_snapshot", "offers", "brand_positioning", "course_outline"];
+const SKOOL_DOC_TYPES = ["skool_free_community", "skool_paid_community"];
+const FUNNEL_DOC_TYPES = ["funnel_core", "funnel_structure", "video_scripts"];
+const EMAIL_DOC_TYPES = ["email_sequence_14day", "email_postbooking", "email_noshow_followup", "email_prewebinar", "email_postwebinar", "sms_set"];
+const ADS_DOC_TYPES = ["ad_scripts", "ad_statics", "ad_campaign_plan"];
 
 export default function ClientStudio() {
   const params = useParams<{ id: string }>();
@@ -715,11 +703,6 @@ export default function ClientStudio() {
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   )[0];
   const intelReels = useMemo(() => parseIntelReels(intelDoc), [intelDoc]);
-  const winningStyle = useMemo(() => {
-    const agg = new Map<string, number>();
-    for (const r of intelReels) agg.set(r.hookStyle, (agg.get(r.hookStyle) ?? 0) + r.views);
-    return Array.from(agg.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-  }, [intelReels]);
   const engineDocCount = ENGINES.reduce((n, e) => n + docsFor(e.docType).length, 0);
   const postedCount = documents.filter((d) => d.docType.endsWith("_extra") && d.status === "posted").length;
 
@@ -735,10 +718,9 @@ export default function ClientStudio() {
 
   const sec = sectionById(section);
 
-  const scrollToDesk = () => {
-    setSection("overview");
-    setTimeout(() => document.getElementById("competitor-desk")?.scrollIntoView({ behavior: "smooth" }), 50);
-  };
+  const intelFreshness = intelDoc
+    ? `Fed by competitor intel: ${intelReels.length} pieces, updated ${new Date(intelDoc.updatedAt).toLocaleDateString()} (auto-refreshes twice a week)`
+    : "No competitor intel yet: mine the desk on Overview and every batch here gets sharper";
 
   return (
     <AppShell>
@@ -792,56 +774,27 @@ export default function ClientStudio() {
                 </div>
               </div>
 
-              <div className="grid lg:grid-cols-2 gap-3">
-                {/* Research */}
-                <div className="rounded-xl border border-border/50 bg-card/30 p-5">
-                  <h3 className="text-sm font-semibold text-foreground">Voice mining research</h3>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    The market intelligence everything is built on: pains, hooks, scripts, competitor intel
-                  </p>
-                  {researchReportId ? (
-                    <button
-                      onClick={() => navigate(`/report/${researchReportId}`)}
-                      className="text-xs font-medium text-primary border border-primary/40 rounded-lg px-3 py-1.5 hover:bg-primary/10"
-                    >
-                      Open the full research report →
-                    </button>
-                  ) : (
-                    <p className="text-[11px] text-muted-foreground">No completed research linked yet</p>
-                  )}
-                </div>
-                {/* Intel snapshot */}
-                <div className="rounded-xl border border-pink-500/25 bg-pink-500/[0.06] p-5">
-                  <h3 className="text-sm font-semibold text-foreground">Competitor pulse</h3>
-                  {intelReels.length ? (
-                    <>
-                      <p className="text-xs text-muted-foreground">
-                        {intelReels.length} pieces analyzed · winning hook style:{" "}
-                        <span className="text-pink-400 font-semibold">{winningStyle}</span>
-                      </p>
-                      <button
-                        onClick={scrollToDesk}
-                        className="mt-3 text-xs font-medium text-pink-400 border border-pink-500/40 rounded-lg px-3 py-1.5 hover:bg-pink-500/10"
-                      >
-                        Open the Competitor Desk →
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-xs text-muted-foreground">No intel yet: mine the niche's top Instagram and YouTube content to see who pulls reach and which hooks win</p>
-                      <button
-                        onClick={scrollToDesk}
-                        className="mt-3 text-xs font-medium text-pink-400 border border-pink-500/40 rounded-lg px-3 py-1.5 hover:bg-pink-500/10"
-                      >
-                        Run competitor intel →
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+              {/* Research: the fuel line everything draws from */}
+              {researchReportId && (
+                <button
+                  onClick={() => navigate(`/report/${researchReportId}?client=${clientId}`)}
+                  className="w-full rounded-xl border border-primary/25 bg-gradient-to-r from-primary/[0.08] to-transparent p-4 flex items-center gap-3 text-left hover:border-primary/50 transition-colors"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Voice mining research</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      The market intelligence every engine draws from: pains, hooks, scripts, competitor intel
+                    </p>
+                  </div>
+                  <span className="text-xs font-medium text-primary flex-shrink-0">Open the report →</span>
+                </button>
+              )}
 
               {/* Engine tiles */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
                 {SECTIONS.filter((sc) => sc.id !== "overview").map((sc) => {
                   const Icon = sc.icon;
                   const count =
@@ -851,27 +804,30 @@ export default function ClientStudio() {
                         ? docsFor("content_ig_extra").length
                         : sc.id === "youtube"
                           ? docsFor("content_yt_extra").length
-                          : sc.id === "emails"
-                            ? docsFor("emails_extra").length
-                            : docsFor("skool_extra").length;
+                          : sc.id === "funnel"
+                            ? FUNNEL_DOC_TYPES.reduce((n, t) => n + docsFor(t).length, 0)
+                            : sc.id === "emails"
+                              ? docsFor("emails_extra").length
+                              : docsFor("skool_extra").length;
                   return (
                     <button key={sc.id} onClick={() => setSection(sc.id)} className={`rounded-xl border p-4 text-left transition-colors ${sc.tile}`}>
                       <Icon className={`w-4 h-4 mb-2 ${sc.text}`} />
                       <p className="text-sm font-semibold text-foreground">{sc.label}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {count} {sc.id === "ads" ? "approved ads" : "pieces"}
+                        {count} {sc.id === "ads" ? "approved ads" : sc.id === "funnel" ? "assets" : "pieces"}
                       </p>
                     </button>
                   );
                 })}
               </div>
 
-              {/* Document library as folders */}
+              {/* Foundation: who we're selling to, what we sell. Everything else lives in its engine */}
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-2">Document library</h3>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {DOC_FOLDERS.map((f) => (
-                    <FolderCard key={f.label} label={f.label} docs={documents.filter((d) => f.docTypes.includes(d.docType))} />
+                <h3 className="text-sm font-semibold text-foreground mb-1">Foundation</h3>
+                <p className="text-xs text-muted-foreground mb-2">The ICP, the offers, the positioning: the ground truth every engine targets</p>
+                <div className="grid sm:grid-cols-2 gap-1.5">
+                  {FOUNDATION_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
+                    <DocRow key={d.id} doc={d} />
                   ))}
                 </div>
               </div>
@@ -880,7 +836,7 @@ export default function ClientStudio() {
               <div id="competitor-desk">
                 <StudioBlock
                   title="Competitor Desk"
-                  hint="Mine the top competitors from your voice mining data: Instagram reels and YouTube videos, transcribed and broken down"
+                  hint="Mine the top competitors from your voice mining data: Instagram reels and YouTube videos, transcribed and broken down. Every content batch you generate reads this automatically, and it re-mines itself twice a week"
                 >
                   <CompetitorMiner
                     found={competitorSources}
@@ -924,13 +880,37 @@ export default function ClientStudio() {
               <StudioBlock title="Script pipeline" hint="One card per script: approve what gets recorded, mark posted when live" frame="border-violet-500/25 bg-violet-500/[0.05]">
                 <DocBoard docs={[...docsFor("ad_scripts_extra")]} invalidate={invalidate} clientId={clientId} docType="ad_scripts_extra" />
               </StudioBlock>
+              <StudioBlock title="Campaign documents" hint="The creative batch spec and the campaign plan from the build" frame="border-violet-500/25 bg-violet-500/[0.05]">
+                <div className="space-y-1.5">
+                  {ADS_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
+                    <DocRow key={d.id} doc={d} />
+                  ))}
+                </div>
+              </StudioBlock>
+            </>
+          )}
+
+          {section === "funnel" && (
+            <>
+              <SectionHeader id="funnel" />
+              <StudioBlock
+                title="Funnel assets"
+                hint="The pages' complete copy and every script to record: the VSL, call-confirmed, and breakout videos"
+                frame="border-sky-500/25 bg-sky-500/[0.05]"
+              >
+                <div className="space-y-1.5">
+                  {FUNNEL_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
+                    <DocRow key={d.id} doc={d} />
+                  ))}
+                </div>
+              </StudioBlock>
             </>
           )}
 
           {section === "shortform" && (
             <>
               <SectionHeader id="shortform" />
-              <StudioBlock title="Generate Instagram reels" hint="House talking-head structure + the proven hook bank + fresh competitor intel" frame="border-pink-500/25 bg-pink-500/[0.05]">
+              <StudioBlock title="Generate Instagram reels" hint={intelFreshness} frame="border-pink-500/25 bg-pink-500/[0.05]">
                 <EngineCard engine={engineByKind("more_content_ig")} job={jobs.more_content_ig ?? null} clientId={clientId} invalidate={invalidate} />
               </StudioBlock>
               <StudioBlock title="Reel pipeline" hint="One card per reel: draft, approve, posted. Write your own too" frame="border-pink-500/25 bg-pink-500/[0.05]">
@@ -942,7 +922,7 @@ export default function ClientStudio() {
           {section === "youtube" && (
             <>
               <SectionHeader id="youtube" />
-              <StudioBlock title="Generate long-form scripts" hint="Outlier-modeled packaging, 4-beat hooks, story-arc bodies" frame="border-red-500/25 bg-red-500/[0.05]">
+              <StudioBlock title="Generate long-form scripts" hint={intelFreshness} frame="border-red-500/25 bg-red-500/[0.05]">
                 <EngineCard engine={engineByKind("more_content_yt")} job={jobs.more_content_yt ?? null} clientId={clientId} invalidate={invalidate} />
               </StudioBlock>
               <StudioBlock title="Video pipeline" hint="One card per script: approve what gets filmed, mark posted when live" frame="border-red-500/25 bg-red-500/[0.05]">
@@ -960,6 +940,13 @@ export default function ClientStudio() {
               <StudioBlock title="Email pipeline" hint="One card per email: approve, then mark posted once loaded into ConvertKit" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
                 <DocBoard docs={docsFor("emails_extra")} invalidate={invalidate} clientId={clientId} docType="emails_extra" />
               </StudioBlock>
+              <StudioBlock title="Live sequences" hint="The approved sequence set from the build: what's loaded into ConvertKit and GHL" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
+                <div className="space-y-1.5">
+                  {EMAIL_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
+                    <DocRow key={d.id} doc={d} />
+                  ))}
+                </div>
+              </StudioBlock>
             </>
           )}
 
@@ -971,6 +958,13 @@ export default function ClientStudio() {
               </StudioBlock>
               <StudioBlock title="Post pipeline" hint="One card per post: approve, then mark posted once live in the community" frame="border-amber-500/25 bg-amber-500/[0.05]">
                 <DocBoard docs={docsFor("skool_extra")} invalidate={invalidate} clientId={clientId} docType="skool_extra" />
+              </StudioBlock>
+              <StudioBlock title="Community setup" hint="What the Skool actually is: the free and paid community structure, names, and pinned content" frame="border-amber-500/25 bg-amber-500/[0.05]">
+                <div className="space-y-1.5">
+                  {SKOOL_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
+                    <DocRow key={d.id} doc={d} />
+                  ))}
+                </div>
               </StudioBlock>
             </>
           )}

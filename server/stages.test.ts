@@ -133,8 +133,21 @@ describe("stage registry", () => {
     expect(desc).toContain('"platform": "instagram"|"youtube"');
     // Captionless YouTube videos fall back to packaging analysis, never fabricated transcripts
     expect(desc).toContain("WITHOUT captions");
-    // Spend discipline: Apify costs money, the YouTube Data API does not
-    expect(desc).toContain("keep Instagram at the requested limit");
+    // Deep mining: 10 per source, top + newest blend, and discovery to 10+ competitors
+    expect(desc).toContain("Default depth is 10 per source");
+    expect(desc).toContain("AT LEAST 10 SOURCES");
+    expect(desc).toContain("web search");
     expect(spec.extraInstructions).toContain("no invented views");
+  });
+
+  it("routes funnel stage, audience, and offer selections into the content contracts", () => {
+    const ig = stagePromptSpec("more_content_ig", "call")!.outputs[0].description;
+    const yt = stagePromptSpec("more_content_yt", "call")!.outputs[0].description;
+    const em = stagePromptSpec("more_emails", "call")!.outputs[0].description;
+    expect(ig).toContain("FUNNEL STAGE");
+    expect(ig).toContain("AUDIENCE");
+    expect(ig).toContain("RESEARCH THEM FIRST");
+    expect(yt).toContain("FUNNEL STAGE");
+    expect(em).toContain("OFFER");
   });
 });

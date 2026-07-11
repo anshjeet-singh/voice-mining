@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { AppShell } from "@/components/AppShell";
-import { FileText, Loader2, Plus, Search, Users, X } from "lucide-react";
+import { Loader2, Plus, Users, X } from "lucide-react";
 import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
 
 const FOUNDATION_LABELS: Record<string, { label: string; className: string }> = {
   queued: { label: "Foundation queued", className: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
@@ -179,13 +178,12 @@ export default function Clients() {
         ) : (
           <div className="space-y-3">
             {clients.map((client) => {
-              const chip = client.foundationStatus
-                ? FOUNDATION_LABELS[client.foundationStatus]
-                : null;
+              // Mid-build clients show where the pipeline is; finished ones just are
+              const chip = !client.studioReady && client.foundationStatus ? FOUNDATION_LABELS[client.foundationStatus] : null;
               return (
                 <div
                   key={client.id}
-                  onClick={() => navigate(`/clients/${client.id}`)}
+                  onClick={() => navigate(client.studioReady ? `/clients/${client.id}/studio` : `/clients/${client.id}`)}
                   className="group flex items-center gap-4 p-4 rounded-xl border border-border/50 bg-card/30 hover:border-border/70 hover:bg-card/50 transition-all cursor-pointer"
                 >
                   <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
@@ -196,21 +194,7 @@ export default function Clients() {
 
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{client.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {client.niche} · {client.funnelType} funnel
-                      {client.pricePoint ? ` · ${client.pricePoint}` : ""}
-                    </p>
-                  </div>
-
-                  <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground flex-shrink-0">
-                    <span className="flex items-center gap-1">
-                      <FileText className="w-3 h-3" />
-                      {client.onboardingCount}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Search className="w-3 h-3" />
-                      {client.reportCount}
-                    </span>
+                    <p className="text-xs text-muted-foreground truncate">{client.niche}</p>
                   </div>
 
                   {chip && (
@@ -220,10 +204,6 @@ export default function Clients() {
                       {chip.label}
                     </span>
                   )}
-
-                  <span className="text-xs text-muted-foreground flex-shrink-0 hidden md:block">
-                    {formatDistanceToNow(new Date(client.createdAt), { addSuffix: true })}
-                  </span>
                 </div>
               );
             })}

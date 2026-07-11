@@ -196,10 +196,76 @@ function makeProgressReporter(jobId: number) {
 
 type ProgressReporter = ReturnType<typeof makeProgressReporter>;
 
-/** Run ONE deliverable in its own temp dir with its own headless Claude Code. */
-async function runDeliverable(job: ClaimedJob, output: StageOutputSpec, reporter?: ProgressReporter) {
+/**
+ * Shard heavy ad renders into PARALLEL Claude sessions. One session rendering
+ * 15 statics (view references, build, visual-QA each) is the slowest thing the
+ * worker does; 3-4 sessions doing 4-5 ads each cut wall time to a quarter.
+ * Returns per-shard feedback overrides, or null when the job shouldn't shard.
+ */
+function planShards(job: ClaimedJob, output: StageOutputSpec): string[] | null {
+  if (!["ad_scripts", "ad_statics_extra"].includes(output.docType)) return null;
+  const fb = job.feedback ?? "";
+
+  // Case 1: rebuild-rejected — each rejected ad is independent, split the list
+  if (/REBUILD ONLY/i.test(fb)) {
+    const lines = fb.split("\n");
+    const items = lines.filter((l) => l.trim().startsWith("- "));
+    if (items.length < 4) return null;
+    const header = lines.find((l) => /REBUILD ONLY/i.test(l)) ?? "REBUILD ONLY these rejected static ads:";
+    const approvedLine = lines.find((l) => l.trim().startsWith("Approved (do not change)")) ?? "";
+    const per = 3;
+    const shards: string[] = [];
+    for (let i = 0; i < items.length; i += per) {
+      const chunk = items.slice(i, i + per);
+      const n = Math.floor(i / per) + 1;
+      const k = Math.ceil(items.length / per);
+      shards.push(
+        [
+          header,
+          ...chunk,
+          approvedLine,
+          `PARALLEL SHARD ${n} of ${k}: other sessions are rebuilding the rest of the rejected list. Rebuild ONLY the ${chunk.length} ads above (keep their exact filenames) and write doc entries ONLY for them.`,
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+    }
+    return shards;
+  }
+
+  // Case 2: fresh on-demand batch — split the count into ranges
+  const m = fb.match(/Generate EXACTLY (\d+) NEW static ads/i);
+  if (m) {
+    const total = Number(m[1]);
+    if (total < 8) return null;
+    const per = 5;
+    const k = Math.ceil(total / per);
+    const shards: string[] = [];
+    for (let i = 0; i < k; i++) {
+      const start = i * per + 1;
+      const end = Math.min((i + 1) * per, total);
+      const n = end - start + 1;
+      shards.push(
+        fb.replace(/Generate EXACTLY \d+ NEW static ads/i, `Generate EXACTLY ${n} NEW static ads`) +
+          ` PARALLEL SHARD ${i + 1} of ${k}: other sessions are building the rest of this batch. Number YOUR ads ${start}-${end} (use that range in filenames so shards never collide). To keep the combined batch diverse, split the eligible reference catalog categories alphabetically into ${k} contiguous slices and clone ONLY from slice ${i + 1}. Produce ONLY your ${n} ads and doc entries ONLY for them.`
+      );
+    }
+    return shards;
+  }
+
+  return null;
+}
+
+/** Run ONE Claude session for a deliverable (or one shard of it). */
+async function runDeliverable(
+  job: ClaimedJob,
+  output: StageOutputSpec,
+  reporter?: ProgressReporter,
+  shard?: { feedback: string; label: string }
+) {
   const jobDir = await fs.mkdtemp(path.join(os.tmpdir(), `${job.type}-${job.id}-${output.docType}-`));
-  const prompt = buildDocPrompt(job, output, {
+  const promptJob = shard ? { ...job, feedback: shard.feedback } : job;
+  const prompt = buildDocPrompt(promptJob, output, {
     skillsDir: SKILLS_DIR,
     learningsDir: LEARNINGS_DIR,
     frameworksDir: FRAMEWORKS_DIR,
@@ -207,8 +273,9 @@ async function runDeliverable(job: ClaimedJob, output: StageOutputSpec, reporter
   const promptFile = path.join(jobDir, "PROMPT.md");
   await fs.writeFile(promptFile, prompt);
 
-  console.log(`[job ${job.id}] ${output.title}: running headless Claude Code (${WORKER_MODEL}, effort ${WORKER_EFFORT}) ...`);
-  const stopWatching = reporter?.watch(output.title, jobDir);
+  const title = shard ? `${output.title} [${shard.label}]` : output.title;
+  console.log(`[job ${job.id}] ${title}: running headless Claude Code (${WORKER_MODEL}, effort ${WORKER_EFFORT}) ...`);
+  const stopWatching = reporter?.watch(title, jobDir);
   try {
     await runClaude(
       [
@@ -243,10 +310,10 @@ async function runDeliverable(job: ClaimedJob, output: StageOutputSpec, reporter
     const mime = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
     assets.push({ docType: output.docType, filename: f, mime, base64: buf.toString("base64") });
   }
-  if (assets.length) console.log(`[job ${job.id}] ${output.title}: ${assets.length} rendered assets collected`);
+  if (assets.length) console.log(`[job ${job.id}] ${title}: ${assets.length} rendered assets collected`);
 
   await fs.rm(jobDir, { recursive: true, force: true });
-  console.log(`[job ${job.id}] ${output.title}: done (${parsed.content.length.toLocaleString()} chars)`);
+  console.log(`[job ${job.id}] ${title}: done (${parsed.content.length.toLocaleString()} chars)`);
   return { docType: output.docType, assets, ...parsed };
 }
 
@@ -257,9 +324,28 @@ async function runJob(job: ClaimedJob) {
   const started = Date.now();
 
   // All deliverables run CONCURRENTLY: separate Claude Code sessions, each
-  // focused on one document. Cuts wall time by the number of deliverables.
+  // focused on one document. Heavy ad renders shard further into parallel
+  // sessions of a few ads each, merged back into one deliverable.
   const reporter = makeProgressReporter(job.id);
-  const results = await Promise.all(job.stage.outputs.map((output) => runDeliverable(job, output, reporter)));
+  const results = await Promise.all(
+    job.stage.outputs.map(async (output) => {
+      const shards = planShards(job, output);
+      if (!shards) return runDeliverable(job, output, reporter);
+      console.log(`[job ${job.id}] ${output.title}: sharding into ${shards.length} parallel sessions`);
+      const parts = await Promise.all(
+        shards.map((feedback, i) =>
+          runDeliverable(job, output, reporter, { feedback, label: `${i + 1}/${shards.length}` })
+        )
+      );
+      return {
+        docType: output.docType,
+        content: parts.map((p) => p.content).join("\n\n"),
+        assets: parts.flatMap((p) => p.assets),
+        clientLessons: parts.flatMap((p) => p.clientLessons),
+        craftLessonsRaw: parts.map((p) => p.craftLessonsRaw).join("\n\n"),
+      };
+    })
+  );
 
   const docs = Object.fromEntries(results.map((r) => [r.docType, r.content]));
   const clientLessons = Array.from(new Set(results.flatMap((r) => r.clientLessons)));
@@ -304,8 +390,18 @@ async function tick() {
   console.log(`Skills: ${SKILLS_DIR}`);
   console.log(`Learnings: ${LEARNINGS_DIR}`);
 
+  // Auto-refresh mining heartbeat: a few pings a day; the server decides
+  // which clients' competitor intel is stale and queues re-mines itself.
+  const AUTO_INTEL_MS = 6 * 60 * 60 * 1000;
+  let lastAutoIntel = 0;
+
   for (;;) {
     try {
+      if (Date.now() - lastAutoIntel > AUTO_INTEL_MS) {
+        lastAutoIntel = Date.now();
+        const { queued } = await api<{ queued: number[] }>("auto-intel", {}).catch(() => ({ queued: [] as number[] }));
+        if (queued.length) console.log(`auto-intel: queued refresh mines -> jobs ${queued.join(", ")}`);
+      }
       await tick();
     } catch (err) {
       console.error("poll error:", (err as Error).message.slice(0, 300));
