@@ -37,3 +37,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-11 · job 270003 · client: Trent Kus -->
 - Cut protest-too-much repetition ("real disputes, real results, real before/after") and any tiny "results vary" disclaimer bolted under a big claim. Make the claim cleanly and gate the proof, or cut it. Both patterns read as insecurity and weaken trust-led copy.
+
+<!-- 2026-07-11 · job 270006 · client: Trent Kus -->
+- On a whole-list broadcast to a burned, skeptical, high-ticket audience, a "verify me before we talk" / due-diligence P.S. (search my name, look up the entity, read the reviews) outperforms an assertive proof claim and is more compliant. The polish pass should recognize this as a deliberate, high-trust move and never flatten it into a generic "click here" CTA or a bolder claim.

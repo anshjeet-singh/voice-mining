@@ -23,3 +23,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 180005 · client: Trent Kus -->
 - The Cashflow Coaches swipe appendix models the sign-off as "— [Founder first name]" with an em dash, which conflicts with the agency's no-em-dash file spec AND with the cc-email-swipe-style sign-off (which is "To your success," + a changing topic-matched nickname in quotes). When a client build uses the cc-email-swipe-style contract, the nickname sign-off wins and must be dash-free. Note the precedence in the appendix so the two swipe references stop contradicting each other on delivery.
+
+<!-- 2026-07-11 · job 270006 · client: Trent Kus -->
+- When the request is "write the single highest-leverage broadcast" with no angle specified, the skill gives no default. The default that should be codified: lead with the funnel's #1 differentiator angle (the one thing competitors cannot say), anchor it to the flagship proof, keep the one CTA on the primary conversion event, and let the strongest single email do the whole job. A broadcast is a standalone asset, not a sequence position, so the "one big idea, never repeat a sequence angle" rule does not constrain it; the constraint is "pick the highest-converting angle you have and swing."
