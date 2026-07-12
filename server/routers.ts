@@ -470,7 +470,7 @@ export const appRouter = router({
       .input(
         z.object({
           clientId: z.number(),
-          stage: z.enum(["foundation", "skool", "funnel", "emails", "ads", "more_statics", "more_scripts", "more_content_ig", "more_content_yt", "more_emails", "more_skool", "content_intel"]),
+          stage: z.enum(["foundation", "skool", "funnel", "emails", "ads", "more_statics", "more_scripts", "more_content_ig", "more_content_yt", "more_emails", "more_skool", "more_landers", "content_intel"]),
           feedback: z.string().max(10000).optional(),
         })
       )
@@ -529,7 +529,7 @@ export const appRouter = router({
       .input(
         z.object({
           clientId: z.number(),
-          stage: z.enum(["foundation", "skool", "funnel", "emails", "ads", "more_statics", "more_scripts", "more_content_ig", "more_content_yt", "more_emails", "more_skool", "content_intel"]),
+          stage: z.enum(["foundation", "skool", "funnel", "emails", "ads", "more_statics", "more_scripts", "more_content_ig", "more_content_yt", "more_emails", "more_skool", "more_landers", "content_intel"]),
           action: z.enum(["approve", "reject"]),
           feedback: z.string().max(10000).optional(),
         })

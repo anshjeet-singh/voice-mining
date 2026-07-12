@@ -225,6 +225,26 @@ export const STAGES: Record<string, StageDef> = {
       "Posts reference the community's real pinned content and level names from the approved Skool docs. The client's voice, casual and native to Skool. Every DM workflow ends at the VSL page. No em dashes anywhere.",
   },
 
+  more_landers: {
+    type: "more_landers",
+    label: "Landing Pages",
+    requires: "ads",
+    motherStep: "Landing Page Engine (high-converting funnel pages)",
+    childSkills: () => [
+      "vsl-and-sales-page-writer",
+      "vsl-that-converts",
+      "funnel-page-builder",
+      "confirmation-page-that-converts",
+      "hidden-vssl-framework",
+      "generic-language-killer (polish pass)",
+    ],
+    docs: () => [
+      { docType: "lander_extra", filename: "01_landing_pages.md", title: "Landing Pages", description: "ON-DEMAND high-converting landing page copy, built to be PASTED STRAIGHT INTO GOHIGHLEVEL. THE GENERATION REQUEST (how many, PAGE TYPE, AUDIENCE sub-avatar, OFFER, AWARENESS LEVEL) is in the REVISION FEEDBACK section: follow it exactly. PAGE TYPE is one of: VSL/sales page, Webinar registration, Low-ticket sales page, High-ticket application, Opt-in / lead magnet, Thank-you / booking. Build each page per the matching skill (vsl-and-sales-page-writer + vsl-that-converts for VSL/sales; funnel-page-builder for opt-in/registration/thank-you; confirmation-page-that-converts for booking) and the funnel-structure framework's page anatomy. The CTA destination follows the OFFER: HIGH TICKET -> [VSL LINK] then the booking calendar; PAID community -> the paid community checkout link; FREE / lead magnet -> the opt-in. Ground every pain, desire, and proof line in the research verbatims and the approved ICP + Offers docs; pull the offer's real name, price, stack, and guarantee from the approved Offers doc. STRUCTURE each page as an ORDERED LIST OF SECTIONS a GHL block maps to. For EVERY section output three things: a '## SECTION: <name>' heading (Eyebrow, Headline, Subheadline, Hero CTA button, VSL/video embed, Proof strip, Pain/agitate, Mechanism reveal, Offer stack, Bonuses, Guarantee, Testimonials, FAQ, Final CTA, Footer disclaimer as the page type needs), then the FINAL copy for that section written word for word (headline gives 3 ranked options, chosen first; everything else is single shipped copy), then a '[LAYOUT]' line with the desktop treatment AND the mobile treatment (stack order, what collapses, thumb-reachable CTA, font-size intent, image placement). MOBILE-FIRST: short lines, one idea per line, the primary CTA visible without scrolling on a phone, sticky CTA note where it helps. GHL-PASTEABLE means plain copy per section: no markdown tables, no HTML, button text on its own line labeled 'BUTTON:'. OUTPUT FORMAT: each PAGE is its OWN unit: start each with a '# <Page Type> — <Offer>' title line and separate every page from the next with a line containing exactly <!-- SPLIT --> (the app files each page as its own card). No batch-level intro or audit sections: the pages ARE the deliverable." },
+    ],
+    extraInstructions: () =>
+      "This is the money page: hold the funnel-structure quality bar (ATTENTION eyebrow never a diagnosis headline, one core promise echoed top to bottom, proof before the ask, objection-killing FAQ). Every claim maps to a real proof point or a [PROOF: ...] placeholder, never fabricated. Match the client's brand voice from the approved brand doc. Run the generic-language-killer polish pass so no line reads generated. No em dashes anywhere.",
+  },
+
   content_intel: {
     type: "content_intel",
     label: "Competitor Intel",
@@ -250,6 +270,7 @@ export const ON_DEMAND_TYPES = [
   "more_content_yt",
   "more_emails",
   "more_skool",
+  "more_landers",
   "content_intel",
 ] as const;
 

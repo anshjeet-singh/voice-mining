@@ -869,7 +869,6 @@ function ClientSocials({
 /** Stage documents live with their engines; only Foundation stays on Overview. */
 const FOUNDATION_DOC_TYPES = ["icp_snapshot", "offers", "brand_positioning", "course_outline"];
 const SKOOL_DOC_TYPES = ["skool_free_community", "skool_paid_community"];
-const FUNNEL_DOC_TYPES = ["funnel_core", "funnel_structure", "video_scripts"];
 const EMAIL_DOC_TYPES = ["email_sequence_14day", "email_postbooking", "email_noshow_followup", "email_prewebinar", "email_postwebinar", "sms_set"];
 const ADS_DOC_TYPES = ["ad_scripts", "ad_statics", "ad_campaign_plan"];
 
@@ -1025,7 +1024,7 @@ export default function ClientStudio() {
                         : sc.id === "youtube"
                           ? docsFor("content_yt_extra").length
                           : sc.id === "funnel"
-                            ? FUNNEL_DOC_TYPES.reduce((n, t) => n + docsFor(t).length, 0)
+                            ? docsFor("lander_extra").length + docsFor("funnel_asset_extra").length
                             : sc.id === "emails"
                               ? docsFor("emails_extra").length
                               : docsFor("skool_extra").length;
@@ -1117,6 +1116,20 @@ export default function ClientStudio() {
             <>
               <SectionHeader id="funnel" />
               <StudioBlock
+                title="Generate landing pages"
+                hint="Pick the page type, audience, and offer. High-converting copy section by section with desktop + mobile layout notes, ready to paste into GHL"
+                frame="border-sky-500/25 bg-sky-500/[0.05]"
+              >
+                <EngineCard engine={engineByKind("more_landers")} job={jobs.more_landers ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
+              </StudioBlock>
+              <StudioBlock
+                title="Landing page pipeline"
+                hint="One card per page: approve it, mark posted once it's built and live in GHL. Write your own too"
+                frame="border-sky-500/25 bg-sky-500/[0.05]"
+              >
+                <DocBoard docs={docsFor("lander_extra")} invalidate={invalidate} clientId={clientId} docType="lander_extra" />
+              </StudioBlock>
+              <StudioBlock
                 title="Recording pipeline"
                 hint="One card per video to record: the VSL, the call-confirmed video, and every breakout. Mark posted once filmed and live"
                 frame="border-sky-500/25 bg-sky-500/[0.05]"
@@ -1131,8 +1144,8 @@ export default function ClientStudio() {
                 )}
               </StudioBlock>
               <StudioBlock
-                title="Page copy"
-                hint="The funnel pages' complete final copy"
+                title="Build page copy"
+                hint="The funnel pages' complete final copy from the build"
                 frame="border-sky-500/25 bg-sky-500/[0.05]"
               >
                 <div className="space-y-1.5">

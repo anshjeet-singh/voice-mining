@@ -15,7 +15,7 @@ import { MarkdownDoc } from "@/components/MarkdownDoc";
 export type StageId =
   | "foundation" | "skool" | "funnel" | "emails" | "ads"
   | "more_statics" | "more_scripts" | "more_content_ig" | "more_content_yt"
-  | "more_emails" | "more_skool" | "content_intel";
+  | "more_emails" | "more_skool" | "more_landers" | "content_intel";
 
 /**
  * The offer ladder every DFY client runs. Fixed three tiers, each with its own
@@ -504,6 +504,31 @@ export const ENGINES: Array<{
       `Write EXACTLY ${count} email${count > 1 ? "s" : ""}. PURPOSE: ${purpose || "highest-leverage broadcast for the current funnel"}.${
         notes ? ` Specifics: ${notes}` : ""
       }`,
+  },
+  {
+    kind: "more_landers",
+    label: "Landing pages",
+    blurb: "High-converting funnel pages, section by section, ready to paste into GHL",
+    counts: [1, 2, 3],
+    defaultCount: 1,
+    hasStyles: false,
+    docType: "lander_extra",
+    purposes: [
+      "VSL / sales page",
+      "Webinar registration",
+      "Low-ticket sales page",
+      "High-ticket application",
+      "Opt-in / lead magnet",
+      "Thank-you / booking",
+    ],
+    purposesLabel: "Page type",
+    hasAudience: true,
+    hasOffer: true,
+    notesPlaceholder: "Optional: the promise to lead with, proof to feature, specific angle...",
+    compose: (count, _s, notes, purpose) =>
+      `Write EXACTLY ${count} high-converting landing page${count > 1 ? "s" : ""}, GHL-pasteable, section by section with desktop and mobile layout notes.${
+        purpose ? ` PAGE TYPE: ${purpose}.` : ""
+      }${notes ? ` Operator direction: ${notes}` : ""}`,
   },
   {
     kind: "more_skool",

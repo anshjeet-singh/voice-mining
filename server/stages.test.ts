@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STAGE_ORDER, STAGES, stageAllDocTypes, stageContract, stagePromptSpec } from "./stages";
+import { ON_DEMAND_TYPES, STAGE_ORDER, STAGES, stageAllDocTypes, stageContract, stagePromptSpec } from "./stages";
 
 describe("stage registry", () => {
   it("keeps the mother skill's order and gating chain", () => {
@@ -138,6 +138,24 @@ describe("stage registry", () => {
     expect(desc).toContain("AT LEAST 10 SOURCES");
     expect(desc).toContain("web search");
     expect(spec.extraInstructions).toContain("no invented views");
+  });
+
+  it("defines the landing pages engine as a GHL-pasteable, offer-routed, mobile-first contract", () => {
+    const spec = stagePromptSpec("more_landers", "call")!;
+    const desc = spec.outputs[0].description;
+    expect(spec.outputs[0].docType).toBe("lander_extra");
+    expect(desc).toContain("GOHIGHLEVEL");
+    expect(desc).toContain("PAGE TYPE");
+    expect(desc).toContain("[LAYOUT]");
+    expect(desc).toContain("MOBILE-FIRST");
+    // Offer routing carries through to the page CTA
+    expect(desc).toContain("HIGH TICKET -> [VSL LINK]");
+    // One doc per page via SPLIT so each page files as its own card
+    expect(desc).toContain("<!-- SPLIT -->");
+    expect(spec.childSkills.join()).toContain("vsl-and-sales-page-writer");
+    // On-demand, gated on ads
+    expect(STAGES.more_landers.requires).toBe("ads");
+    expect((ON_DEMAND_TYPES as readonly string[]).includes("more_landers")).toBe(true);
   });
 
   it("mandates a three-rung offer ladder and rich sub-avatars in the ICP/offers contracts", () => {
