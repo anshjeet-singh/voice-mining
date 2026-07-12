@@ -148,6 +148,10 @@ describe("stage registry", () => {
     expect(desc).toContain("PAGE TYPE");
     expect(desc).toContain("[LAYOUT]");
     expect(desc).toContain("MOBILE-FIRST");
+    // Also builds the page for real: a self-contained responsive HTML block
+    expect(desc).toContain("```html");
+    expect(desc).toContain("<!doctype html>");
+    expect(desc).toContain("@media");
     // Offer routing carries through to the page CTA
     expect(desc).toContain("HIGH TICKET -> [VSL LINK]");
     // One doc per page via SPLIT so each page files as its own card

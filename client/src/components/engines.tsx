@@ -753,6 +753,75 @@ function stageTag(doc: ClientDoc): string | null {
   return m ? m[1].toUpperCase() : null;
 }
 
+/** The built-out HTML page a landing-page doc carries in a fenced ```html block. */
+function extractHtml(content: string): string | null {
+  const m = content.match(/```html\s*([\s\S]*?)```/i);
+  const html = m?.[1]?.trim();
+  return html && /<(!doctype|html|section|div|body)/i.test(html) ? html : null;
+}
+
+/** The readable copy with the machine-facing html block removed. */
+function stripHtmlBlock(content: string): string {
+  return content.replace(/```html[\s\S]*?```/gi, "").trim();
+}
+
+/** Live preview of a built landing page: desktop/mobile toggle, copy, download. */
+function HtmlPreview({ html, filename }: { html: string; filename: string }) {
+  const [view, setView] = useState<"desktop" | "mobile">("desktop");
+  const [copied, setCopied] = useState(false);
+
+  const download = () => {
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${filename.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "landing-page"}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const copy = async () => {
+    await navigator.clipboard.writeText(html);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="rounded-lg border border-border/50 bg-background/40 overflow-hidden">
+      <div className="flex items-center gap-1.5 p-2 border-b border-border/40">
+        <span className="text-[11px] font-semibold text-foreground mr-1">Built page</span>
+        <button
+          onClick={() => setView("desktop")}
+          className={`px-2 py-0.5 rounded text-[10px] font-medium ${view === "desktop" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          Desktop
+        </button>
+        <button
+          onClick={() => setView("mobile")}
+          className={`px-2 py-0.5 rounded text-[10px] font-medium ${view === "mobile" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          Mobile
+        </button>
+        <span className="flex-1" />
+        <button onClick={copy} className="px-2 py-0.5 rounded text-[10px] font-medium text-muted-foreground hover:text-foreground">
+          {copied ? "Copied" : "Copy HTML"}
+        </button>
+        <button onClick={download} className="px-2 py-0.5 rounded text-[10px] font-medium bg-primary/20 text-primary hover:bg-primary/30">
+          Download .html
+        </button>
+      </div>
+      <div className="bg-neutral-200 p-3 flex justify-center overflow-auto max-h-[32rem]">
+        <iframe
+          title={`preview-${filename}`}
+          srcDoc={html}
+          sandbox="allow-same-origin"
+          className="bg-white border-0 rounded shadow-lg"
+          style={view === "mobile" ? { width: 390, height: 760 } : { width: "100%", height: 640 }}
+        />
+      </div>
+    </div>
+  );
+}
+
 /** Kanban pipeline for deliverable docs: Draft -> Approved -> Posted. */
 const BOARD_COLUMNS = [
   { id: "draft", label: "Drafts", tint: "bg-slate-500/[0.07] border-slate-500/25" },
@@ -958,8 +1027,13 @@ export function DocBoard({
                               </div>
                             </div>
                           ) : (
-                            <div className="max-h-96 overflow-y-auto rounded-lg bg-card/40 p-3">
-                              <MarkdownDoc content={doc.content} />
+                            <div className="space-y-3">
+                              {extractHtml(doc.content) && (
+                                <HtmlPreview html={extractHtml(doc.content)!} filename={doc.title} />
+                              )}
+                              <div className="max-h-96 overflow-y-auto rounded-lg bg-card/40 p-3">
+                                <MarkdownDoc content={stripHtmlBlock(doc.content)} />
+                              </div>
                             </div>
                           )}
                         </div>
