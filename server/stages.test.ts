@@ -64,20 +64,25 @@ describe("stage registry", () => {
     expect(stagePromptSpec("nonsense", "call")).toBeNull();
   });
 
-  it("holds the lean Skool community spec", () => {
+  it("holds the Skool spec: lean structure but ALIVE copy", () => {
     const spec = stagePromptSpec("skool", "call")!;
     const free = spec.outputs.find((o) => o.docType === "skool_free_community")!.description;
-    // The exact structure: green-tick unlocks, 3 lead magnets, 2 About variations, 2 pinned posts
+    // Structure fixes
+    expect(free).toContain("MAX 3 WORDS");
+    expect(free).toContain("SEO keyword");
+    expect(free).toContain("Join below");
     expect(free).toContain("GREEN-TICK");
     expect(free).toContain("THREE named lead magnets");
-    expect(free).toContain("under 1000 characters");
-    expect(free).toContain("EXACTLY TWO");
+    expect(free).toContain("GIFT-BOX"); // bonuses use the gift box, not ticks
+    expect(free).toContain("This is FOR"); // one-sentence FOR / NOT-FOR restored
+    expect(free).toContain("COMMAND-CLOSE"); // CTA keeps its life
+    expect(free).toContain("EXACTLY 3 links");
     expect(free).toContain("[COMMUNITY NAME]");
-    // Banned noise is explicitly forbidden
-    expect(free).toContain("banned");
-    expect(spec.extraInstructions).toContain("LESS IS MORE");
-    // Gamification names identical across communities
-    expect(spec.extraInstructions).toContain("IDENTICAL across free and paid");
+    // The two hard rules: cut noise AND keep the life
+    expect(spec.extraInstructions).toContain("cut the NOISE");
+    expect(spec.extraInstructions).toContain("keep the LIFE");
+    expect(spec.extraInstructions).toContain("swipe files");
+    expect(spec.extraInstructions).toContain("Dry, flat, stripped copy is a FAIL");
   });
 
   it("keeps onboarding emails to the community nurture set and defers the rest", () => {
