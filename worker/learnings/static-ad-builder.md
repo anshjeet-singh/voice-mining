@@ -117,3 +117,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-13 · job 360006 · client: Blake Matthews -->
 - Do not bake an unconfirmed brand name, community name, or invented domain into a rendered static (brand marks, SERP result titles, URLs, etc.). If a format element requires a name the client has not locked, drop that element or use the real platform/generic wording rather than inventing one. An assumed name printed on creative is a rejection trigger.
+
+<!-- 2026-07-13 · job 360007 · client: Blake Matthews -->
+- On the search / SERP branded-result format (format 10), let the branded answer result's own title carry the full promise on a single line, then hand straight to a short CTA. Do not stack a separate bold summary kicker above the CTA (e.g. "The answer was always obvious." / "The operators already solved this."): when the answer title already states the promise, that kicker restates it and reads as clutter. Auto-fit the answer title down to one line rather than letting it wrap.
