@@ -216,6 +216,7 @@ export const appRouter = router({
           jobs,
           assets,
           refImages: await getRefImagesMeta(input.id),
+          exportJob: await getLatestJobForClient(input.id, "export_drive"),
           competitorSources: await resolveYouTubeLabels(competitorSources),
           researchReportId: researchReport?.id ?? null,
         };
@@ -308,6 +309,22 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         const client = await requireClient(input.clientId, ctx.user.id);
         return getClientSocialStats(client);
+      }),
+
+    /** Push the approved static ads into the client's Google Drive Ads folder.
+     *  The local worker does the copy (it has the Drive mount); this just queues it. */
+    exportApprovedToDrive: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const existing = await getLatestJobForClient(input.clientId, "export_drive");
+        if (existing && (existing.status === "queued" || existing.status === "running")) {
+          throw new TRPCError({ code: "CONFLICT", message: "An export is already in progress" });
+        }
+        const approved = (await getClientAssetsMeta(input.clientId)).filter((a) => a.status === "approved");
+        if (!approved.length) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No approved ads to export yet" });
+        const id = await createJob({ clientId: input.clientId, userId: ctx.user.id, type: "export_drive", status: "queued", payload: {} });
+        return { jobId: id, count: approved.length };
       }),
 
     addTextDocument: protectedProcedure

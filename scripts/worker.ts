@@ -374,15 +374,40 @@ async function runJob(job: ClaimedJob) {
   }
 }
 
+/** Copy a client's approved static ads into their Google Drive Ads folder. */
+type ExportJob = { id: number; type: "export_drive"; client: { name: string }; exportImages: Array<{ filename: string; mime: string; base64: string }> };
+async function runExport(job: ExportJob) {
+  console.log(`[job ${job.id}] export_drive — ${job.exportImages.length} approved ads for ${job.client.name}`);
+  const finder = path.join(os.homedir(), "ad-factory", "find-client.sh");
+  const { stdout } = await exec("bash", [finder, job.client.name], { timeout: 30_000 });
+  const clientDir = stdout.trim().split("\n").pop()?.trim() ?? "";
+  if (!clientDir || clientDir.includes("NO MATCH") || !fsSync.existsSync(clientDir)) {
+    throw new Error(`Could not resolve Drive folder for "${job.client.name}" (got: ${clientDir || "empty"})`);
+  }
+  const dest = path.join(clientDir, "Ads", "Approved Static Ads");
+  await fs.mkdir(dest, { recursive: true });
+  let count = 0;
+  for (const img of job.exportImages) {
+    if (!/^image\//.test(img.mime)) continue;
+    await fs.writeFile(path.join(dest, img.filename), Buffer.from(img.base64, "base64"));
+    count++;
+  }
+  console.log(`[job ${job.id}] exported ${count} ads -> ${dest}`);
+  await api("export-done", { jobId: job.id, ok: true, count, path: dest }).catch(() => {});
+}
+
 async function tick() {
-  const { job } = await api<{ job: ClaimedJob | null }>("claim", {});
+  const { job } = await api<{ job: (ClaimedJob & { type: string }) | ExportJob | null }>("claim", {});
   if (!job) return;
   try {
-    await runJob(job);
+    if (job.type === "export_drive") await runExport(job as ExportJob);
+    else await runJob(job as ClaimedJob);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[job ${job.id}] FAILED:`, message.slice(0, 500));
-    await api("fail", { jobId: job.id, error: message }).catch(() => {});
+    const route = job.type === "export_drive" ? "export-done" : "fail";
+    const body = job.type === "export_drive" ? { jobId: job.id, ok: false, error: message } : { jobId: job.id, error: message };
+    await api(route, body).catch(() => {});
   }
 }
 

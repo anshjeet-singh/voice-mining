@@ -920,7 +920,6 @@ export default function ClientStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, hasScriptsDoc, hasFunnelAssets, clientId]);
   const engineDocCount = ENGINES.reduce((n, e) => n + docsFor(e.docType).length, 0);
-  const postedCount = documents.filter((d) => d.docType.endsWith("_extra") && d.status === "posted").length;
 
   if (isLoading || !data) {
     return (
@@ -974,20 +973,9 @@ export default function ClientStudio() {
             <>
               <div className="rounded-2xl border border-border/50 bg-gradient-to-r from-primary/10 via-card/40 to-transparent p-6">
                 <h1 className="text-xl font-semibold text-foreground">{data.client.name}</h1>
-                <p className="text-xs text-muted-foreground">{data.client.niche} · {data.client.funnelType} funnel</p>
-                <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  {[
-                    { label: "Approved ads", value: approvedAds.length },
-                    { label: "Content pieces", value: engineDocCount },
-                    { label: "Posted / live", value: postedCount },
-                    { label: "Intel pieces analyzed", value: intelReels.length },
-                  ].map((kpi) => (
-                    <div key={kpi.label} className="rounded-xl bg-background/40 border border-border/40 p-3.5">
-                      <p className="text-2xl font-semibold text-foreground tabular-nums">{kpi.value}</p>
-                      <p className="text-[11px] text-muted-foreground">{kpi.label}</p>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  {data.client.niche} · {data.client.funnelType} funnel · {approvedAds.length} approved ads · {engineDocCount} content pieces
+                </p>
               </div>
 
               {/* Research: the fuel line everything draws from */}
@@ -1012,38 +1000,9 @@ export default function ClientStudio() {
               {/* The client's own live socials */}
               <ClientSocials clientId={clientId} client={data.client} invalidate={invalidate} />
 
-              {/* Engine tiles */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-                {SECTIONS.filter((sc) => sc.id !== "overview").map((sc) => {
-                  const Icon = sc.icon;
-                  const count =
-                    sc.id === "ads"
-                      ? approvedAds.length
-                      : sc.id === "shortform"
-                        ? docsFor("content_ig_extra").length
-                        : sc.id === "youtube"
-                          ? docsFor("content_yt_extra").length
-                          : sc.id === "funnel"
-                            ? docsFor("lander_extra").length + docsFor("funnel_asset_extra").length
-                            : sc.id === "emails"
-                              ? docsFor("emails_extra").length
-                              : docsFor("skool_extra").length;
-                  return (
-                    <button key={sc.id} onClick={() => setSection(sc.id)} className={`rounded-xl border p-4 text-left transition-colors ${sc.tile}`}>
-                      <Icon className={`w-4 h-4 mb-2 ${sc.text}`} />
-                      <p className="text-sm font-semibold text-foreground">{sc.label}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {count} {sc.id === "ads" ? "approved ads" : sc.id === "funnel" ? "assets" : "pieces"}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-
               {/* Foundation: who we're selling to, what we sell. Everything else lives in its engine */}
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-1">Foundation</h3>
-                <p className="text-xs text-muted-foreground mb-2">The ICP, the offers, the positioning: the ground truth every engine targets</p>
+                <h3 className="text-sm font-semibold text-foreground mb-2">Foundation</h3>
                 <div className="grid sm:grid-cols-2 gap-1.5">
                   {FOUNDATION_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
                     <DocRow key={d.id} doc={d} />
@@ -1096,8 +1055,8 @@ export default function ClientStudio() {
               <StudioBlock title="Proof images" hint="Client cutouts, approval screenshots, testimonials. The engine composites and annotates these into rendered statics instead of using placeholders" frame="border-violet-500/25 bg-violet-500/[0.05]">
                 <RefImagePanel clientId={clientId} images={refImages} invalidate={invalidate} />
               </StudioBlock>
-              <StudioBlock title="Ad library" hint="Approved ads live here forever; rejections with notes train every future batch" frame="border-violet-500/25 bg-violet-500/[0.05]">
-                <AssetGallery assets={assets} clientId={clientId} stageId="ads" invalidate={invalidate} canRegenerate />
+              <StudioBlock title="Ad library" hint="Approved ads live here forever; rejections with notes train every future batch. Push the approved set into the client's Google Drive Ads folder in one click" frame="border-violet-500/25 bg-violet-500/[0.05]">
+                <AssetGallery assets={assets} clientId={clientId} stageId="ads" invalidate={invalidate} canRegenerate exportJob={(data.exportJob ?? null) as StageJob} />
               </StudioBlock>
               <StudioBlock title="Script pipeline" hint="One card per script: approve what gets recorded, mark posted when live" frame="border-violet-500/25 bg-violet-500/[0.05]">
                 <DocBoard docs={[...docsFor("ad_scripts_extra")]} invalidate={invalidate} clientId={clientId} docType="ad_scripts_extra" />

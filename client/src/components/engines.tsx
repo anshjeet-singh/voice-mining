@@ -7,7 +7,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Check, ChevronDown, ChevronUp, FileText, ImagePlus, Loader2, RefreshCw, X } from "lucide-react";
+import { ArrowUpToLine, Check, ChevronDown, ChevronUp, FileText, ImagePlus, Loader2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { MarkdownDoc } from "@/components/MarkdownDoc";
@@ -167,16 +167,27 @@ function AssetGallery({
   stageId,
   invalidate,
   canRegenerate,
+  exportJob,
 }: {
   assets: ClientAssetMeta[];
   clientId: number;
   stageId: StageId;
   invalidate: () => void;
   canRegenerate: boolean;
+  /** Latest Drive-export job, to show the button's state. */
+  exportJob?: StageJob;
 }) {
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [rejectingAsset, setRejectingAsset] = useState<number | null>(null);
   const [assetFeedback, setAssetFeedback] = useState("");
+  const exporting = exportJob?.status === "queued" || exportJob?.status === "running";
+  const exportToDrive = trpc.clients.exportApprovedToDrive.useMutation({
+    onSuccess: ({ count }) => {
+      invalidate();
+      toast.success(`Sending ${count} approved ads to Drive`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const reviewAsset = trpc.clients.reviewAsset.useMutation({
     onSuccess: () => {
@@ -233,27 +244,45 @@ function AssetGallery({
 
   return (
     <div className="mt-4">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between gap-2 mb-2">
         <p className="text-xs font-semibold text-foreground">
           Rendered ads · {approved.length}/{assets.length} approved
           {rejected.length > 0 && ` · ${rejected.length} rejected`}
         </p>
-        {canRegenerate && rejected.length > 0 && (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={generate.isPending}
-            onClick={regenerateRejected}
-            className="h-7 text-xs text-muted-foreground hover:text-foreground"
-          >
-            {generate.isPending ? (
-              <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-            ) : (
-              <RefreshCw className="w-3 h-3 mr-1.5" />
-            )}
-            Rebuild {rejected.length} rejected
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {approved.length > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={exporting || exportToDrive.isPending}
+              onClick={() => exportToDrive.mutate({ clientId })}
+              className="h-7 text-xs text-muted-foreground hover:text-foreground"
+            >
+              {exporting || exportToDrive.isPending ? (
+                <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+              ) : (
+                <ArrowUpToLine className="w-3 h-3 mr-1.5" />
+              )}
+              {exporting ? "Sending to Drive..." : "Export approved to Drive"}
+            </Button>
+          )}
+          {canRegenerate && rejected.length > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={generate.isPending}
+              onClick={regenerateRejected}
+              className="h-7 text-xs text-muted-foreground hover:text-foreground"
+            >
+              {generate.isPending ? (
+                <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3 h-3 mr-1.5" />
+              )}
+              Rebuild {rejected.length} rejected
+            </Button>
+          )}
+        </div>
       </div>
       <div className="space-y-4">
         {grouped.map(([format, group]) => (
@@ -572,6 +601,9 @@ export function EngineCard({
   const [addons, setAddons] = useState<string[]>(
     (engine.addons ?? []).filter((a) => a.default).map((a) => a.label)
   );
+  // Tactical extras (style picker, add-ons, free-text) stay tucked away so the
+  // default view is just the strategic choices. One click opens them.
+  const [showMore, setShowMore] = useState(false);
 
   const generate = trpc.clients.generateStage.useMutation({
     onSuccess: () => {
@@ -682,49 +714,65 @@ export function EngineCard({
               ))
             )}
 
-          {engine.hasStyles && (
-            <div className="mb-2.5">
-              <p className="text-[11px] font-medium text-muted-foreground mb-1.5">Styles (optional: empty = diverse mix)</p>
-              <div className="flex flex-wrap gap-1">
-                {AD_STYLE_CATEGORIES.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() =>
-                      setStyles((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))
-                    }
-                    className={`px-2 py-0.5 rounded-full text-[10px] transition-colors ${
-                      styles.includes(c)
-                        ? "bg-primary/20 text-primary border border-primary/40"
-                        : "bg-card/60 text-muted-foreground border border-border/40 hover:text-foreground"
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <>
+              <button
+                onClick={() => setShowMore((v) => !v)}
+                className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground mb-2.5"
+              >
+                {showMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                More options
+                {!showMore && (styles.length > 0 || notes.trim() || addons.length > 0) && (
+                  <span className="text-primary">· set</span>
+                )}
+              </button>
+              {showMore && (
+                <>
+                  {engine.hasStyles && (
+                    <div className="mb-2.5">
+                      <p className="text-[11px] font-medium text-muted-foreground mb-1.5">Styles (optional: empty = diverse mix)</p>
+                      <div className="flex flex-wrap gap-1">
+                        {AD_STYLE_CATEGORIES.map((c) => (
+                          <button
+                            key={c}
+                            onClick={() =>
+                              setStyles((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))
+                            }
+                            className={`px-2 py-0.5 rounded-full text-[10px] transition-colors ${
+                              styles.includes(c)
+                                ? "bg-primary/20 text-primary border border-primary/40"
+                                : "bg-card/60 text-muted-foreground border border-border/40 hover:text-foreground"
+                            }`}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-          {(engine.addons ?? []).map((a) => (
-            <label key={a.label} className="flex items-center gap-2 mb-2.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={addons.includes(a.label)}
-                onChange={() =>
-                  setAddons((prev) => (prev.includes(a.label) ? prev.filter((x) => x !== a.label) : [...prev, a.label]))
-                }
-                className="w-3.5 h-3.5 accent-primary cursor-pointer"
-              />
-              <span className="text-xs text-foreground">{a.label}</span>
-            </label>
-          ))}
+                  {(engine.addons ?? []).map((a) => (
+                    <label key={a.label} className="flex items-center gap-2 mb-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={addons.includes(a.label)}
+                        onChange={() =>
+                          setAddons((prev) => (prev.includes(a.label) ? prev.filter((x) => x !== a.label) : [...prev, a.label]))
+                        }
+                        className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                      />
+                      <span className="text-xs text-foreground">{a.label}</span>
+                    </label>
+                  ))}
 
-          <Textarea
-            placeholder={engine.notesPlaceholder}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="min-h-14 text-[11px] mb-2.5"
-          />
+                  <Textarea
+                    placeholder={engine.notesPlaceholder}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="min-h-14 text-[11px] mb-2.5"
+                  />
+                </>
+              )}
+          </>
           <div className="flex items-center gap-2">
             <Button
               size="sm"

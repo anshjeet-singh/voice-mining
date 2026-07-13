@@ -211,6 +211,29 @@ export function registerWorkerRoutes(app: Express) {
         await setJobStatus(job.id, "failed", "Client not found");
         return res.json({ job: null });
       }
+
+      // Drive export: not a Claude job. Ship the approved images; the worker
+      // resolves the client's Drive folder and copies them in.
+      if (job.type === "export_drive") {
+        const approved = (await getClientAssetsMeta(job.clientId)).filter((a) => a.status === "approved");
+        const images = await Promise.all(
+          approved.map(async (a) => {
+            const full = await getClientAssetById(a.id);
+            return full && /^image\//.test(full.mime)
+              ? { filename: full.filename, mime: full.mime, base64: full.data }
+              : null;
+          })
+        );
+        return res.json({
+          job: {
+            id: job.id,
+            type: "export_drive",
+            client: { name: client.name },
+            exportImages: images.filter(Boolean),
+          },
+        });
+      }
+
       const spec = stagePromptSpec(job.type, client.funnelType as FunnelType);
       if (!spec) {
         await setJobStatus(job.id, "failed", `Unknown job type: ${job.type}`);
@@ -455,6 +478,27 @@ export function registerWorkerRoutes(app: Express) {
     } catch (err) {
       console.error("[worker/fail]", err);
       res.status(500).json({ error: "fail failed" });
+    }
+  });
+
+  // Drive export finished: mark approved on success, failed on error.
+  app.post("/api/worker/export-done", async (req: Request, res: Response) => {
+    if (!guard(req, res)) return;
+    try {
+      const { jobId, ok, count, path, error } = req.body as {
+        jobId: number;
+        ok: boolean;
+        count?: number;
+        path?: string;
+        error?: string;
+      };
+      if (!jobId) return res.status(400).json({ error: "jobId required" });
+      if (ok) await setJobStatus(jobId, "approved", `Exported ${count ?? 0} ads -> ${path ?? "Drive"}`.slice(0, 500));
+      else await setJobStatus(jobId, "failed", (error ?? "Export failed").slice(0, 2000));
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[worker/export-done]", err);
+      res.status(500).json({ error: "export-done failed" });
     }
   });
 
