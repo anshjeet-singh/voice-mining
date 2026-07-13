@@ -2,38 +2,30 @@ import { describe, expect, it } from "vitest";
 import { ON_DEMAND_TYPES, STAGE_ORDER, STAGES, stageAllDocTypes, stageContract, stagePromptSpec } from "./stages";
 
 describe("stage registry", () => {
-  it("keeps the mother skill's order and gating chain", () => {
-    expect(STAGE_ORDER).toEqual(["foundation", "skool", "funnel", "emails", "ads"]);
+  it("keeps the lean onboarding order and gating chain (funnel dropped)", () => {
+    expect(STAGE_ORDER).toEqual(["foundation", "skool", "emails", "ads"]);
     expect(STAGES.foundation.requires).toBeNull();
     expect(STAGES.skool.requires).toBe("foundation");
-    expect(STAGES.funnel.requires).toBe("skool");
-    expect(STAGES.emails.requires).toBe("funnel");
+    // Funnel copy is no longer in the required chain: emails gate on skool
+    expect(STAGES.emails.requires).toBe("skool");
     expect(STAGES.ads.requires).toBe("emails");
   });
 
-  it("defines the ads contract with the batch quality gates", () => {
+  it("slims the onboarding ads stage to 10 community statics", () => {
     const call = stagePromptSpec("ads", "call")!;
-    const webinar = stagePromptSpec("ads", "webinar")!;
-    // Two docs: the full creative batch + the campaign plan (matrix absorbed)
-    expect(call.outputs.map((o) => o.docType)).toEqual(["ad_scripts", "ad_campaign_plan"]);
-    expect(call.outputs[0].description).toContain("15 NATIVE STATIC ADS");
+    // One doc: 10 rendered statics that sell the free-community join
+    expect(call.outputs.map((o) => o.docType)).toEqual(["ad_statics"]);
+    expect(call.outputs[0].description).toContain("EXACTLY 10 NATIVE STATIC ADS");
     expect(call.outputs[0].description).toContain("FULLY RENDERED");
-    expect(call.outputs[0].description).toContain("5 B-ROLL");
-    expect(call.outputs[0].description).toContain("5 full-length video ad scripts");
-    expect(call.outputs[0].description).toContain("reference-ads");
+    expect(call.outputs[0].description).toContain("[COMMUNITY LINK]");
     expect(call.outputs[0].description).toContain("./assets/");
     expect(call.outputs[0].description).toContain("VISUAL QA LOOP");
-    expect(call.outputs[1].description).toContain("ANGLE MATRIX");
-    expect(call.outputs[1].description).toContain("Forester");
-    expect(call.outputs[1].description).toContain("budget allocation");
-    expect(call.extraInstructions).toContain("ONE AD, ONE ANGLE");
-    expect(call.extraInstructions).toContain("[VSL LINK]");
-    expect(webinar.extraInstructions).toContain("[REGISTRATION LINK]");
-    expect(call.extraInstructions).toContain("COMPLIANCE GATE");
-    expect(call.childSkills.join()).toContain("ad-script-writer");
-    // Retired docTypes still get swept
-    expect(stageAllDocTypes("ads")).toContain("ad_angles");
-    expect(stageAllDocTypes("ads")).toContain("ad_statics");
+    expect(call.outputs[0].description).toContain("REBUILD ONLY");
+    expect(call.extraInstructions).toContain("[COMMUNITY LINK]");
+    expect(call.childSkills.join()).toContain("static-ad-builder");
+    // The old full-batch docTypes are retired and still get swept
+    expect(stageAllDocTypes("ads")).toContain("ad_scripts");
+    expect(stageAllDocTypes("ads")).toContain("ad_campaign_plan");
   });
 
   it("branches the funnel contract on funnel type", () => {
@@ -65,51 +57,26 @@ describe("stage registry", () => {
       "skool_free_community",
       "skool_paid_community",
     ]);
-    expect(Object.keys(stageContract("emails", "webinar"))).toEqual([
-      "email_sequence_14day",
-      "email_prewebinar",
-      "email_postwebinar",
-      "sms_set",
-    ]);
-    expect(Object.keys(stageContract("emails", "call"))).toEqual([
-      "email_sequence_14day",
-      "email_postbooking",
-      "email_noshow_followup",
-      "sms_set",
-    ]);
+    // Onboarding emails are just the community nurture + SMS now
+    expect(Object.keys(stageContract("emails", "webinar"))).toEqual(["email_sequence_14day", "sms_set"]);
+    expect(Object.keys(stageContract("emails", "call"))).toEqual(["email_sequence_14day", "sms_set"]);
     expect(stageContract("nonsense", "call")).toEqual({});
     expect(stagePromptSpec("nonsense", "call")).toBeNull();
   });
 
-  it("branches the emails contract on funnel type with full sequence sets", () => {
+  it("keeps onboarding emails to the community nurture set and defers the rest", () => {
     const call = stagePromptSpec("emails", "call")!;
     const webinar = stagePromptSpec("emails", "webinar")!;
-    // Call funnel: post-booking show-up + no-show/post-call recovery exist and carry value rules
-    expect(call.outputs.map((o) => o.docType)).toEqual([
-      "email_sequence_14day",
-      "email_postbooking",
-      "email_noshow_followup",
-      "sms_set",
-    ]);
-    expect(call.outputs[1].description).toContain("value-INTENSIVE");
-    expect(call.outputs[1].description).toContain("FAQ email");
-    expect(call.outputs[1].description).toContain("24h and 3h reminders");
-    expect(call.outputs[0].description).toContain("named asset");
-    expect(call.outputs[3].description).toContain("14-day community track");
-    expect(call.outputs[2].description).toContain("no-show recovery");
-    expect(call.outputs[2].description).toContain("post-call follow-up");
-    // Webinar funnel: pre-webinar show-up + post-webinar replay/close
-    expect(webinar.outputs.map((o) => o.docType)).toEqual([
-      "email_sequence_14day",
-      "email_prewebinar",
-      "email_postwebinar",
-      "sms_set",
-    ]);
-    expect(webinar.outputs[1].description).toContain("show-up");
-    expect(webinar.outputs[2].description).toContain("replay");
-    // Quality bar: reference emails + frameworks are mandatory
+    // Both funnel types: 14-day community sequence + SMS only
+    expect(call.outputs.map((o) => o.docType)).toEqual(["email_sequence_14day", "sms_set"]);
+    expect(webinar.outputs.map((o) => o.docType)).toEqual(["email_sequence_14day", "sms_set"]);
+    // CTA branches on funnel type
+    expect(call.outputs[0].description).toContain("[VSL LINK]");
+    expect(webinar.outputs[0].description).toContain("[REGISTRATION LINK]");
+    // The funnel-specific sequences are explicitly deferred to on-demand
+    expect(call.extraInstructions).toContain("generated on demand later");
+    // Quality bar still enforced
     expect(call.extraInstructions).toContain("MODEL THE REFERENCE EMAILS");
-    expect(call.extraInstructions).toContain("suby-email-machine");
     expect(call.extraInstructions).toContain("standalone value");
   });
 

@@ -25,6 +25,7 @@ import {
   getLatestJobForClient,
   getRefImageById,
   getRefImagesWithData,
+  getReportById,
   getReportBySearchId,
   getSearchesByClient,
   setJobProgress,
@@ -52,19 +53,34 @@ const insightLines = (list: InsightList | null | undefined, cap: number) =>
     .map((i) => `- ${i.text}${i.verbatimExample ? ` (verbatim: "${i.verbatimExample}")` : ""}`)
     .join("\n");
 
-/** Render the client's most recent research report as readable text for the worker. */
+/** Render the client's research as readable text for the worker. A linked
+ *  report (chosen at onboarding) wins; otherwise the client's own search. */
 async function renderResearchForClient(clientId: number): Promise<string> {
-  const searches = await getSearchesByClient(clientId);
-  const complete = searches.find((s) => s.status === "complete");
-  if (!complete) return "";
+  const client = await getClientById(clientId);
+  let searchId: number | null = null;
+  let keyword = "";
+  let report: Awaited<ReturnType<typeof getReportById>> | undefined;
 
-  const [analysis, report] = await Promise.all([
-    getAnalysisResultBySearchId(complete.id),
-    getReportBySearchId(complete.id),
-  ]);
+  if (client?.linkedReportId) {
+    report = await getReportById(client.linkedReportId);
+    if (report) {
+      searchId = report.searchId;
+      keyword = report.name;
+    }
+  }
+  if (searchId == null) {
+    const searches = await getSearchesByClient(clientId);
+    const complete = searches.find((s) => s.status === "complete");
+    if (!complete) return "";
+    searchId = complete.id;
+    keyword = complete.keyword;
+    report = await getReportBySearchId(complete.id);
+  }
+
+  const analysis = await getAnalysisResultBySearchId(searchId);
   if (!analysis) return "";
 
-  const parts: string[] = [`VOICE MINING RESEARCH for keywords: ${complete.keyword}`];
+  const parts: string[] = [`VOICE MINING RESEARCH for keywords: ${keyword}`];
   parts.push(`\nPAIN POINTS:\n${insightLines(analysis.painPoints, 12)}`);
   parts.push(`\nDESIRES:\n${insightLines(analysis.desires, 12)}`);
   parts.push(`\nFEARS:\n${insightLines(analysis.fears, 8)}`);

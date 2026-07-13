@@ -218,7 +218,8 @@ export const appRouter = router({
           refImages: await getRefImagesMeta(input.id),
           exportJob: await getLatestJobForClient(input.id, "export_drive"),
           competitorSources: await resolveYouTubeLabels(competitorSources),
-          researchReportId: researchReport?.id ?? null,
+          researchReportId: client.linkedReportId ?? researchReport?.id ?? null,
+          linkedReportId: client.linkedReportId ?? null,
         };
       }),
 
@@ -282,6 +283,27 @@ export const appRouter = router({
         if (!img) throw new TRPCError({ code: "NOT_FOUND", message: "Image not found" });
         await requireClient(img.clientId, ctx.user.id);
         await deleteRefImage(input.id);
+        return { ok: true };
+      }),
+
+    /** The user's existing reports, to link one at onboarding instead of running research. */
+    availableReports: protectedProcedure.query(async ({ ctx }) => {
+      const reports = await getReportsByUser(ctx.user.id);
+      return reports.map((r) => ({ id: r.id, name: r.name, createdAt: r.createdAt }));
+    }),
+
+    /** Link an existing report to this client (skips running fresh research). Pass null to unlink. */
+    linkReport: protectedProcedure
+      .input(z.object({ clientId: z.number(), reportId: z.number().nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        if (input.reportId != null) {
+          const report = await getReportById(input.reportId);
+          if (!report || report.userId !== ctx.user.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Report not found" });
+          }
+        }
+        await updateClient(input.clientId, { linkedReportId: input.reportId });
         return { ok: true };
       }),
 

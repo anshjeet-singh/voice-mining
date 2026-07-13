@@ -8,6 +8,7 @@ import {
   DocBoard,
   ENGINES,
   EngineCard,
+  PrebuiltSequences,
   RefImagePanel,
   type ClientAssetMeta,
   type ClientDoc,
@@ -1143,7 +1144,19 @@ export default function ClientStudio() {
           {section === "emails" && (
             <>
               <SectionHeader id="emails" />
-              <StudioBlock title="Generate email copy" hint="Pick the purpose, add specifics: swipe-file style, ConvertKit-ready" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
+              <StudioBlock
+                title={`Prebuilt ${data.client.funnelType === "webinar" ? "webinar" : "call"} sequences`}
+                hint="One click writes the whole sequence in your swipe-file style. It lands as a card in the pipeline below"
+                frame="border-emerald-500/25 bg-emerald-500/[0.05]"
+              >
+                <PrebuiltSequences
+                  funnelType={data.client.funnelType === "webinar" ? "webinar" : "call"}
+                  job={jobs.more_emails ?? null}
+                  clientId={clientId}
+                  invalidate={invalidate}
+                />
+              </StudioBlock>
+              <StudioBlock title="Or write a custom email" hint="Pick the purpose, add specifics: swipe-file style, ConvertKit-ready" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
                 <EngineCard engine={engineByKind("more_emails")} job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
               </StudioBlock>
               <StudioBlock

@@ -76,6 +76,8 @@ export const clients = mysqlTable("clients", {
   /** The client's OWN socials, for the live stats card on the Overview. */
   instagramHandle: varchar("instagramHandle", { length: 200 }),
   youtubeHandle: varchar("youtubeHandle", { length: 200 }),
+  /** An existing report linked at onboarding instead of running fresh research. */
+  linkedReportId: int("linkedReportId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

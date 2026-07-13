@@ -203,7 +203,7 @@ type ProgressReporter = ReturnType<typeof makeProgressReporter>;
  * Returns per-shard feedback overrides, or null when the job shouldn't shard.
  */
 function planShards(job: ClaimedJob, output: StageOutputSpec): string[] | null {
-  if (!["ad_scripts", "ad_statics_extra"].includes(output.docType)) return null;
+  if (!["ad_scripts", "ad_statics", "ad_statics_extra"].includes(output.docType)) return null;
   const fb = job.feedback ?? "";
 
   // Case 1: rebuild-rejected — each rejected ad is independent, split the list

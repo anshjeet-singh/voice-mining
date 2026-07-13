@@ -64,37 +64,110 @@ const WORKER_STAGES: Array<{
     runningNote: "Building both communities from the approved foundation docs",
   },
   {
-    id: "funnel",
-    label: "Funnel Copy",
-    blurb: "Funnel Structure (every page, complete copy) + Video Scripts (10 scripts)",
-    docTypes: ["funnel_core", "funnel_structure", "video_scripts"],
-    runningNote: "Writing the funnel structure and all 10 video scripts. This is the longest stage",
-  },
-  {
     id: "emails",
-    label: "Email Sequences",
-    blurb: "14-day community sequence, post-booking show-up, no-show + post-call recovery, SMS (webinar: pre/post-webinar sequences)",
-    docTypes: [
-      "email_sequence_14day",
-      "email_postbooking",
-      "email_noshow_followup",
-      "email_prewebinar",
-      "email_postwebinar",
-      "sms_set",
-    ],
-    runningNote: "Writing every email sequence and the SMS set from the approved funnel, in the swipe-file style",
+    label: "Community Emails",
+    blurb: "The 14-day free-community nurture sequence and its matching SMS set. Everything else is on-demand in the studio",
+    docTypes: ["email_sequence_14day", "sms_set"],
+    runningNote: "Writing the 14-day community nurture sequence and the SMS set in the swipe-file style",
   },
   {
     id: "ads",
-    label: "Ad Creatives",
-    blurb: "15 rendered statics + 5 b-roll + 5 video scripts in one creative doc, plus the campaign plan (matrix, targeting, budget). Review each ad below",
-    docTypes: ["ad_scripts", "ad_statics", "ad_campaign_plan", "ad_statics_extra", "ad_scripts_extra"],
-    runningNote: "Building 15 statics through the render pipeline with visual QA, writing scripts and the campaign plan",
+    label: "Community Ads",
+    blurb: "10 rendered static ads whose one job is to get cold traffic to join the free Skool community. Review each ad below",
+    docTypes: ["ad_statics", "ad_statics_extra", "ad_scripts_extra"],
+    runningNote: "Building 10 statics through the render pipeline with visual QA",
   },
 ];
 
 
 
+
+/** Link an existing report to this client instead of running fresh research. */
+function LinkReportControl({
+  clientId,
+  linkedReportId,
+  invalidate,
+}: {
+  clientId: number;
+  linkedReportId: number | null;
+  invalidate: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const reports = trpc.clients.availableReports.useQuery(undefined, { enabled: open });
+  const link = trpc.clients.linkReport.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setOpen(false);
+      toast.success("Report linked. Research step is done");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const unlink = trpc.clients.linkReport.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success("Report unlinked");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (linkedReportId != null) {
+    return (
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={unlink.isPending}
+        onClick={() => unlink.mutate({ clientId, reportId: null })}
+        className="h-8 text-xs text-muted-foreground hover:text-foreground"
+      >
+        {unlink.isPending ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : null}
+        Unlink report
+      </Button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => setOpen((v) => !v)}
+        className="h-8 text-xs"
+      >
+        <FileText className="w-3 h-3 mr-1.5" />
+        Link a report
+      </Button>
+      {open && (
+        <div className="absolute right-0 top-9 z-20 w-72 rounded-lg border border-border/60 bg-background shadow-xl p-2 max-h-72 overflow-y-auto">
+          {reports.isLoading ? (
+            <div className="flex items-center gap-2 p-2 text-muted-foreground">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span className="text-[11px]">Loading your reports...</span>
+            </div>
+          ) : !reports.data?.length ? (
+            <p className="p-2 text-[11px] text-muted-foreground">No saved reports yet. Run research instead.</p>
+          ) : (
+            reports.data.map((r) => (
+              <button
+                key={r.id}
+                disabled={link.isPending}
+                onClick={() => link.mutate({ clientId, reportId: r.id })}
+                className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-card/80 text-left"
+              >
+                <FileText className="w-3 h-3 text-primary flex-shrink-0" />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-xs font-medium text-foreground truncate">{r.name}</span>
+                  <span className="block text-[10px] text-muted-foreground">
+                    {formatDistanceToNow(new Date(r.createdAt), { addSuffix: true })}
+                  </span>
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Numbered circle for each pipeline stage: done, active, or upcoming. */
 function StageMarker({ n, state }: { n: number; state: "done" | "active" | "upcoming" }) {
@@ -479,7 +552,8 @@ export default function ClientDetail() {
   const completeSearches = searches.filter((s) => s.status === "complete");
 
   const onboardingDone = onboardingDocs.length > 0;
-  const researchDone = completeSearches.length > 0;
+  const linkedReportId = data.linkedReportId ?? null;
+  const researchDone = completeSearches.length > 0 || linkedReportId != null;
 
   /** Stage docs in contract order, from foundation or deliverable kinds. */
   const stageDocs = (docTypes: string[]) =>
@@ -697,18 +771,32 @@ export default function ClientDetail() {
               <div className="flex-1">
                 <h2 className="text-sm font-semibold text-foreground">Voice Mining Research</h2>
                 <p className="text-xs text-muted-foreground">
-                  Mine the market's language before building anything
+                  Mine the market's language, or link a report you already have
                 </p>
               </div>
-              <Button
-                size="sm"
-                onClick={() => navigate(`/search/new?client=${clientId}`)}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 text-xs"
-              >
-                <Search className="w-3 h-3 mr-1.5" />
-                Run Research
-              </Button>
+              <div className="flex items-center gap-2">
+                <LinkReportControl clientId={clientId} linkedReportId={linkedReportId} invalidate={() => utils.clients.get.invalidate({ id: clientId })} />
+                <Button
+                  size="sm"
+                  onClick={() => navigate(`/search/new?client=${clientId}`)}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 text-xs"
+                >
+                  <Search className="w-3 h-3 mr-1.5" />
+                  Run Research
+                </Button>
+              </div>
             </div>
+
+            {linkedReportId != null && (
+              <button
+                onClick={() => navigate(`/report/${linkedReportId}?client=${clientId}`)}
+                className="mt-4 w-full flex items-center gap-3 p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] hover:border-emerald-500/50 transition-all text-left"
+              >
+                <Check className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                <span className="flex-1 text-xs font-medium text-foreground">Linked an existing report — research step complete</span>
+                <span className="text-[11px] text-emerald-500">Open →</span>
+              </button>
+            )}
 
             {searches.length > 0 && (
               <div className="mt-4 space-y-2">
@@ -742,11 +830,12 @@ export default function ClientDetail() {
             )}
           </div>
 
-          {/* ─── Stages 3-6: worker pipeline (foundation, skool, funnel, emails) ─── */}
+          {/* ─── Stages 3-6: worker pipeline (foundation, skool, emails, ads) ─── */}
           {WORKER_STAGES.map((stage, i) => {
+            const jobsByStage = jobs as Record<string, StageJob>;
             const prevStage = i > 0 ? WORKER_STAGES[i - 1] : null;
             const unlocked = prevStage
-              ? jobs[prevStage.id]?.status === "approved"
+              ? jobsByStage[prevStage.id]?.status === "approved"
               : onboardingDone;
             const unlockHint = prevStage
               ? `Approve ${prevStage.label} first`
@@ -756,7 +845,7 @@ export default function ClientDetail() {
                 key={stage.id}
                 n={i + 3}
                 stage={stage}
-                job={jobs[stage.id] ?? null}
+                job={jobsByStage[stage.id] ?? null}
                 docs={stageDocs(stage.docTypes)}
                 assets={(data?.assets ?? []).filter((a) => stage.docTypes.includes(a.docType))}
                 unlocked={unlocked}

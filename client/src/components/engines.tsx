@@ -7,7 +7,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { ArrowUpToLine, Check, ChevronDown, ChevronUp, FileText, ImagePlus, Loader2, RefreshCw, X } from "lucide-react";
+import { ArrowUpToLine, Check, ChevronDown, ChevronUp, FileText, ImagePlus, Loader2, Plus, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { MarkdownDoc } from "@/components/MarkdownDoc";
@@ -576,6 +576,96 @@ export const ENGINES: Array<{
       `Write EXACTLY ${count} Skool community posts.${purpose ? ` POST TYPE: ${purpose}.` : ""}${notes ? ` Operator direction: ${notes}` : ""}`,
   },
 ];
+
+/**
+ * One-click prebuilt sequences per funnel type. Each fires the email engine
+ * with a fully-specified request, so the operator never has to describe the
+ * sequence — they just click the one they need.
+ */
+export const PREBUILT_SEQUENCES: Record<"webinar" | "call", Array<{ label: string; blurb: string; request: string }>> = {
+  webinar: [
+    {
+      label: "Pre-webinar reminder",
+      blurb: "7 emails, opt-in to live: value + nurture, every one restates date, time, and join link",
+      request:
+        "Write the PRE-WEBINAR REMINDER sequence as ONE document titled 'Pre-Webinar Reminder Sequence': EXACTLY 7 emails sent from webinar opt-in through the live event, high value and high nurture, each one an open loop that also clearly restates the webinar DATE, TIME, and the [REGISTRATION LINK] / join link. Ramp the reminders (registration confirmation, what-you'll-discover, a proof story, speaker credibility, day-before, day-of, and 1-hour-before). Every email carries standalone value, never a bare reminder. CTA destination is the webinar join link.",
+    },
+    {
+      label: "Post-webinar (attended)",
+      blurb: "For attendees who didn't buy: value, case studies, proof, belief-breaking, FAQ. CTA = book a call or join the free community",
+      request:
+        "Write the POST-WEBINAR ATTENDED sequence as ONE document titled 'Post-Webinar Attended Sequence', for people who watched the webinar live but did NOT buy: jam-packed with value and nurture, case studies, social proof, breaking every FINAL limiting belief, answering the real FAQs and objections raised on the webinar. The CTA is always to BOOK A CALL with the team ([VSL LINK]) or, as the softer option, join the free Skool community ([COMMUNITY LINK]) for more proof and value. 5-7 emails, each earning the open.",
+    },
+    {
+      label: "No-show / replay",
+      blurb: "48h replay push days 1-3 (urgency + FOMO), then days 4-14 'add the next free training to your calendar'",
+      request:
+        "Write the NO-SHOW REPLAY sequence as ONE document titled 'No-Show Replay Sequence', for people who registered but did NOT attend: heavy nurture with maximum urgency and FOMO. DAYS 1-3: push the webinar REPLAY hard, which is live for only 48 HOURS ([REPLAY LINK]), value + proof + a real expiry. DAYS 4-14: pivot to inviting them to add the next live 'free training' (the webinar) to their calendar ([REGISTRATION LINK]), still high value, still building the case. Goal: they watch the replay or show up to the next one. About 8-10 emails across the 14 days with send-timing labels.",
+    },
+  ],
+  call: [
+    {
+      label: "14-day community nurture",
+      blurb: "Free-community joiner sequence: value into the community, belief-breaking, book the call",
+      request:
+        "Write the 14-DAY COMMUNITY NURTURE sequence as ONE document titled '14-Day Community Nurture Sequence': one email per day to every free Skool community joiner, each pointing INTO the community to a named asset, breaking one belief, articulating pain, building urgency, CTA to book a call ([VSL LINK]).",
+    },
+    {
+      label: "Post-booking show-up",
+      blurb: "Booking to call: confirmation, value-intensive nurture, one FAQ email, 24h + 3h reminders",
+      request:
+        "Write the POST-BOOKING SHOW-UP sequence as ONE document titled 'Post-Booking Show-Up Sequence': instant confirmation (what happens next, calendar add, the call-confirmed video at [CALL CONFIRMED VIDEO]), then value-intensive emails between booking and the call each breaking one limiting belief and sending them back into the community, one straight FAQ email, plus 24h and 3h reminders. Every email carries standalone value, send-timing labels, CTA keeps the call.",
+    },
+    {
+      label: "No-show / re-engagement",
+      blurb: "No-show rebook (no shame) + post-call follow-up for those who didn't close",
+      request:
+        "Write the NO-SHOW + RE-ENGAGEMENT sequence as ONE document titled 'No-Show and Re-Engagement Sequence', two labeled tracks: (1) no-show recovery, 3 emails that rebook without shaming (missed-you + easy rebook, cost-of-the-unsolved-problem with a proof story, last-touch pointing back into the community); (2) post-call follow-up for prospects who didn't close, 3 emails (recap of their situation and the offer, objection reframe with proof, honest final follow-up). Send-timing labels, CTA is rebook / [VSL LINK].",
+    },
+  ],
+};
+
+/** One-click prebuilt sequence buttons, shown for the client's funnel type. */
+export function PrebuiltSequences({
+  funnelType,
+  job,
+  clientId,
+  invalidate,
+}: {
+  funnelType: "webinar" | "call";
+  job: StageJob;
+  clientId: number;
+  invalidate: () => void;
+}) {
+  const generate = trpc.clients.generateStage.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success("Sequence queued. Your Mac worker will write it");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const busy = job?.status === "queued" || job?.status === "running";
+  const sequences = PREBUILT_SEQUENCES[funnelType];
+
+  return (
+    <div className="grid sm:grid-cols-3 gap-2">
+      {sequences.map((s) => (
+        <button
+          key={s.label}
+          disabled={busy || generate.isPending}
+          onClick={() => generate.mutate({ clientId, stage: "more_emails", feedback: s.request })}
+          className="rounded-lg border border-border/40 bg-card/20 p-3 text-left hover:border-primary/40 transition-colors disabled:opacity-50"
+        >
+          <div className="flex items-center gap-1.5 mb-1">
+            {busy ? <Loader2 className="w-3 h-3 text-primary animate-spin" /> : <Plus className="w-3 h-3 text-primary" />}
+            <span className="text-xs font-semibold text-foreground">{s.label}</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground leading-snug">{s.blurb}</p>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** One on-demand engine: compose a request, run it, review the output doc. */
 export function EngineCard({
