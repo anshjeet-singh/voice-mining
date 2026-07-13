@@ -114,3 +114,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-13 · job 360005 · client: Blake Matthews -->
 - none
+
+<!-- 2026-07-13 · job 360006 · client: Blake Matthews -->
+- Do not bake an unconfirmed brand name, community name, or invented domain into a rendered static (brand marks, SERP result titles, URLs, etc.). If a format element requires a name the client has not locked, drop that element or use the real platform/generic wording rather than inventing one. An assumed name printed on creative is a rejection trigger.
