@@ -83,6 +83,13 @@ describe("stage registry", () => {
     expect(spec.extraInstructions).toContain("keep the LIFE");
     expect(spec.extraInstructions).toContain("swipe files");
     expect(spec.extraInstructions).toContain("Dry, flat, stripped copy is a FAIL");
+    // Paid community About page is a VALUE-STACK offer page, not the free-value page
+    const paid = spec.outputs.find((o) => o.docType === "skool_paid_community")!.description;
+    expect(paid).toContain("VALUE-STACK OFFER PAGE");
+    expect(paid).toContain("dollar anchor");
+    expect(paid).toContain("ANNUAL PLAN");
+    expect(paid).toContain("Total Value");
+    expect(spec.extraInstructions).toContain("skool-paid-about-swipe.md");
   });
 
   it("keeps onboarding emails to the community nurture set and defers the rest", () => {

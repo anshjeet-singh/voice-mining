@@ -133,11 +133,45 @@ Update to: 3 names → benefit tagline → two alive About pages → VSL → cat
 distinct) → 9 levels → plugins + 3 links → **two** pinned posts → Start Here key + 5 videos →
 setup checklist.
 
-### Paid community
-Same structure and same copy-craft bar, except the About page sells the paid offer (real name,
-price, promise, guarantee from the Offers doc) with the CTA on the paid join/checkout, the paid
-VSL justifies the price against the value and guarantee, and the 9 gamification names are
-IDENTICAL to the free community's.
+### Paid community — the About page is a VALUE-STACK OFFER PAGE (different from free)
+Same sections/craft bar, but the paid About page is NOT the free-value page — it's a value-stack
+offer page. Build it (two variations) in THIS exact format, modeled on the operator's approved
+paid pages:
+
+```
+🏦/🏆 [HOOK headline with a big proof/outcome number, e.g. "How I Got Access to $1.1M In Funding"]
+
+‼️ Early Bird: $[monthly]/mo
+
+[1-2 lines: the promise + the mechanism they don't teach elsewhere]
+
+What you get:
+✅ [Pillar] ($1,997)
+✅ [Pillar] ($1,497)
+✅ [Pillar] ($997)
+✅ Weekly Live Q&A (...)
+
+Bonus:
+🎁 [Bonus] ($997)
+🎁 [Bonus] ($497)
+
+🏷️ Total Value: $[sum] — For Just $[monthly]/mo!
+‼️ Price Increases to $[higher]/mo (spots filling fast)
+💬 Not Sure? DM "[KEYWORD]" To Ask Q's
+
+🔥 ANNUAL PLAN
+✅ Everything Above
+✅ [Extra] ($2,500)
+✅ [Extra] ($2,997)
+✅ Lifetime Price Locked In
+🏷️ Total Value: $[sum] — For Just $[annual]/yr
+💥 JOIN NOW
+```
+
+Every ✅ line ends in a realistic ($ value); 🎁 for bonuses. Prices and the offer come from the
+Offers doc, never invented. The paid VSL justifies the price against this stack + guarantee. The
+9 gamification names are IDENTICAL to the free community's. (Two verbatim examples are in
+`worker/frameworks/skool-paid-about-swipe.md` — reproduce that format.)
 
 ---
 
