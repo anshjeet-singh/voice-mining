@@ -5,11 +5,15 @@ import { AppShell } from "@/components/AppShell";
 import { MarkdownDoc } from "@/components/MarkdownDoc";
 import {
   AssetGallery,
+  CopyButton,
   DocBoard,
   ENGINES,
   EngineCard,
+  HtmlPreview,
   PrebuiltSequences,
   RefImagePanel,
+  extractHtml,
+  stripHtmlBlock,
   type ClientAssetMeta,
   type ClientDoc,
   type RefImageMeta,
@@ -115,24 +119,31 @@ function SectionHeader({ id }: { id: string }) {
   );
 }
 
-/** Readable doc row for the Overview's foundation library. */
+/** Readable doc row for the Overview's foundation library, with copy + preview. */
 function DocRow({ doc }: { doc: ClientDoc }) {
   const [open, setOpen] = useState(false);
+  const html = extractHtml(doc.content);
   return (
     <div className="rounded-lg border border-border/40 bg-card/30">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-2 p-2.5 text-left">
-        <FileText className="w-3 h-3 text-primary flex-shrink-0" />
-        <span className="flex-1 text-xs font-medium text-foreground truncate">{doc.title}</span>
-        {open ? (
-          <ChevronUp className="w-3 h-3 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="w-3 h-3 text-muted-foreground" />
-        )}
-      </button>
+      <div className="w-full flex items-center gap-2 p-2.5">
+        <button onClick={() => setOpen(!open)} className="flex-1 flex items-center gap-2 text-left min-w-0">
+          <FileText className="w-3 h-3 text-primary flex-shrink-0" />
+          <span className="flex-1 text-xs font-medium text-foreground truncate">{doc.title}</span>
+        </button>
+        <CopyButton text={doc.content} />
+        <button onClick={() => setOpen(!open)}>
+          {open ? (
+            <ChevronUp className="w-3 h-3 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-3 h-3 text-muted-foreground" />
+          )}
+        </button>
+      </div>
       {open && (
-        <div className="px-2.5 pb-2.5">
+        <div className="px-2.5 pb-2.5 space-y-3">
+          {html && <HtmlPreview html={html} filename={doc.title} />}
           <div className="max-h-[28rem] overflow-y-auto rounded-lg bg-background/40 p-3">
-            <MarkdownDoc content={doc.content} />
+            <MarkdownDoc content={stripHtmlBlock(doc.content)} />
           </div>
         </div>
       )}
@@ -621,16 +632,13 @@ function CompetitorMiner({
               <button
                 key={srcKey(s)}
                 onClick={() => toggle(s)}
-                title={s.url}
-                className={`flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 rounded-lg border text-left transition-colors ${
-                  on ? "border-primary/40 bg-primary/10" : "border-border/40 bg-card/40 opacity-50 hover:opacity-80"
+                title={`${s.url} · ${ORIGIN_LABEL[s.origin]}`}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-left transition-colors ${
+                  on ? "border-primary/40 bg-primary/10" : "border-border/40 bg-card/40 opacity-45 hover:opacity-80"
                 }`}
               >
-                <PlatformIcon platform={s.platform} className={`w-3.5 h-3.5 ${on ? "text-primary" : "text-muted-foreground"}`} />
-                <span>
-                  <span className="block text-[11px] font-semibold text-foreground leading-tight">{srcDisplay(s)}</span>
-                  <span className="block text-[9px] text-muted-foreground leading-tight">{ORIGIN_LABEL[s.origin]}</span>
-                </span>
+                <PlatformIcon platform={s.platform} className={`w-3.5 h-3.5 flex-shrink-0 ${on ? "text-primary" : "text-muted-foreground"}`} />
+                <span className="text-[11px] font-medium text-foreground leading-tight">{srcDisplay(s)}</span>
               </button>
             );
           })}
@@ -760,22 +768,9 @@ function ClientSocials({
     onError: (err) => toast.error(err.message),
   });
 
-  if (!hasHandles && !editing) {
-    return (
-      <button
-        onClick={() => setEditing(true)}
-        className="w-full rounded-xl border border-dashed border-border/60 bg-card/20 p-4 flex items-center gap-3 text-left hover:border-border transition-colors"
-      >
-        <div className="w-9 h-9 rounded-lg bg-card/60 flex items-center justify-center flex-shrink-0">
-          <Plus className="w-4 h-4 text-muted-foreground" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-foreground">Add the client's socials</p>
-          <p className="text-[11px] text-muted-foreground">Track their live Instagram and YouTube growth right here</p>
-        </div>
-      </button>
-    );
-  }
+  // Handles are captured at onboarding: the Overview only shows the live stats
+  // once they exist, no "add" prompt cluttering the page.
+  if (!hasHandles && !editing) return null;
 
   if (editing) {
     return (
@@ -921,6 +916,13 @@ export default function ClientStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, hasScriptsDoc, hasFunnelAssets, clientId]);
   const engineDocCount = ENGINES.reduce((n, e) => n + docsFor(e.docType).length, 0);
+  const postedCount = documents.filter((d) => d.docType.endsWith("_extra") && d.status === "posted").length;
+  const emailCount =
+    docsFor("emails_extra").length +
+    ["email_sequence_14day", "email_postbooking", "email_noshow_followup", "email_prewebinar", "email_postwebinar", "sms_set"].reduce(
+      (n, t) => n + docsFor(t).length,
+      0
+    );
 
   if (isLoading || !data) {
     return (
@@ -974,9 +976,20 @@ export default function ClientStudio() {
             <>
               <div className="rounded-2xl border border-border/50 bg-gradient-to-r from-primary/10 via-card/40 to-transparent p-6">
                 <h1 className="text-xl font-semibold text-foreground">{data.client.name}</h1>
-                <p className="text-xs text-muted-foreground">
-                  {data.client.niche} · {data.client.funnelType} funnel · {approvedAds.length} approved ads · {engineDocCount} content pieces
-                </p>
+                <p className="text-xs text-muted-foreground">{data.client.niche} · {data.client.funnelType} funnel</p>
+                <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[
+                    { label: "Approved ads", value: approvedAds.length },
+                    { label: "Content pieces", value: engineDocCount },
+                    { label: "Emails", value: emailCount },
+                    { label: "Posted / live", value: postedCount },
+                  ].map((kpi) => (
+                    <div key={kpi.label} className="rounded-xl bg-background/40 border border-border/40 p-3.5">
+                      <p className="text-2xl font-semibold text-foreground tabular-nums">{kpi.value}</p>
+                      <p className="text-[11px] text-muted-foreground">{kpi.label}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Research: the fuel line everything draws from */}
@@ -1145,7 +1158,7 @@ export default function ClientStudio() {
             <>
               <SectionHeader id="emails" />
               <StudioBlock
-                title={`Prebuilt ${data.client.funnelType === "webinar" ? "webinar" : "call"} sequences`}
+                title={data.client.funnelType === "webinar" ? "Webinar sequences" : "Call funnel sequences"}
                 hint="One click writes the whole sequence in your swipe-file style. It lands as a card in the pipeline below"
                 frame="border-emerald-500/25 bg-emerald-500/[0.05]"
               >

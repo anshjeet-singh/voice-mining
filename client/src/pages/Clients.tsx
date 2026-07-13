@@ -24,6 +24,8 @@ export default function Clients() {
     niche: "",
     funnelType: "call" as "webinar" | "call",
     pricePoint: "",
+    instagramHandle: "",
+    youtubeHandle: "",
   });
 
   const { data: clients, isLoading } = trpc.clients.list.useQuery();
@@ -32,7 +34,7 @@ export default function Clients() {
     onSuccess: async ({ id }) => {
       await utils.clients.list.invalidate();
       setCreating(false);
-      setForm({ name: "", niche: "", funnelType: "call", pricePoint: "" });
+      setForm({ name: "", niche: "", funnelType: "call", pricePoint: "", instagramHandle: "", youtubeHandle: "" });
       navigate(`/clients/${id}`);
     },
     onError: (err) => toast.error(err.message),
@@ -48,6 +50,8 @@ export default function Clients() {
       niche: form.niche,
       funnelType: form.funnelType,
       pricePoint: form.pricePoint.trim() || undefined,
+      instagramHandle: form.instagramHandle.trim() || undefined,
+      youtubeHandle: form.youtubeHandle.trim() || undefined,
     });
   };
 
@@ -131,6 +135,26 @@ export default function Clients() {
                   placeholder="e.g. $7k"
                   value={form.pricePoint}
                   onChange={(e) => setForm((f) => ({ ...f, pricePoint: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">
+                  Client's Instagram <span className="opacity-60">(optional)</span>
+                </label>
+                <Input
+                  placeholder="@handle or URL"
+                  value={form.instagramHandle}
+                  onChange={(e) => setForm((f) => ({ ...f, instagramHandle: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">
+                  Client's YouTube <span className="opacity-60">(optional)</span>
+                </label>
+                <Input
+                  placeholder="@handle or URL"
+                  value={form.youtubeHandle}
+                  onChange={(e) => setForm((f) => ({ ...f, youtubeHandle: e.target.value }))}
                   onKeyDown={(e) => e.key === "Enter" && submit()}
                 />
               </div>

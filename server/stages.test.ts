@@ -64,15 +64,33 @@ describe("stage registry", () => {
     expect(stagePromptSpec("nonsense", "call")).toBeNull();
   });
 
+  it("holds the lean Skool community spec", () => {
+    const spec = stagePromptSpec("skool", "call")!;
+    const free = spec.outputs.find((o) => o.docType === "skool_free_community")!.description;
+    // The exact structure: green-tick unlocks, 3 lead magnets, 2 About variations, 2 pinned posts
+    expect(free).toContain("GREEN-TICK");
+    expect(free).toContain("THREE named lead magnets");
+    expect(free).toContain("under 1000 characters");
+    expect(free).toContain("EXACTLY TWO");
+    expect(free).toContain("[COMMUNITY NAME]");
+    // Banned noise is explicitly forbidden
+    expect(free).toContain("banned");
+    expect(spec.extraInstructions).toContain("LESS IS MORE");
+    // Gamification names identical across communities
+    expect(spec.extraInstructions).toContain("IDENTICAL across free and paid");
+  });
+
   it("keeps onboarding emails to the community nurture set and defers the rest", () => {
     const call = stagePromptSpec("emails", "call")!;
     const webinar = stagePromptSpec("emails", "webinar")!;
     // Both funnel types: 14-day community sequence + SMS only
     expect(call.outputs.map((o) => o.docType)).toEqual(["email_sequence_14day", "sms_set"]);
     expect(webinar.outputs.map((o) => o.docType)).toEqual(["email_sequence_14day", "sms_set"]);
-    // CTA branches on funnel type
-    expect(call.outputs[0].description).toContain("[VSL LINK]");
-    expect(webinar.outputs[0].description).toContain("[REGISTRATION LINK]");
+    // Exactly two community CTAs, the locked placeholder, and the three lead magnets
+    expect(call.outputs[0].description).toContain("ONLY TWO calls to action");
+    expect(call.outputs[0].description).toContain("weekly live Q&A");
+    expect(call.outputs[0].description).toContain("[COMMUNITY NAME]");
+    expect(call.outputs[0].description).toContain("THREE named free lead magnets");
     // The funnel-specific sequences are explicitly deferred to on-demand
     expect(call.extraInstructions).toContain("generated on demand later");
     // Quality bar still enforced

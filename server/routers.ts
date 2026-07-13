@@ -151,6 +151,8 @@ export const appRouter = router({
           niche: z.string().min(1).max(300),
           funnelType: z.enum(["webinar", "call"]),
           pricePoint: z.string().max(200).optional(),
+          instagramHandle: z.string().max(200).optional(),
+          youtubeHandle: z.string().max(200).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -160,6 +162,8 @@ export const appRouter = router({
           niche: input.niche.trim(),
           funnelType: input.funnelType,
           pricePoint: input.pricePoint?.trim() || null,
+          instagramHandle: input.instagramHandle?.trim() || null,
+          youtubeHandle: input.youtubeHandle?.trim() || null,
         });
         await logActivity(ctx.user.id, "client_created", input.name);
         return { id };

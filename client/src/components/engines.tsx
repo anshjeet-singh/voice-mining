@@ -7,7 +7,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { ArrowUpToLine, Check, ChevronDown, ChevronUp, FileText, ImagePlus, Loader2, Plus, RefreshCw, X } from "lucide-react";
+import { ArrowUpToLine, Check, ChevronDown, ChevronUp, Copy, FileText, ImagePlus, Loader2, Plus, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { MarkdownDoc } from "@/components/MarkdownDoc";
@@ -149,6 +149,25 @@ export interface ClientDoc {
   content: string;
   status?: string;
   updatedAt: string | Date;
+}
+
+/** Copy-to-clipboard button. Strips the machine-facing html block from docs. */
+export function CopyButton({ text, label = "Copy", className = "" }: { text: string; label?: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text.replace(/```html[\s\S]*?```/gi, "").trim());
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      className={`flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground ${className}`}
+    >
+      {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+      {copied ? "Copied" : label}
+    </button>
+  );
 }
 
 export /** Rendered asset metadata from clients.get (image bytes served via /api/assets/:id). */
@@ -474,14 +493,14 @@ export const ENGINES: Array<{
     defaultCount: 5,
     hasStyles: false,
     docType: "content_ig_extra",
-    purposes: ["Mixed batch", "Top of funnel (reach)", "Middle (value / mechanism)", "Bottom (proof / offer)"],
+    purposes: ["Mixed", "Top of funnel", "Middle", "Bottom"],
     purposesLabel: "Funnel stage",
     hasAudience: true,
     hasOffer: true,
     notesPlaceholder: "Audience (which sub-avatar), offer, topics, pains to hit...",
     compose: (count, _s, notes, purpose) =>
       `Write EXACTLY ${count} Instagram reel scripts.${
-        purpose && purpose !== "Mixed batch" ? ` FUNNEL STAGE: ${purpose}.` : " Mix funnel stages for a balanced batch."
+        purpose && purpose !== "Mixed" ? ` FUNNEL STAGE: ${purpose}.` : " Mix funnel stages for a balanced batch."
       } Model the freshest Competitor Content Intel in the approved docs.${notes ? ` Operator direction: ${notes}` : " Pick the strongest topics from the research yourself."}`,
   },
   {
@@ -492,7 +511,7 @@ export const ENGINES: Array<{
     defaultCount: 1,
     hasStyles: false,
     docType: "content_yt_extra",
-    purposes: ["Middle (value / mechanism)", "Top of funnel (reach)", "Bottom (case study / proof)"],
+    purposes: ["Middle", "Top of funnel", "Bottom"],
     purposesLabel: "Funnel stage",
     hasAudience: true,
     hasOffer: true,
@@ -605,12 +624,6 @@ export const PREBUILT_SEQUENCES: Record<"webinar" | "call", Array<{ label: strin
   ],
   call: [
     {
-      label: "14-day community nurture",
-      blurb: "Free-community joiner sequence: value into the community, belief-breaking, book the call",
-      request:
-        "Write the 14-DAY COMMUNITY NURTURE sequence as ONE document titled '14-Day Community Nurture Sequence': one email per day to every free Skool community joiner, each pointing INTO the community to a named asset, breaking one belief, articulating pain, building urgency, CTA to book a call ([VSL LINK]).",
-    },
-    {
       label: "Post-booking show-up",
       blurb: "Booking to call: confirmation, value-intensive nurture, one FAQ email, 24h + 3h reminders",
       request:
@@ -648,7 +661,7 @@ export function PrebuiltSequences({
   const sequences = PREBUILT_SEQUENCES[funnelType];
 
   return (
-    <div className="grid sm:grid-cols-3 gap-2">
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
       {sequences.map((s) => (
         <button
           key={s.label}
@@ -779,7 +792,7 @@ export function EngineCard({
           {engine.hasAudience &&
             avatars.length > 0 &&
             selectorRow(
-              "Audience (pick one or more sub-avatars, empty = all)",
+              "Audience",
               avatars.map((av) => (
                 <button
                   key={av.name}
@@ -796,7 +809,7 @@ export function EngineCard({
 
           {engine.hasOffer &&
             selectorRow(
-              "Offer (which rung of the ladder this sells)",
+              "Offer",
               OFFER_LADDER.map((of) => (
                 <button key={of.label} onClick={() => setOffer(offer === of.label ? "" : of.label)} className={chip(offer === of.label)}>
                   {of.label}
@@ -810,7 +823,7 @@ export function EngineCard({
                 className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground mb-2.5"
               >
                 {showMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                More options
+                Add additional info
                 {!showMore && (styles.length > 0 || notes.trim() || addons.length > 0) && (
                   <span className="text-primary">· set</span>
                 )}
@@ -892,19 +905,19 @@ function stageTag(doc: ClientDoc): string | null {
 }
 
 /** The built-out HTML page a landing-page doc carries in a fenced ```html block. */
-function extractHtml(content: string): string | null {
+export function extractHtml(content: string): string | null {
   const m = content.match(/```html\s*([\s\S]*?)```/i);
   const html = m?.[1]?.trim();
   return html && /<(!doctype|html|section|div|body)/i.test(html) ? html : null;
 }
 
 /** The readable copy with the machine-facing html block removed. */
-function stripHtmlBlock(content: string): string {
+export function stripHtmlBlock(content: string): string {
   return content.replace(/```html[\s\S]*?```/gi, "").trim();
 }
 
 /** Live preview of a built landing page: desktop/mobile toggle, copy, download. */
-function HtmlPreview({ html, filename }: { html: string; filename: string }) {
+export function HtmlPreview({ html, filename }: { html: string; filename: string }) {
   const [view, setView] = useState<"desktop" | "mobile">("desktop");
   const [copied, setCopied] = useState(false);
 
@@ -1120,6 +1133,7 @@ export function DocBoard({
                           </button>
                         )}
                         <span className="flex-1" />
+                        <CopyButton text={doc.content} className="px-1.5" />
                         <button
                           onClick={() => {
                             setEditing(doc.id);
