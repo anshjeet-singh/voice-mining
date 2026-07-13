@@ -43,3 +43,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-11 · job 270012 · client: Trent Kus -->
 - Add a domain carve-out note: in funding, credit, and investing niches the word "leverage" (and "0%", "positioning", "sequence") is real mechanism language, not banned corporate filler. The default banned-words list (leverage, unlock, empower, elevate, journey, seamless) should flag "leverage" only when it is used as vague hype, never when it names an actual financial mechanism.
+
+<!-- 2026-07-13 · job 360003 · client: Blake Matthews -->
+- In a regulated niche (peptides, supplements, health, finance), the inline "real result, not typical" tag next to an income figure reads like the exact "tiny results-vary disclaimer bolted under a big claim" the polish pass is told to cut, but it is compliance-required and load-bearing. Add a carve-out: never strip a compliance tag that sits next to an earnings claim, even in a short SMS where it looks like a hedge. Strip corporate fog, keep the legal line.
