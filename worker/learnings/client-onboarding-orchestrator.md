@@ -44,3 +44,7 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · job 210001 · client: Trent Kus -->
 - Step 6 (Ad batch) defines the ad deliverables as a copy batch plus rendered creative and names no written campaign-plan artifact, yet this pipeline expects a `03_campaign_plan.md` (Forester architecture plus compliance pre-flight) as a Step 6 output. Add the campaign plan to the Step 6 spec explicitly, naming content-ads-cold-traffic and meta-ad-restrictions-prep as its source skills and fixing its filename and its references to the sibling angle/script and static/b-roll files.
+
+<!-- 2026-07-13 · job 330001 · client: Blake Matthews -->
+- There is a direct conflict between the global formatting rule "no em dashes anywhere" and the required `### Name — descriptor` sub-avatar heading, which the app parses on the dash. The heading dash is load-bearing for parsing and must be kept; the no-em-dash rule should be scoped explicitly to body prose and non-parsed headings, so writers do not strip the dash the parser depends on.
+- The ICP Snapshot's 11-section fixed template lists "Sub-Avatars tables with %" but the schwartz-awareness-mapper output (awareness level + messaging rules per sub-avatar) has no named home in that list. In practice the awareness map is a required carried-forward artifact and belongs in the ICP doc. Name an explicit "Awareness Stage & Messaging Map" section (plus per-sub-avatar awareness level) in the ICP template so the artifact is produced consistently instead of being improvised each run.
