@@ -29,3 +29,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-11 · job 270012 · client: Trent Kus -->
 - For a book-a-call / high-ticket funnel where price is never named in the emails, a "cash injection" or flash-promo cannot use the standard flash-sale mechanic (a price cut with a nameable deadline). The systemic move is a real time-boxed BOOKING window plus a fast-action BONUS that is a splinter of the core offer (never a discount of the core), with the pull coming from cost-of-inaction and honest calendar-cap scarcity. Add a call-funnel variant to the flash-sale / promo entry so this isn't re-derived per client.
+
+<!-- 2026-07-13 · job 360003 · client: Blake Matthews -->
+- In the free-community 14-day nurture, each value email carries BOTH a soft "consume this named lead magnet inside the community" pointer ([COMMUNITY LINK]) AND one hard conversion CTA (the call or the Q&A). The community-consumption pointer is value delivery, not a competing CTA, so it does not violate the "one CTA per email" gate. State this so writers under a strict "only N CTAs" spec do not drop the community pointer (the asset-multiplier that raises show/close rates) to satisfy the CTA count.
