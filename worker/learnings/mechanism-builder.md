@@ -7,3 +7,7 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-10 · framework mining session -->
 - The mechanism has TWO required halves (frameworks/dr-masters-scavenge.md): the unique mechanism behind the PROBLEM (the root cause they never knew, which removes self-blame and explains why past solutions failed) and the unique mechanism behind the SOLUTION. Completion test: the copy must be able to finish the sentence "the secret is in the...". A mechanism doc with only the solution half is incomplete.
+
+<!-- 2026-07-13 · job 330001 · client: Blake Matthews -->
+- The compliance-guard learning lists "finance, credit, lending, health, legal" but omits the supplement/peptide/nutraceutical class, which carries its own FDA claim restrictions (no human/medical claims, research-use-only positioning) distinct from general "health." Add these niches explicitly so the mechanism and its named benefits are built only on the compliant, publishable version, and product-outcome claims are flagged for a human.
+- The Output block (Failed Method / New Mechanism / Mechanism Name / Why It Works) does not require BOTH mechanism halves on its face, even though the framework and the existing learning demand them. Bake the two-half structure into the output template itself (problem-root-cause half + solution half, plus a "the secret is in the ___" completion check) so a run cannot ship a solution-only mechanism.
