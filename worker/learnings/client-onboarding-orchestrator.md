@@ -69,3 +69,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-14 · job 390001 · client: Blake Matthews -->
 - The Brand & Positioning exemplar (Ibby Credit DWY) opens with a `> Why this doc exists / Built from: [Market Intelligence Report, Client Voice recording, Competitor sheet]` blockquote. That opening directly violates the deliverable's own "no meta preamble, never open with Sources:" document rule. When matching the exemplar shape, drop the opening blockquote in the final client-facing doc and start on the single `#` title into Section 1. This is systemic: every client's Brand doc should ship without the exemplar's "why this doc exists / built from" preamble.
+
+<!-- 2026-07-14 · job 420001 · client: Trent Kus -->
+- The Brand & Positioning deliverable's 14 sections (One-Liner, Big Idea, Market Fit Check, Problem & Solution Mechanism, Enemy, Current vs Desired, USP table, Competitive Positioning, Awareness Levels & Big Domino, Empathy Matrix, Transformation, Verbatim Swipe Bank, Proof, Voice & Tone) are listed as bare titles only, with no per-section content spec, so every writer reconstructs the content shape from scratch. This is true for every client, not just this one. Add a one-line content contract per section (what goes in it, and whether it is a table) so the doc is reproducible without a Drive exemplar.

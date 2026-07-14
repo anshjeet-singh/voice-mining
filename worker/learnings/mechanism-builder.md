@@ -14,3 +14,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-13 · job 330002 · client: Blake Matthews -->
 - The peptide/nutraceutical compliance guard now correctly forces the mechanism onto the legitimate infrastructure story, but the doc still needs the income/earnings claims (not just medical claims) gated: business-opportunity earnings numbers require a "results not typical" disclaimer and substantiation-on-file before any public use, separate from the no-human/medical-claims rule. Bake both gates (earnings-claim disclaimer + medical-claim flag) into the mechanism/positioning output so a regulated-niche run cannot ship a public earnings claim unqualified.
+
+<!-- 2026-07-14 · job 420001 · client: Trent Kus -->
+- The output scaffold (Failed Method / New Mechanism / Mechanism Name / Why It Works) only forces the SOLUTION half of the mechanism. It should also force the PROBLEM-mechanism half (the hidden root cause that removes self-blame) and a literal "the secret is in the ___" completion line, because a solution-only mechanism reads as a lecture and fails the sophisticated-market credibility test. Make both halves and the completion test required fields in the template.
