@@ -853,13 +853,23 @@ function parseSubAvatars(doc?: ClientDoc): Avatar[] {
  * requeues the foundation stage with that note. This is how you correct the
  * ICP/offers/brand without leaving the Overview.
  */
+// Copy/script doc-sets the AI can rewrite with feedback. NOT the rendered ad
+// creatives — those live on the reject button in the Ads engine.
 const AI_TARGETS = [
   { key: "foundation", label: "Foundation" }, // ICP, Offers, Brand, Course
   { key: "skool", label: "Skool" }, // Free + Paid community
   { key: "emails", label: "Emails" },
-  { key: "ads", label: "Ads" },
+  { key: "more_scripts", label: "Ad scripts" },
+  { key: "more_content_ig", label: "Short-Form" },
+  { key: "more_content_yt", label: "YouTube" },
+  { key: "more_landers", label: "Funnel" },
 ] as const;
 type AiTarget = (typeof AI_TARGETS)[number]["key"];
+
+// Prefix that forces the worker to distill a systemic preference into
+// worker/learnings/<skill>.md so it applies to EVERY future client, not just this one.
+const PERMANENT_RULE_PREFIX =
+  "[PERMANENT RULE — this is a SYSTEMIC operator preference that is true for EVERY client, not just this one (e.g. formatting, structure, voice). You MUST distill it into craft_lessons.md for the relevant skill so it is applied on all future runs.]\n\n";
 
 function FoundationRefine({
   clientId,
@@ -872,11 +882,13 @@ function FoundationRefine({
 }) {
   const [target, setTarget] = useState<AiTarget>("foundation");
   const [msg, setMsg] = useState("");
+  const [teach, setTeach] = useState(false);
   const gen = trpc.clients.generateStage.useMutation({
     onSuccess: () => {
       invalidate();
       setMsg("");
-      toast.success("On it. Cashflow Coaches AI is updating that set");
+      toast.success(teach ? "On it, and I'll teach this to every future build" : "On it. Cashflow Coaches AI is updating that set");
+      setTeach(false);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -922,10 +934,16 @@ function FoundationRefine({
             placeholder="Tell the AI what to fix, update, or create..."
             className="w-full resize-none rounded-lg border border-border/50 bg-background/50 p-3 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
           />
+          <label className="mt-2 flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" checked={teach} onChange={() => setTeach((v) => !v)} className="w-3.5 h-3.5 accent-primary cursor-pointer" />
+            <span className="text-[11px] text-muted-foreground">
+              Make this a <span className="text-foreground font-medium">permanent rule</span> for every future build (not just this client)
+            </span>
+          </label>
           <button
             disabled={!msg.trim()}
-            onClick={() => gen.mutate({ clientId, stage: target, feedback: msg.trim() })}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
+            onClick={() => gen.mutate({ clientId, stage: target, feedback: (teach ? PERMANENT_RULE_PREFIX : "") + msg.trim() })}
+            className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
           >
             <Sparkles className="w-3 h-3" />
             Create
