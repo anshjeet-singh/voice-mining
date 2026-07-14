@@ -120,18 +120,18 @@ function SectionHeader({ id }: { id: string }) {
 }
 
 /** Split a markdown doc into its H1-H3 sections so each can be copied on its own. */
-function splitSections(md: string): Array<{ title: string; text: string }> {
-  const out: Array<{ title: string; text: string }> = [];
-  let cur: { title: string; text: string } | null = null;
+function splitSections(md: string): Array<{ title: string; text: string; level: number }> {
+  const out: Array<{ title: string; text: string; level: number }> = [];
+  let cur: { title: string; text: string; level: number } | null = null;
   for (const ln of md.split("\n")) {
     const h = ln.match(/^(#{1,3})\s+(.+)$/);
     if (h) {
       if (cur) out.push(cur);
-      cur = { title: h[2].replace(/[#*`]/g, "").trim(), text: ln + "\n" };
+      cur = { title: h[2].replace(/[#*`]/g, "").trim(), text: ln + "\n", level: h[1].length };
     } else if (cur) {
       cur.text += ln + "\n";
     } else if (ln.trim()) {
-      cur = { title: "Intro", text: ln + "\n" };
+      cur = { title: "Intro", text: ln + "\n", level: 2 };
     }
   }
   if (cur) out.push(cur);
@@ -213,21 +213,25 @@ function DocRow({ doc, invalidate }: { doc: ClientDoc; invalidate?: () => void }
           ) : (
             <>
               {html && <HtmlPreview html={html} filename={doc.title} />}
-              {sections.length > 1 && (
-                <div className="rounded-lg bg-background/40 p-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5 px-1">Copy a section</p>
-                  <div className="space-y-0.5">
-                    {sections.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2 px-1 py-0.5">
-                        <span className="flex-1 text-[11px] text-foreground/90 truncate">{s.title}</span>
-                        <CopyButton text={s.text} className="px-1.5" />
+              <div className="max-h-[28rem] overflow-y-auto rounded-lg bg-background/40 p-3 space-y-4">
+                {sections.map((s, i) => {
+                  const body = s.text.replace(/^#{1,3}\s+.+\n?/, "").trim();
+                  return (
+                    <div key={i} className={s.level >= 3 ? "pl-3" : ""}>
+                      <div className="flex items-center gap-2 mb-1 border-b border-border/25 pb-1">
+                        <h4
+                          className={`flex-1 min-w-0 font-semibold text-foreground ${
+                            s.level <= 1 ? "text-sm" : s.level === 2 ? "text-[13px]" : "text-xs text-foreground/80"
+                          }`}
+                        >
+                          {s.title}
+                        </h4>
+                        <CopyButton text={s.text} label="" className="opacity-60 hover:opacity-100 flex-shrink-0" />
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="max-h-[28rem] overflow-y-auto rounded-lg bg-background/40 p-3">
-                <MarkdownDoc content={stripHtmlBlock(doc.content)} />
+                      {body && <MarkdownDoc content={body} />}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
@@ -849,24 +853,34 @@ function parseSubAvatars(doc?: ClientDoc): Avatar[] {
  * requeues the foundation stage with that note. This is how you correct the
  * ICP/offers/brand without leaving the Overview.
  */
+const AI_TARGETS = [
+  { key: "foundation", label: "Foundation" }, // ICP, Offers, Brand, Course
+  { key: "skool", label: "Skool" }, // Free + Paid community
+  { key: "emails", label: "Emails" },
+  { key: "ads", label: "Ads" },
+] as const;
+type AiTarget = (typeof AI_TARGETS)[number]["key"];
+
 function FoundationRefine({
   clientId,
   invalidate,
-  job,
+  jobs,
 }: {
   clientId: number;
   invalidate: () => void;
-  job: { status?: string | null; progress?: string | null } | null;
+  jobs: Record<string, { status?: string | null; progress?: string | null } | null>;
 }) {
+  const [target, setTarget] = useState<AiTarget>("foundation");
   const [msg, setMsg] = useState("");
   const gen = trpc.clients.generateStage.useMutation({
     onSuccess: () => {
       invalidate();
       setMsg("");
-      toast.success("On it. Cashflow Coaches AI is updating the foundation");
+      toast.success("On it. Cashflow Coaches AI is updating that set");
     },
     onError: (err) => toast.error(err.message),
   });
+  const job = jobs[target];
   const busy = job?.status === "queued" || job?.status === "running" || gen.isPending;
   return (
     <div className="rounded-xl border border-primary/25 bg-gradient-to-r from-primary/[0.07] to-transparent p-4">
@@ -880,11 +894,27 @@ function FoundationRefine({
         <div className="flex items-center gap-2 py-2">
           <Loader2 className="w-3.5 h-3.5 text-primary animate-spin flex-shrink-0" />
           <p className="text-[11px] text-muted-foreground">
-            {job?.status === "queued" || gen.isPending ? "Queued, waiting for your Mac worker" : job?.progress || "Updating the foundation..."}
+            {job?.status === "queued" || gen.isPending ? "Queued, waiting for your Mac worker" : job?.progress || "Working on it..."}
           </p>
         </div>
       ) : (
         <>
+          <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+            <span className="text-[11px] text-muted-foreground mr-0.5">Update</span>
+            {AI_TARGETS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTarget(t.key)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                  target === t.key
+                    ? "bg-primary/20 text-primary border border-primary/40"
+                    : "bg-card/60 text-muted-foreground border border-border/40 hover:text-foreground"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
           <textarea
             value={msg}
             onChange={(e) => setMsg(e.target.value)}
@@ -894,7 +924,7 @@ function FoundationRefine({
           />
           <button
             disabled={!msg.trim()}
-            onClick={() => gen.mutate({ clientId, stage: "foundation", feedback: msg.trim() })}
+            onClick={() => gen.mutate({ clientId, stage: target, feedback: msg.trim() })}
             className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
           >
             <Sparkles className="w-3 h-3" />
@@ -1164,8 +1194,12 @@ export default function ClientStudio() {
                 </button>
               )}
 
-              {/* AI: correct the foundation without leaving the Overview */}
-              <FoundationRefine clientId={clientId} invalidate={invalidate} job={jobs.foundation ?? null} />
+              {/* AI: update any doc-set (Foundation / Skool / Emails / Ads) from the Overview */}
+              <FoundationRefine
+                clientId={clientId}
+                invalidate={invalidate}
+                jobs={jobs as unknown as Record<string, { status?: string | null; progress?: string | null } | null>}
+              />
 
               {/* The client's own live socials */}
               <ClientSocials clientId={clientId} client={data.client} invalidate={invalidate} />
