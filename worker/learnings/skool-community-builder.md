@@ -41,3 +41,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-14 · job 390001 · client: Blake Matthews -->
 - For a low-ticket paid community (the $97-tier peptide affiliate community), the operator rejected a descriptive prose tagline in favor of a stacked outcome ladder: mechanism line, placement/benefit line, income outcome line, then price + join CTA (e.g. "GET PAID TO POST / GET PLACED ON BRANDS / MAKE $10K/MO / JOIN FOR $97/MONTH," each with a leading emoji). Systemic pattern: a paid-community tagline/hero converts better as a 3-4 line emoji-led outcome stack ending on price + the join action than as a single descriptive sentence. Any income line in a regulated niche still carries its inline "real result, not typical" tag.
+
+<!-- 2026-07-14 · job 420001 · client: Trent Kus -->
+- Gamification level names must be EMOJI + one word (max two), and that word must be relevant to the client's actual industry/niche, not a generic climb word. Operator-flagged as a permanent systemic preference: keep the 9-level ladder identical across the free and paid communities, but the label on each level is one niche-specific word behind the emoji.
