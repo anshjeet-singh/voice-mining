@@ -1076,7 +1076,7 @@ function ClientSocials({
 
 /** Stage documents live with their engines; only Foundation stays on Overview. */
 const FOUNDATION_DOC_TYPES = ["icp_snapshot", "offers", "brand_positioning", "course_outline"];
-const SKOOL_DOC_TYPES = ["skool_free_community", "skool_paid_community"];
+const SKOOL_DOC_TYPES = ["skool_free_community", "skool_paid_community", "skool_lead_magnets"];
 const EMAIL_DOC_TYPES = ["email_sequence_14day", "email_postbooking", "email_noshow_followup", "email_prewebinar", "email_postwebinar", "sms_set"];
 const ADS_DOC_TYPES = ["ad_scripts", "ad_statics", "ad_campaign_plan"];
 

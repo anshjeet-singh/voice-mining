@@ -56,6 +56,7 @@ describe("stage registry", () => {
     expect(Object.keys(stageContract("skool", "call"))).toEqual([
       "skool_free_community",
       "skool_paid_community",
+      "skool_lead_magnets",
     ]);
     // Onboarding emails are just the community nurture + SMS now
     expect(Object.keys(stageContract("emails", "webinar"))).toEqual(["email_sequence_14day", "sms_set"]);
@@ -90,6 +91,13 @@ describe("stage registry", () => {
     expect(paid).toContain("ANNUAL PLAN");
     expect(paid).toContain("Total Value");
     expect(spec.extraInstructions).toContain("skool-paid-about-swipe.md");
+    // The 3 free-community lead magnets are built out in full (pages + worksheets + Loom script)
+    const magnets = spec.outputs.find((o) => o.docType === "skool_lead_magnets")!.description;
+    expect(magnets).toContain("THREE lead magnets");
+    expect(magnets).toContain("THREE content pages");
+    expect(magnets).toContain("TWO worksheets");
+    expect(magnets).toContain("Loom Script");
+    expect(magnets).toContain("NO FLUFF");
   });
 
   it("keeps onboarding emails to the community nurture set and defers the rest", () => {
