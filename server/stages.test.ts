@@ -137,23 +137,36 @@ describe("stage registry", () => {
     expect(spec.extraInstructions).toContain("no invented views");
   });
 
-  it("defines the landing pages engine as a GHL-pasteable, offer-routed, mobile-first contract", () => {
+  it("fills the canonical funnel templates with market copy + scripts (not a from-scratch design)", () => {
     const spec = stagePromptSpec("more_landers", "call")!;
     const desc = spec.outputs[0].description;
     expect(spec.outputs[0].docType).toBe("lander_extra");
     expect(desc).toContain("GOHIGHLEVEL");
-    expect(desc).toContain("PAGE TYPE");
-    expect(desc).toContain("[LAYOUT]");
-    expect(desc).toContain("MOBILE-FIRST");
-    // Also builds the page for real: a self-contained responsive HTML block
+    // Reads the two canonical templates as the EXACT base — fills, does not redesign
+    expect(desc).toContain("worker/templates/lander-vsl.html");
+    expect(desc).toContain("worker/templates/lander-postbooking.html");
+    expect(desc).toContain("FILL, DO NOT REDESIGN");
+    // Brand is fixed: Playfair font + standard blue default, only accent hex may change
+    expect(desc).toContain("Playfair");
+    expect(desc).toContain("#3f6fff");
+    // GHL fragment, not a full document (no doctype/html/head/body)
     expect(desc).toContain("```html");
-    expect(desc).toContain("<!doctype html>");
+    expect(desc).toContain("NO <!doctype>");
     expect(desc).toContain("@media");
+    // The two halves of the deliverable
+    expect(desc).toContain("4 CASE STUDIES");
+    expect(desc).toContain("9 BREAKOUT Q&A");
+    expect(desc).toContain("3 MAIN SCRIPTS");
+    expect(desc).toContain("9 BREAKOUT SCRIPTS");
     // Offer routing carries through to the page CTA
     expect(desc).toContain("HIGH TICKET -> [VSL LINK]");
-    // One doc per page via SPLIT so each page files as its own card
+    // Three SPLIT units: landing page, post-booking page, video scripts
     expect(desc).toContain("<!-- SPLIT -->");
+    expect(desc).toContain("# VSL Landing Page");
+    expect(desc).toContain("# Post-Booking Page");
+    expect(desc).toContain("# Video Scripts");
     expect(spec.childSkills.join()).toContain("vsl-and-sales-page-writer");
+    expect(spec.childSkills.join()).toContain("confirmation-page-that-converts");
     // On-demand, gated on ads
     expect(STAGES.more_landers.requires).toBe("ads");
     expect((ON_DEMAND_TYPES as readonly string[]).includes("more_landers")).toBe(true);

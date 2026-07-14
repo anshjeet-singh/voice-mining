@@ -1,0 +1,448 @@
+<!-- ═══════════════════════════════════════════════════════════════════════
+     LANDING PAGE  ·  paste into a GoHighLevel "Custom Code / HTML" element
+     (full-width, NOT a rich-text block). Self-contained + responsive.
+
+     ┌─ WHERE TO EDIT EVERYTHING ─────────────────────────────────────────┐
+     │  Floating social proof (imgs + lines) → SCRIPT ▸ PEOPLE + LINES     │
+     │  Any avatar photo                     → add  data-img="URL"  on .av │
+     │  Before/After slider images           → SECTION 4 ▸ style="...url"  │
+     │  Hero headline / VSL                  → SECTION 1                    │
+     │  Calendar / booking                   → SECTION 3                    │
+     │  Case-study videos + copy             → SECTION 5 ▸ .cv / .cx        │
+     │  Reviews                              → SECTION 6                    │
+     │  FAQ / Guarantee number               → SECTION 7 / 8               │
+     └────────────────────────────────────────────────────────────────────┘
+     AVATARS: <div class="av" data-img="">XX</div> — blank = initials, URL = photo.
+═══════════════════════════════════════════════════════════════════════ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600;1,700&display=swap" rel="stylesheet">
+
+<div id="lp-root">
+  <style>
+    #lp-root *{margin:0;padding:0;box-sizing:border-box}
+    #lp-root{
+      --bg:#05060b; --bg2:#0a0c15; --card:#0f1220; --line:rgba(255,255,255,.09);
+      --txt:#f5f7fc; --mut:#9aa4bb; --accent:#3f6fff; --accent2:#7d97ff; --hl:#2f6bff;
+      --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      --fancy:'Playfair Display',Georgia,"Times New Roman",serif;
+      background:var(--bg); color:var(--txt); font-family:var(--font);
+      -webkit-font-smoothing:antialiased; line-height:1.5; overflow-x:hidden;
+      /* full-bleed: break out of GHL's max-width column so the page spans edge-to-edge */
+      width:100vw; position:relative; left:50%; right:50%; margin-left:-50vw; margin-right:-50vw;
+    }
+    #lp-root .wrap{max-width:1120px;margin:0 auto;padding:0 22px;position:relative;z-index:2}
+    #lp-root .center{text-align:center}
+    #lp-root h1,#lp-root h2{font-weight:800;letter-spacing:-.025em;line-height:1.06}
+    /* THE premium emphasis word — identical everywhere (Simple / Questions / Answers / Guaranteed) */
+    #lp-root .fancy{font-family:var(--fancy);font-style:italic;font-weight:600;letter-spacing:0}
+    /* keyword highlight (hero) — translucent gradient marker, premium */
+    #lp-root .hl{display:inline-block;line-height:.9;padding:.05em .34em;vertical-align:baseline;
+      background:linear-gradient(115deg,rgba(63,111,255,.5),rgba(125,151,255,.14));color:#fff;border-radius:12px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),0 10px 32px rgba(63,111,255,.18)}
+    /* animated glowing video border */
+    @property --lpang{syntax:'<angle>';inherits:false;initial-value:0deg}
+    #lp-root .glowvid{position:relative;border-radius:24px;padding:2.5px;max-width:780px;margin:42px auto 0}
+    #lp-root .glowvid::before,#lp-root .glowvid::after{content:"";position:absolute;inset:0;border-radius:inherit;z-index:0;
+      background:conic-gradient(from var(--lpang),transparent 0deg 22deg,#3f6fff 40deg,#bcd4ff 50deg,#3f6fff 60deg,transparent 78deg 202deg,#3f6fff 220deg,#bcd4ff 230deg,#3f6fff 240deg,transparent 258deg 360deg);
+      animation:lpspin 15s linear infinite}
+    #lp-root .glowvid::after{filter:blur(15px);opacity:.7}
+    #lp-root .glowvid .video{position:relative;z-index:1;margin:0;max-width:none;border:0}
+    @keyframes lpspin{to{--lpang:360deg}}
+
+    /* ---------- buttons ---------- */
+    #lp-root .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#ffffff;color:#0a0c15;
+      font-weight:800;font-size:17px;padding:19px 44px;border-radius:999px;border:0;cursor:pointer;text-decoration:none;
+      box-shadow:0 0 0 1px rgba(255,255,255,.14),0 0 44px rgba(63,111,255,.5),0 14px 40px rgba(0,0,0,.45);
+      transition:transform .18s ease,box-shadow .18s ease}
+    #lp-root .btn:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(255,255,255,.1),0 0 56px rgba(63,111,255,.6),0 18px 50px rgba(63,111,255,.35)}
+    #lp-root .btn.glow{animation:lpglow 3.2s ease-in-out infinite}
+    @keyframes lpglow{0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,.06),0 0 30px rgba(63,111,255,.25),0 14px 40px rgba(0,0,0,.45)}
+      50%{box-shadow:0 0 0 1px rgba(255,255,255,.12),0 0 52px rgba(63,111,255,.55),0 16px 46px rgba(63,111,255,.3)}}
+    #lp-root .scarcity{display:inline-flex;align-items:stretch;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.06);
+      border:1px solid var(--line);box-shadow:0 0 34px rgba(63,111,255,.22),0 14px 40px rgba(0,0,0,.45)}
+    #lp-root .scarcity .count{display:flex;align-items:center;padding:0 22px;font-size:14px;font-weight:600;color:var(--mut);white-space:nowrap}
+    #lp-root .scarcity .btn{box-shadow:none;border-radius:999px}
+    #lp-root .cta-row{text-align:center}
+
+    /* ---------- avatars ---------- */
+    #lp-root .av{border-radius:50%;background:linear-gradient(135deg,#3f6fff,#7d5bff);background-size:cover;background-position:center;
+      display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex:0 0 auto}
+
+    /* ---------- floating background social proof (box-free, ONE LINE) ---------- */
+    #lp-root .bg-pops{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+    #lp-root .bg-pops .slot{position:absolute}
+    #lp-root .bg-pops .pop{display:flex;align-items:center;gap:11px;white-space:nowrap;
+      opacity:0;transition:opacity .85s ease;filter:drop-shadow(0 2px 10px rgba(0,0,0,.6))}
+    #lp-root .bg-pops .pop.show{opacity:.95}
+    #lp-root .bg-pops .av{width:36px;height:36px;font-size:12px}
+    #lp-root .bg-pops .ptx{font-size:13px;line-height:1;color:#e7ebf7;text-shadow:0 1px 8px rgba(0,0,0,.85);white-space:nowrap}
+
+    /* ---------- SECTION 1 · hero ---------- */
+    #lp-root .hero{position:relative;padding:78px 0 58px;min-height:660px;
+      background:radial-gradient(1200px 520px at 50% -12%,rgba(47,107,255,.2),transparent 62%),linear-gradient(180deg,var(--bg),var(--bg2))}
+    #lp-root .hero h1{font-size:clamp(40px,7.4vw,78px);line-height:1.16}
+    #lp-root .trust{display:inline-flex;align-items:center;gap:16px;margin-top:40px;padding:12px 24px 12px 14px;
+      background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:999px}
+    #lp-root .trust .avatars{display:flex}
+    #lp-root .trust .avatars .av{width:40px;height:40px;font-size:13px;border:2px solid var(--bg2);margin-left:-12px}
+    #lp-root .trust .avatars .av:first-child{margin-left:0}
+    #lp-root .trust .tt{text-align:left;line-height:1.3}
+    #lp-root .trust .tt .big{font-size:15px;font-weight:650}
+    #lp-root .trust .tt .stars{font-size:13px;color:var(--mut);margin-top:1px}
+    #lp-root .trust .tt .stars b{color:#fff}
+    #lp-root .stars-y{color:#ffb63d;letter-spacing:1.5px}
+    #lp-root .video{max-width:780px;margin:42px auto 0;aspect-ratio:16/9;border-radius:22px;overflow:hidden;position:relative;
+      border:1px solid var(--line);background:linear-gradient(135deg,#12203f,#0a0c15);background-size:cover;background-position:center;box-shadow:0 40px 100px rgba(0,0,0,.6)}
+    #lp-root .video iframe,#lp-root .video video{width:100%;height:100%;border:0;display:block;object-fit:cover}
+    /* clean play button — identical to the post-booking confirmation video */
+    #lp-root .video .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(47,107,255,.12)}
+    #lp-root .video .play span{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.94);display:flex;align-items:center;justify-content:center;color:#0a0c15;font-size:24px;padding-left:4px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+
+    /* ---------- marquee ribbon ---------- */
+    #lp-root .belt{background:linear-gradient(90deg,#15213f,#1a1740);border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;padding:14px 0}
+    #lp-root .belt .track{display:flex;width:max-content;animation:lpmarq 30s linear infinite}
+    #lp-root .belt .it{display:inline-flex;align-items:center;font-weight:700;font-size:13px;letter-spacing:.18em;color:#c7d0ea;text-transform:uppercase;padding:0 34px;white-space:nowrap}
+    #lp-root .belt .it::after{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent2);margin-left:34px}
+    @keyframes lpmarq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+    /* ---------- generic section ---------- */
+    #lp-root .sec{padding:78px 0}
+    #lp-root .sec h2{font-size:clamp(30px,5vw,50px)}
+    #lp-root .sec .lead{color:var(--mut);font-size:clamp(14px,2.4vw,17px);margin-top:12px}
+
+    /* ---------- SECTION 3 · booking ---------- */
+    #lp-root .booking{padding:44px 0 62px;scroll-margin-top:20px}
+    #lp-root .booking .slot-cal{max-width:900px;margin:0 auto;min-height:560px;background:var(--card);border:1px dashed var(--line);border-radius:22px;display:flex;align-items:center;justify-content:center;color:var(--mut);text-align:center;padding:30px}
+
+    /* ---------- SECTION 4 · before / after SLIDER ---------- */
+    #lp-root .baslider{position:relative;max-width:840px;margin:40px auto 0;aspect-ratio:16/9;border-radius:20px;overflow:hidden;
+      border:1px solid var(--line);user-select:none;touch-action:none;cursor:ew-resize;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+    #lp-root .baslider .ba-pane{position:absolute;inset:0;background-size:cover;background-position:center;
+      display:flex;align-items:flex-end;justify-content:flex-start}
+    #lp-root .baslider .ba-after{background-image:linear-gradient(135deg,#0e3a24,#0a0c15)}   /* replace url() to add your AFTER image */
+    #lp-root .baslider .ba-before{background-image:linear-gradient(135deg,#3a1414,#0a0c15);   /* replace url() to add your BEFORE image */
+      clip-path:inset(0 calc(100% - var(--pos,50%)) 0 0)}
+    #lp-root .baslider .lbl{margin:16px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+      background:rgba(0,0,0,.5);border:1px solid var(--line);padding:6px 12px;border-radius:999px}
+    #lp-root .baslider .ba-after .lbl{margin-left:auto}
+    #lp-root .baslider .ba-handle{position:absolute;top:0;bottom:0;left:var(--pos,50%);width:2px;background:#fff;transform:translateX(-1px);z-index:3}
+    #lp-root .baslider .ba-handle::after{content:"⟺";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:42px;height:42px;border-radius:50%;background:#fff;color:#0a0c15;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+
+    /* ---------- SECTION 5 · case studies (CLEAN — heading, video, name+tag row, white bullets) ---------- */
+    #lp-root .cases{max-width:940px;margin:40px auto 0;display:flex;flex-direction:column;gap:20px}
+    #lp-root .case{display:grid;grid-template-columns:230px 1fr;grid-template-rows:auto 1fr;column-gap:28px;row-gap:14px;align-items:start;
+      background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px}
+    #lp-root .case .cv{grid-column:1;grid-row:1 / 3;aspect-ratio:4/5;border-radius:14px;overflow:hidden;position:relative;background:linear-gradient(135deg,#16233f,#0a0c15);border:1px solid var(--line)}
+    #lp-root .case .ct{grid-column:2;grid-row:1;font-size:clamp(18px,2.4vw,23px);font-weight:800;letter-spacing:-.02em;line-height:1.2;text-align:left}
+    #lp-root .case .cx{grid-column:2;grid-row:2;text-align:left}
+    #lp-root .case.flip .cv{grid-column:2}
+    #lp-root .case.flip .ct,#lp-root .case.flip .cx{grid-column:1}
+    #lp-root .case .cv iframe,#lp-root .case .cv video{width:100%;height:100%;border:0;object-fit:cover}
+    #lp-root .case .cv .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+    #lp-root .case .cv .play span{width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;color:#0a0c15;font-size:18px;padding-left:3px}
+    #lp-root .case .who-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+    #lp-root .case .who-row .nm{font-size:14.5px;font-weight:700;color:#fff}
+    #lp-root .case .chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);background:rgba(63,111,255,.12);border:1px solid rgba(63,111,255,.28);padding:5px 11px;border-radius:999px;white-space:nowrap}
+    #lp-root .case .pts{list-style:none;margin:0;display:flex;flex-direction:column;gap:8px}
+    #lp-root .case .pts li{position:relative;padding-left:24px;font-size:14px;color:#fff;line-height:1.5}
+    #lp-root .case .pts li::before{content:"✓";position:absolute;left:0;top:2px;color:#4ade80;font-weight:800}
+
+    /* ---------- SECTION 6 · review belts (TALLER cards) ---------- */
+    #lp-root .belts{margin-top:6px;display:flex;flex-direction:column;gap:16px;
+      -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+    #lp-root .rbelt{overflow:hidden}
+    #lp-root .rbelt .row{display:flex;gap:16px;width:max-content}
+    #lp-root .rbelt.r1 .row{animation:lprb 46s linear infinite}
+    #lp-root .rbelt.r2 .row{animation:lprb 46s linear infinite reverse}
+    #lp-root .belts:hover .row{animation-play-state:paused}
+    #lp-root .rcard{width:352px;min-height:196px;background:var(--card);border:1px solid var(--line);border-radius:16px;
+      padding:26px;flex:0 0 auto;display:flex;flex-direction:column;justify-content:space-between}
+    #lp-root .rcard .q{font-size:15px;line-height:1.65;color:#e6eaf6}
+    #lp-root .rcard .who{display:flex;align-items:center;gap:11px;margin-top:18px}
+    #lp-root .rcard .who .av{width:38px;height:38px;font-size:13px}
+    #lp-root .rcard .who .nm{font-size:13.5px;font-weight:700}
+    #lp-root .rcard .who .rl{font-size:12px;color:var(--mut)}
+    @keyframes lprb{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+    /* ---------- SECTION 7 · FAQ ---------- */
+    #lp-root .faq{max-width:780px;margin:42px auto 0;display:flex;flex-direction:column;gap:12px}
+    #lp-root .faq details{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+    #lp-root .faq summary{list-style:none;cursor:pointer;padding:21px 24px;font-size:clamp(15px,2.4vw,18px);font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:16px}
+    #lp-root .faq summary::-webkit-details-marker{display:none}
+    #lp-root .faq summary .ic{width:24px;height:24px;flex:0 0 auto;position:relative}
+    #lp-root .faq summary .ic::before,#lp-root .faq summary .ic::after{content:"";position:absolute;background:var(--accent2);border-radius:2px;transition:transform .2s ease}
+    #lp-root .faq summary .ic::before{top:11px;left:4px;right:4px;height:2px}
+    #lp-root .faq summary .ic::after{left:11px;top:4px;bottom:4px;width:2px}
+    #lp-root .faq details[open] summary .ic::after{transform:scaleY(0)}
+    #lp-root .faq .ans{padding:0 24px 22px;color:var(--mut);font-size:15px;line-height:1.7}
+
+    /* ---------- SECTION 8 · guarantee ending ---------- */
+    #lp-root .guar{position:relative;padding:150px 0;text-align:center;overflow:hidden;min-height:640px;display:flex;align-items:center;
+      background:radial-gradient(1000px 460px at 50% 120%,rgba(47,107,255,.24),transparent 60%),var(--bg2)}
+    #lp-root .guar .bignum{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(140px,36vw,460px);font-weight:900;letter-spacing:-.045em;line-height:1;color:rgba(255,255,255,.04);pointer-events:none;white-space:nowrap;z-index:0}
+    #lp-root .guar h2{font-size:clamp(38px,7vw,76px)}
+    #lp-root .guar .g-sub{color:var(--mut);margin:16px 0 32px;font-size:clamp(14px,2.4vw,18px)}
+    /* guarantee floating-proof slot positions (desktop) */
+    #lp-root .guar .g1{top:14%;left:4%}#lp-root .guar .g2{top:46%;left:7%}#lp-root .guar .g3{bottom:16%;left:5%}
+    #lp-root .guar .g4{top:20%;right:4%}#lp-root .guar .g5{top:54%;right:7%}#lp-root .guar .g6{bottom:14%;right:5%}
+
+    /* ---------- footer ---------- */
+    #lp-root .foot{padding:46px 22px;text-align:center;border-top:1px solid var(--line);background:var(--bg)}
+    #lp-root .foot .dis{max-width:760px;margin:0 auto;color:var(--mut);font-size:12px;line-height:1.7}
+    #lp-root .foot .cp{margin-top:14px;color:var(--mut);font-size:12.5px}
+    #lp-root .foot a{color:#c7d0ea;text-decoration:none}
+
+    /* ---------- mobile ---------- */
+    @media(max-width:820px){
+      /* hero pops hidden (no room); guarantee pops stay but move to corners + shrink */
+      #lp-root .hero .bg-pops{display:none}
+      #lp-root .guar .g2,#lp-root .guar .g5{display:none}
+      #lp-root .guar .g1{top:5%;left:3%}#lp-root .guar .g3{bottom:7%;left:3%}
+      #lp-root .guar .g4{top:5%;right:3%}#lp-root .guar .g6{bottom:7%;right:3%}
+      #lp-root .bg-pops .av{width:26px;height:26px;font-size:9px}
+      #lp-root .bg-pops .ptx{font-size:10.5px}
+      /* case studies stack: heading on top → 16:9 video → name+tag → white bullets */
+      #lp-root .case{display:flex;flex-direction:column;gap:14px}
+      #lp-root .case .ct{order:1;text-align:center}
+      #lp-root .case .cv{order:2;width:100%;max-width:340px;aspect-ratio:16/9;margin:0 auto}
+      #lp-root .case.flip .cv{order:2}
+      #lp-root .case .cx{order:3}
+      #lp-root .case .who-row{justify-content:center}
+      #lp-root .case .pts{max-width:320px;margin-left:auto;margin-right:auto}
+      /* zoom the review belts out further so they're easy to read on mobile */
+      #lp-root .rcard{width:220px;min-height:0;padding:18px}
+      #lp-root .rcard .q{font-size:12.5px;line-height:1.5}
+      #lp-root .rcard .who{margin-top:14px}
+      #lp-root .rcard .who .av{width:30px;height:30px;font-size:11px}
+      #lp-root .rcard .who .nm{font-size:12.5px}
+      #lp-root .rcard .who .rl{font-size:11px}
+      #lp-root .sec{padding:56px 0}
+      #lp-root .guar{padding:104px 0;min-height:auto}
+      #lp-root .btn{font-size:16px;padding:17px 36px}
+    }
+  </style>
+
+  <!-- ══════════ SECTION 1 · HERO ══════════ -->
+  <section class="hero center">
+    <div class="bg-pops" data-pops>
+      <div class="slot" style="top:16%;left:3%"></div><div class="slot" style="top:44%;left:6%"></div><div class="slot" style="bottom:14%;left:4%"></div>
+      <div class="slot" style="top:24%;right:3%"></div><div class="slot" style="top:52%;right:6%"></div><div class="slot" style="bottom:16%;right:4%"></div>
+    </div>
+    <div class="wrap">
+      <h1>Client Acquisition<br>Made <span class="fancy hl">Simple.</span></h1>
+      <div class="trust">
+        <div class="avatars"><div class="av" data-img="">TK</div><div class="av" data-img="">JR</div><div class="av" data-img="">MB</div><div class="av" data-img="">SL</div><div class="av" data-img="">DA</div></div>
+        <div class="tt"><div class="big">Trusted by 400+ Business Owners</div><div class="stars"><span class="stars-y">★★★★★</span> &nbsp;<b>4.92/5</b></div></div>
+      </div>
+      <!-- [VSL EMBED] replace the .play line with your iframe (same as post-booking video) -->
+      <div class="glowvid">
+        <div class="video" id="lp-video" data-poster="">
+          <div class="play"><span>▶</span></div>
+          <!-- <iframe src="[VSL EMBED URL]" allow="autoplay; fullscreen"></iframe> -->
+        </div>
+      </div>
+      <div style="margin-top:34px"><a class="btn glow" href="#booking">Secure Your Spot</a></div>
+    </div>
+  </section>
+
+  <!-- ══════════ RIBBON (copy #1 — right after the hero) ══════════ -->
+  <div class="belt"><div class="track lp-marq">
+    <div class="it">Reject Mediocrity</div><div class="it">Embrace Mastery</div><div class="it">Reject Mediocrity</div><div class="it">Embrace Mastery</div>
+    <div class="it">Reject Mediocrity</div><div class="it">Embrace Mastery</div><div class="it">Reject Mediocrity</div><div class="it">Embrace Mastery</div>
+  </div></div>
+
+  <!-- ══════════ SECTION 3 · BOOKING ══════════ -->
+  <section class="booking" id="booking">
+    <div class="wrap center"><div class="slot-cal">📅 &nbsp;INSERT YOUR GHL CALENDAR BOOKING EMBED HERE</div></div>
+  </section>
+
+  <!-- ══════════ SECTION 4 · BEFORE / AFTER SLIDER ══════════ -->
+  <section class="sec center">
+    <div class="wrap">
+      <h2>Before <span class="fancy">vs</span> After</h2>
+      <p class="lead">Drag the slider. Same person, new system.</p>
+      <!-- Add your two images: put a URL inside url('...') on .ba-before and .ba-after -->
+      <div class="baslider" id="lp-baslider">
+        <div class="ba-pane ba-after"><span class="lbl">After</span></div>
+        <div class="ba-pane ba-before"><span class="lbl">Before</span></div>
+        <div class="ba-handle"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ RIBBON (copy #2 — just before Members) ══════════ -->
+  <div class="belt"><div class="track lp-marq">
+    <div class="it">Reject Mediocrity</div><div class="it">Embrace Mastery</div><div class="it">Reject Mediocrity</div><div class="it">Embrace Mastery</div>
+    <div class="it">Reject Mediocrity</div><div class="it">Embrace Mastery</div><div class="it">Reject Mediocrity</div><div class="it">Embrace Mastery</div>
+  </div></div>
+
+  <!-- ══════════ SECTION 5 · HEAR FROM OUR MEMBERS ══════════ -->
+  <section class="sec center">
+    <div class="wrap">
+      <h2>Hear From Our Members.</h2>
+      <div style="margin-top:22px;display:flex;justify-content:center">
+        <div class="trust" style="margin-top:0">
+          <div class="avatars"><div class="av" data-img="">TK</div><div class="av" data-img="">JR</div><div class="av" data-img="">MB</div><div class="av" data-img="">SL</div><div class="av" data-img="">DA</div></div>
+          <div class="tt"><div class="big">Trusted by 400+ Business Owners</div><div class="stars"><span class="stars-y">★★★★★</span> &nbsp;<b>4.92/5</b></div></div>
+        </div>
+      </div>
+
+      <!-- [CASE STUDY] .flip = video on the right (desktop). Mobile: heading on top → video → name+tag → bullets. -->
+      <div class="cases">
+        <div class="case">
+          <div class="cv"><div class="play"><span>▶</span></div><!-- <iframe src="[VIDEO]"></iframe> --></div>
+          <h3 class="ct">From denied everywhere to $151K approved.</h3>
+          <div class="cx">
+            <div class="who-row"><span class="nm">Member Name</span><span class="chip">$151K Funded</span></div>
+            <ul class="pts"><li>Was capped at $50K applying alone</li><li>File positioned and inquiries cleaned up first</li><li>Walked in through a real relationship manager</li><li>$151K approved across two banks in weeks</li></ul>
+          </div>
+        </div>
+        <div class="case flip">
+          <div class="cv"><div class="play"><span>▶</span></div></div>
+          <h3 class="ct">Credit jumped 240 points in weeks.</h3>
+          <div class="cx">
+            <div class="who-row"><span class="nm">Member Name</span><span class="chip">550 → 790</span></div>
+            <ul class="pts"><li>Started at a 550, denied everywhere</li><li>Negative items disputed and removed</li><li>Two 0% cards, $65K total, approved</li></ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="cta-row" style="margin-top:36px"><a class="btn glow" href="#booking">Secure Your Spot</a></div>
+
+      <div class="cases" style="margin-top:36px">
+        <div class="case">
+          <div class="cv"><div class="play"><span>▶</span></div></div>
+          <h3 class="ct">Approved after being turned down twice.</h3>
+          <div class="cx">
+            <div class="who-row"><span class="nm">Member Name</span><span class="chip">$85K SoFi</span></div>
+            <ul class="pts"><li>Denied by SoFi twice on their own</li><li>Application resequenced the right way</li><li>$85K approved on the third pass</li></ul>
+          </div>
+        </div>
+        <div class="case flip">
+          <div class="cv"><div class="play"><span>▶</span></div></div>
+          <h3 class="ct">Funded, paid the fee after money landed.</h3>
+          <div class="cx">
+            <div class="who-row"><span class="nm">Member Name</span><span class="chip">$0 Up Front</span></div>
+            <ul class="pts"><li>Never paid a dollar up front</li><li>Fee only collected after funding hit</li><li>Deployed inside the 0% window</li></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ SECTION 6 · REVIEW BELTS ══════════ -->
+  <section class="sec" style="padding-top:0;padding-bottom:36px">
+    <div class="belts">
+      <div class="rbelt r1"><div class="row">
+        <div class="rcard"><div class="q">"Extremely responsive team. The best part is how fast they move on everything, no chasing, no waiting."</div><div class="who"><div class="av" data-img="">RS</div><div><div class="nm">Ryan S.</div><div class="rl">Business Owner</div></div></div></div>
+        <div class="rcard"><div class="q">"Two months in: real approvals, not promises. This is the real deal and I only wish I'd started sooner."</div><div class="who"><div class="av" data-img="">CD</div><div><div class="nm">Celine D.</div><div class="rl">Founder</div></div></div></div>
+        <div class="rcard"><div class="q">"Not just funded, a repeatable system I can run again next quarter without guessing my way through it."</div><div class="who"><div class="av" data-img="">BR</div><div><div class="nm">Barry R.</div><div class="rl">Consultant</div></div></div></div>
+        <div class="rcard"><div class="q">"From the very first call it was clear I was in great hands. The whole thing was nothing short of exceptional."</div><div class="who"><div class="av" data-img="">JS</div><div><div class="nm">Jeff S.</div><div class="rl">Owner</div></div></div></div>
+      </div></div>
+      <div class="rbelt r2"><div class="row">
+        <div class="rcard"><div class="q">"They walked my file in through a real banker instead of an online form. Approved the same week."</div><div class="who"><div class="av" data-img="">MB</div><div><div class="nm">Morgan B.</div><div class="rl">LLC Owner</div></div></div></div>
+        <div class="rcard"><div class="q">"Fixed my credit and got me funded when everyone else said no. I genuinely wish I found them sooner."</div><div class="who"><div class="av" data-img="">DA</div><div><div class="nm">David A.</div><div class="rl">Investor</div></div></div></div>
+        <div class="rcard"><div class="q">"$100K+ in 0% capital, deployed and cleared inside the window exactly like they laid it out for me."</div><div class="who"><div class="av" data-img="">KW</div><div><div class="nm">Kayla W.</div><div class="rl">Operator</div></div></div></div>
+        <div class="rcard"><div class="q">"Honest, fast, and it actually worked. Every step was mapped out. Can't recommend these guys enough."</div><div class="who"><div class="av" data-img="">TP</div><div><div class="nm">Tom P.</div><div class="rl">Owner</div></div></div></div>
+      </div></div>
+    </div>
+    <div class="cta-row" style="margin-top:40px"><a class="btn glow" href="#booking">Secure Your Spot</a></div>
+  </section>
+
+  <!-- ══════════ SECTION 7 · FAQ ══════════ -->
+  <section class="sec center" style="padding-top:64px">
+    <div class="wrap">
+      <h2>You've Got <span class="fancy">Questions</span>.<br>We've Got <span class="fancy">Answers</span>.</h2>
+      <div class="faq">
+        <details><summary>Who is this NOT for?<span class="ic"></span></summary><div class="ans">Edit this answer.</div></details>
+        <details><summary>What results can I expect?<span class="ic"></span></summary><div class="ans">Edit this answer.</div></details>
+        <details><summary>How much does it cost?<span class="ic"></span></summary><div class="ans">Edit this answer.</div></details>
+        <details><summary>Do I need good credit to begin?<span class="ic"></span></summary><div class="ans">Edit this answer.</div></details>
+        <details><summary>Will this work in my situation?<span class="ic"></span></summary><div class="ans">Edit this answer.</div></details>
+        <details><summary>How does the guarantee work?<span class="ic"></span></summary><div class="ans">Edit this answer.</div></details>
+        <details><summary>How much of my time does it take?<span class="ic"></span></summary><div class="ans">Edit this answer.</div></details>
+        <details><summary>What makes you different?<span class="ic"></span></summary><div class="ans">Edit this answer.</div></details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ SECTION 8 · GUARANTEE ENDING ══════════ -->
+  <section class="guar center">
+    <div class="bignum">$100K+</div>
+    <div class="bg-pops" data-pops>
+      <div class="slot g1"></div><div class="slot g2"></div><div class="slot g3"></div>
+      <div class="slot g4"></div><div class="slot g5"></div><div class="slot g6"></div>
+    </div>
+    <div class="wrap">
+      <h2>$100K+ In Funding,<br><span class="fancy">Guaranteed</span>.</h2>
+      <p class="g-sub">Or we work for free until you get there.</p>
+      <div class="scarcity"><div class="count">68/75 Spots</div><a class="btn glow" href="#booking">Secure Your Spot</a></div>
+    </div>
+  </section>
+
+  <!-- ══════════ FOOTER ══════════ -->
+  <footer class="foot">
+    <p class="dis">This site is not a part of the Facebook / Meta website or Meta Platforms Inc., nor is it endorsed by Meta in any way. FACEBOOK and INSTAGRAM are trademarks of Meta Platforms, Inc. This site is not a part of YouTube or Google LLC, nor endorsed by them in any way.</p>
+    <p class="cp">© 2026 [COMPANY NAME]. All rights reserved. &nbsp;·&nbsp; <a href="[PRIVACY POLICY URL]">Privacy Policy</a> &nbsp;·&nbsp; <a href="[TERMS URL]">Terms</a></p>
+  </footer>
+
+  <script>
+  (function(){
+    /* ════ EDIT YOUR FLOATING SOCIAL PROOF HERE ═════════════════════════
+       PEOPLE: 8-10 people reused everywhere (paste a photo URL in img, or leave '' for initials)
+       LINES : any number of one-liners; each shows next to a person (cycled) */
+    /* 8 people reused across all 20 lines — paste 8 photo URLs into img:'' */
+    var PEOPLE = [
+      {img:'',initials:'JL'},{img:'',initials:'MR'},{img:'',initials:'AD'},{img:'',initials:'TS'},
+      {img:'',initials:'KW'},{img:'',initials:'BN'},{img:'',initials:'CV'},{img:'',initials:'RP'}
+    ];
+    var LINES = [
+      'about 40 booked calls today 😅','6.4k leads from 2 videos 🔥','$151K approved 💣','$30k–$108k in 30 days 💸',
+      'Credit 550 → 790 📈','$85K SoFi approval 🚀','Funded, $0 up front 🔥','Finally 6 figures 🤑','Approved this week 😎',
+      '75:1 ROI 🔥','$220K stacked in 60 days 💳','Denied 4x, then approved ✅','First deal funded ⚡','Score fixed 🧠',
+      '$40K SBA line 🏦','Two 0% cards, $65K 💵','From 580 to fundable 📊','First client closed 🤝','Paid off in the window 🎯','Real banker, real yes 🙌'
+    ];
+    function makePop(pi,li){
+      var p=PEOPLE[pi%PEOPLE.length], el=document.createElement('div'); el.className='pop';
+      var st=p.img?' style="background-image:url(\''+p.img+'\')"':'', tx=p.img?'':(p.initials||'');
+      el.innerHTML='<div class="av"'+st+'>'+tx+'</div><div class="ptx">'+LINES[li%LINES.length]+'</div>'; return el;
+    }
+    /* calm cadence: one appears every 1-5s, stays ~2.6s */
+    document.querySelectorAll('#lp-root [data-pops]').forEach(function(host){
+      var slots=[].slice.call(host.querySelectorAll('.slot')), si=0, li=Math.floor(Math.random()*LINES.length), pi=Math.floor(Math.random()*PEOPLE.length);
+      function fire(){
+        var slot=slots[si%slots.length]; si++; slot.innerHTML='';
+        var el=makePop(pi++,li++); slot.appendChild(el);
+        requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.classList.add('show'); }); });
+        setTimeout(function(){ el.classList.remove('show'); setTimeout(function(){ el.remove(); },1400); },4600);
+        setTimeout(fire, 1700+Math.random()*5600);
+      }
+      setTimeout(fire, 900);
+    });
+    /* photo avatars anywhere: <div class="av" data-img="URL"> */
+    document.querySelectorAll('#lp-root .av[data-img]').forEach(function(av){
+      var u=av.getAttribute('data-img'); if(u){ av.style.backgroundImage="url('"+u+"')"; av.textContent=''; }
+    });
+    /* seamless marquee + belts */
+    document.querySelectorAll('#lp-root .lp-marq').forEach(function(m){ m.innerHTML+=m.innerHTML; });
+    document.querySelectorAll('#lp-root .rbelt .row').forEach(function(r){ r.innerHTML+=r.innerHTML; });
+    /* before/after drag slider */
+    var s=document.getElementById('lp-baslider');
+    if(s){ var drag=false; s.style.setProperty('--pos','50%');
+      function set(x){ var r=s.getBoundingClientRect(); var p=Math.max(0,Math.min(100,(x-r.left)/r.width*100)); s.style.setProperty('--pos',p+'%'); }
+      s.addEventListener('pointerdown',function(e){ drag=true; set(e.clientX); });
+      window.addEventListener('pointermove',function(e){ if(drag) set(e.clientX); });
+      window.addEventListener('pointerup',function(){ drag=false; });
+    }
+    /* poster thumbnails + click-to-reveal play button (same behaviour as post-booking) */
+    document.querySelectorAll('#lp-root [data-poster]').forEach(function(el){
+      var u=el.getAttribute('data-poster'); if(u){ el.style.backgroundImage="url('"+u+"')"; }
+    });
+    document.querySelectorAll('#lp-root .video .play').forEach(function(p){
+      p.addEventListener('click',function(){ p.style.opacity='0'; setTimeout(function(){ p.style.display='none'; },160); });
+    });
+  })();
+  </script>
+</div>
