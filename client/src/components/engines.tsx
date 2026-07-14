@@ -786,20 +786,14 @@ export function EngineCard({
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-3 mb-2.5">
-            <span className="text-[11px] text-muted-foreground w-10">Count</span>
-            <input
-              type="range"
-              min={1}
-              max={30}
-              value={count}
-              onChange={(e) => setCount(Number(e.target.value))}
-              className="flex-1 h-1.5 accent-primary cursor-pointer"
-            />
-            <span className="w-8 text-center text-xs font-semibold text-foreground bg-card/60 rounded px-1.5 py-0.5 tabular-nums">
-              {count}
-            </span>
-          </div>
+          {selectorRow(
+            "Count",
+            engine.counts.map((c) => (
+              <button key={c} onClick={() => setCount(c)} className={chip(count === c)}>
+                {c}
+              </button>
+            ))
+          )}
 
           {engine.purposes &&
             selectorRow(

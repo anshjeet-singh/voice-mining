@@ -206,11 +206,22 @@ export const appRouter = router({
         const assets = await getClientAssetsMeta(input.id);
         const completeSearch = searches.find((sr) => sr.status === "complete");
         const researchReport = completeSearch ? await getReportBySearchId(completeSearch.id) : null;
+        // A linked report (onboarding chose an existing report instead of running a
+        // fresh search) also carries competitor intel — harvest it too so the
+        // Competitor Desk is seeded from the research even without a client search.
+        const linkedReport =
+          client.linkedReportId && client.linkedReportId !== researchReport?.id
+            ? await getReportById(client.linkedReportId)
+            : null;
         // Platform-tagged competitor sources pre-seed the Competitor Desk's miner.
         // The research report's competitor intel section carries channel links too.
         const competitorSources = harvestCompetitorSources({
           researchUrls: searches.flatMap((sr) => (sr.competitorUrls as string[] | null) ?? []),
-          researchText: researchReport ? JSON.stringify(researchReport) : undefined,
+          researchText:
+            [researchReport, linkedReport]
+              .filter(Boolean)
+              .map((r) => JSON.stringify(r))
+              .join("\n") || undefined,
           onboardingTexts: documents.filter((d) => d.kind === "onboarding").map((d) => d.content),
         });
         return {
