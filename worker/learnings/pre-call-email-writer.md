@@ -58,3 +58,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-13 · job 360003 · client: Blake Matthews -->
 - When the community 14-day nurture uses TWO alternating CTAs (book the free call plus add the weekly Q&A to calendar) rather than the single [VSL LINK] the emails-and-booking arc assumes, keep the arc's angle-per-day but alternate the CTA destination by email, weighting the money CTA (the call) and using the softer engagement CTA (the recurring Q&A) on the big-idea, mechanism, proof-flip, founder-story, and open-loop-close beats. Worth a one-line note so the two-CTA variant is not re-derived each run.
+
+<!-- 2026-07-14 · job 420004 · client: Blake Matthews -->
+- This skill already gets mis-reached-for on pre-booking nurtures. The "VSL opted-in (not booked)" sequence is a third case it will be name-matched for and should be explicitly routed: it is PRE-booking (no call exists yet, so no hour-stamped-from-booking cadence, no "the email IS the consumable" 1,000-word length), but it is warmer and more aggressive than the 14-day community arc (3 to 8 hour cadence, not one-per-day). Add a one-line disambiguation so writers do not apply the 72-hour post-booking hour-stamps or the community arc's daily cadence to it.

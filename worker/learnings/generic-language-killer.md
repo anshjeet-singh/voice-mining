@@ -46,3 +46,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-13 · job 360003 · client: Blake Matthews -->
 - In a regulated niche (peptides, supplements, health, finance), the inline "real result, not typical" tag next to an income figure reads like the exact "tiny results-vary disclaimer bolted under a big claim" the polish pass is told to cut, but it is compliance-required and load-bearing. Add a carve-out: never strip a compliance tag that sits next to an earnings claim, even in a short SMS where it looks like a hedge. Strip corporate fog, keep the legal line.
+
+<!-- 2026-07-14 · job 420004 · client: Blake Matthews -->
+- On a warm, opted-in high-ticket nurture in a regulated niche, two rules that normally conflict have to coexist and the polish pass must hold both: (1) keep the compliance tag ("real result, not typical, research use only") inline next to every income figure because peptides plus earnings is a double compliance gate, but (2) enforce it as ONE clean tag per figure, never the same qualifier hammered three or four times in one email, because protest-too-much repetition reads as insecurity to a burned buyer. The carve-out is "keep the legal line, kill the repetition," not "keep the hedge" or "cut the hedge."
