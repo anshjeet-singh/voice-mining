@@ -119,10 +119,41 @@ function SectionHeader({ id }: { id: string }) {
   );
 }
 
-/** Readable doc row for the Overview's foundation library, with copy + preview. */
-function DocRow({ doc }: { doc: ClientDoc }) {
+/** Split a markdown doc into its H1-H3 sections so each can be copied on its own. */
+function splitSections(md: string): Array<{ title: string; text: string }> {
+  const out: Array<{ title: string; text: string }> = [];
+  let cur: { title: string; text: string } | null = null;
+  for (const ln of md.split("\n")) {
+    const h = ln.match(/^(#{1,3})\s+(.+)$/);
+    if (h) {
+      if (cur) out.push(cur);
+      cur = { title: h[2].replace(/[#*`]/g, "").trim(), text: ln + "\n" };
+    } else if (cur) {
+      cur.text += ln + "\n";
+    } else if (ln.trim()) {
+      cur = { title: "Intro", text: ln + "\n" };
+    }
+  }
+  if (cur) out.push(cur);
+  return out.map((s) => ({ ...s, text: s.text.trim() })).filter((s) => s.text);
+}
+
+/** Readable doc row for the foundation/community/campaign libraries: copy, copy
+ *  a single section, edit inline, and preview. Editable when `invalidate` is set. */
+function DocRow({ doc, invalidate }: { doc: ClientDoc; invalidate?: () => void }) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(doc.content);
   const html = extractHtml(doc.content);
+  const sections = useMemo(() => splitSections(stripHtmlBlock(doc.content)), [doc.content]);
+  const save = trpc.clients.updateDocument.useMutation({
+    onSuccess: () => {
+      invalidate?.();
+      setEditing(false);
+      toast.success("Saved");
+    },
+    onError: (err) => toast.error(err.message),
+  });
   return (
     <div className="rounded-lg border border-border/40 bg-card/30">
       <div className="w-full flex items-center gap-2 p-2.5">
@@ -130,21 +161,76 @@ function DocRow({ doc }: { doc: ClientDoc }) {
           <FileText className="w-3 h-3 text-primary flex-shrink-0" />
           <span className="flex-1 text-xs font-medium text-foreground truncate">{doc.title}</span>
         </button>
+        {invalidate && !editing && (
+          <button
+            onClick={() => {
+              setDraft(doc.content);
+              setEditing(true);
+              setOpen(true);
+            }}
+            className="text-[11px] font-medium text-muted-foreground hover:text-foreground px-1.5"
+          >
+            Edit
+          </button>
+        )}
         <CopyButton text={doc.content} />
         <button onClick={() => setOpen(!open)}>
-          {open ? (
-            <ChevronUp className="w-3 h-3 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="w-3 h-3 text-muted-foreground" />
-          )}
+          {open ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
         </button>
       </div>
       {open && (
         <div className="px-2.5 pb-2.5 space-y-3">
-          {html && <HtmlPreview html={html} filename={doc.title} />}
-          <div className="max-h-[28rem] overflow-y-auto rounded-lg bg-background/40 p-3">
-            <MarkdownDoc content={stripHtmlBlock(doc.content)} />
-          </div>
+          {editing ? (
+            <>
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                className="w-full min-h-[24rem] resize-y rounded-lg border border-border/50 bg-background/60 p-3 text-[11px] font-mono leading-relaxed text-foreground focus:outline-none focus:border-primary/50"
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  disabled={save.isPending || !draft.trim()}
+                  onClick={() => save.mutate({ id: doc.id, content: draft })}
+                  className="h-7 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {save.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditing(false);
+                    setDraft(doc.content);
+                  }}
+                  className="h-7 text-xs"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              {html && <HtmlPreview html={html} filename={doc.title} />}
+              {sections.length > 1 && (
+                <div className="rounded-lg bg-background/40 p-2">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5 px-1">Copy a section</p>
+                  <div className="space-y-0.5">
+                    {sections.map((s, i) => (
+                      <div key={i} className="flex items-center gap-2 px-1 py-0.5">
+                        <span className="flex-1 text-[11px] text-foreground/90 truncate">{s.title}</span>
+                        <CopyButton text={s.text} className="px-1.5" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="max-h-[28rem] overflow-y-auto rounded-lg bg-background/40 p-3">
+                <MarkdownDoc content={stripHtmlBlock(doc.content)} />
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -763,42 +849,59 @@ function parseSubAvatars(doc?: ClientDoc): Avatar[] {
  * requeues the foundation stage with that note. This is how you correct the
  * ICP/offers/brand without leaving the Overview.
  */
-function FoundationRefine({ clientId, invalidate }: { clientId: number; invalidate: () => void }) {
+function FoundationRefine({
+  clientId,
+  invalidate,
+  job,
+}: {
+  clientId: number;
+  invalidate: () => void;
+  job: { status?: string | null; progress?: string | null } | null;
+}) {
   const [msg, setMsg] = useState("");
   const gen = trpc.clients.generateStage.useMutation({
     onSuccess: () => {
       invalidate();
       setMsg("");
-      toast.success("Sent. The worker will redo the foundation with your note");
+      toast.success("On it. Cashflow Coaches AI is updating the foundation");
     },
     onError: (err) => toast.error(err.message),
   });
+  const busy = job?.status === "queued" || job?.status === "running" || gen.isPending;
   return (
     <div className="rounded-xl border border-primary/25 bg-gradient-to-r from-primary/[0.07] to-transparent p-4">
-      <div className="flex items-center gap-2 mb-1.5">
+      <div className="flex items-center gap-2 mb-2.5">
         <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
           <Sparkles className="w-3.5 h-3.5 text-primary" />
         </div>
-        <p className="text-sm font-semibold text-foreground">Refine the foundation</p>
+        <p className="text-sm font-semibold text-foreground">Cashflow Coaches AI</p>
       </div>
-      <p className="text-[11px] text-muted-foreground mb-2.5 leading-snug">
-        Tell the AI what to fix and it redoes the ICP, offers, brand and course with your note. Every engine's audience list updates from it.
-      </p>
-      <textarea
-        value={msg}
-        onChange={(e) => setMsg(e.target.value)}
-        rows={2}
-        placeholder="e.g. Add the peptide-affiliate avatar from the $700/yr mid-ticket offer, and split the ICP into high-ticket buyer vs affiliate."
-        className="w-full resize-none rounded-lg border border-border/50 bg-background/50 p-2.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
-      />
-      <button
-        disabled={gen.isPending || !msg.trim()}
-        onClick={() => gen.mutate({ clientId, stage: "foundation", feedback: msg.trim() })}
-        className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
-      >
-        {gen.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-        Send to the worker
-      </button>
+      {busy ? (
+        <div className="flex items-center gap-2 py-2">
+          <Loader2 className="w-3.5 h-3.5 text-primary animate-spin flex-shrink-0" />
+          <p className="text-[11px] text-muted-foreground">
+            {job?.status === "queued" || gen.isPending ? "Queued, waiting for your Mac worker" : job?.progress || "Updating the foundation..."}
+          </p>
+        </div>
+      ) : (
+        <>
+          <textarea
+            value={msg}
+            onChange={(e) => setMsg(e.target.value)}
+            rows={3}
+            placeholder="Tell the AI what to fix, update, or create..."
+            className="w-full resize-none rounded-lg border border-border/50 bg-background/50 p-3 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
+          />
+          <button
+            disabled={!msg.trim()}
+            onClick={() => gen.mutate({ clientId, stage: "foundation", feedback: msg.trim() })}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
+          >
+            <Sparkles className="w-3 h-3" />
+            Create
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -1062,7 +1165,7 @@ export default function ClientStudio() {
               )}
 
               {/* AI: correct the foundation without leaving the Overview */}
-              <FoundationRefine clientId={clientId} invalidate={invalidate} />
+              <FoundationRefine clientId={clientId} invalidate={invalidate} job={jobs.foundation ?? null} />
 
               {/* The client's own live socials */}
               <ClientSocials clientId={clientId} client={data.client} invalidate={invalidate} />
@@ -1087,7 +1190,7 @@ export default function ClientStudio() {
                 <h3 className="text-sm font-semibold text-foreground mb-2">Foundation</h3>
                 <div className="grid sm:grid-cols-2 gap-1.5">
                   {FOUNDATION_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
-                    <DocRow key={d.id} doc={d} />
+                    <DocRow key={d.id} doc={d} invalidate={invalidate} />
                   ))}
                 </div>
               </div>
@@ -1146,7 +1249,7 @@ export default function ClientStudio() {
               <StudioBlock title="Campaign documents" hint="The creative batch spec and the campaign plan from the build" frame="border-violet-500/25 bg-violet-500/[0.05]">
                 <div className="space-y-1.5">
                   {ADS_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
-                    <DocRow key={d.id} doc={d} />
+                    <DocRow key={d.id} doc={d} invalidate={invalidate} />
                   ))}
                 </div>
               </StudioBlock>
@@ -1256,7 +1359,7 @@ export default function ClientStudio() {
               <StudioBlock title="Community setup" hint="What the Skool actually is: the free and paid community structure, names, and pinned content" frame="border-amber-500/25 bg-amber-500/[0.05]">
                 <div className="space-y-1.5">
                   {SKOOL_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
-                    <DocRow key={d.id} doc={d} />
+                    <DocRow key={d.id} doc={d} invalidate={invalidate} />
                   ))}
                 </div>
               </StudioBlock>
