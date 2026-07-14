@@ -44,3 +44,8 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-14 · job 420001 · client: Trent Kus -->
 - Gamification level names must be EMOJI + one word (max two), and that word must be relevant to the client's actual industry/niche, not a generic climb word. Operator-flagged as a permanent systemic preference: keep the 9-level ladder identical across the free and paid communities, but the label on each level is one niche-specific word behind the emoji.
+
+<!-- 2026-07-14 · job 420001 · client: Trent Kus -->
+- Gamification level names must be emoji + ONE word (1 to 2 words absolute maximum), and the single word must be relevant to the client's actual industry or niche, not a generic status word. The operator rejected multi-word, off-niche level names.
+- The paid community About page is a value-stack offer page in a fixed shape, reproduce it exactly: hook number headline, an early-bird price line, a proof line, the mechanism in one beat, a ✅ value stack where every line ends in a ($ dollar anchor), 🎁 bonuses each with a ($ value), a 🏷️ Total Value line set against the actual price, a Book A Call CTA, then a 🔥 ANNUAL PLAN block with its own ✅ stack and a 💥 JOIN NOW close.
+- Keep both free and paid community copy vibrant, high-energy, and benefit-driven. A flattened, generic rewrite is a rejection trigger. No em dashes anywhere, including titles.
