@@ -757,6 +757,52 @@ function parseSubAvatars(doc?: ClientDoc): Avatar[] {
     .slice(0, 6);
 }
 
+/**
+ * The Overview AI box: the operator tells the worker what to fix in the
+ * foundation (a missing avatar, a sharper offer, a positioning tweak) and it
+ * requeues the foundation stage with that note. This is how you correct the
+ * ICP/offers/brand without leaving the Overview.
+ */
+function FoundationRefine({ clientId, invalidate }: { clientId: number; invalidate: () => void }) {
+  const [msg, setMsg] = useState("");
+  const gen = trpc.clients.generateStage.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setMsg("");
+      toast.success("Sent. The worker will redo the foundation with your note");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  return (
+    <div className="rounded-xl border border-primary/25 bg-gradient-to-r from-primary/[0.07] to-transparent p-4">
+      <div className="flex items-center gap-2 mb-1.5">
+        <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+          <Sparkles className="w-3.5 h-3.5 text-primary" />
+        </div>
+        <p className="text-sm font-semibold text-foreground">Refine the foundation</p>
+      </div>
+      <p className="text-[11px] text-muted-foreground mb-2.5 leading-snug">
+        Tell the AI what to fix and it redoes the ICP, offers, brand and course with your note. Every engine's audience list updates from it.
+      </p>
+      <textarea
+        value={msg}
+        onChange={(e) => setMsg(e.target.value)}
+        rows={2}
+        placeholder="e.g. Add the peptide-affiliate avatar from the $700/yr mid-ticket offer, and split the ICP into high-ticket buyer vs affiliate."
+        className="w-full resize-none rounded-lg border border-border/50 bg-background/50 p-2.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
+      />
+      <button
+        disabled={gen.isPending || !msg.trim()}
+        onClick={() => gen.mutate({ clientId, stage: "foundation", feedback: msg.trim() })}
+        className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
+      >
+        {gen.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+        Send to the worker
+      </button>
+    </div>
+  );
+}
+
 /** The client's own live follower/subscriber counts, with inline handle setup. */
 function ClientSocials({
   clientId,
@@ -1015,8 +1061,26 @@ export default function ClientStudio() {
                 </button>
               )}
 
+              {/* AI: correct the foundation without leaving the Overview */}
+              <FoundationRefine clientId={clientId} invalidate={invalidate} />
+
               {/* The client's own live socials */}
               <ClientSocials clientId={clientId} client={data.client} invalidate={invalidate} />
+
+              {/* Avatars: the ICP broken into who we actually sell to (drives every audience picker) */}
+              {avatars.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Avatars</h3>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                    {avatars.map((a) => (
+                      <div key={a.name} className="rounded-xl border border-border/40 bg-card/20 p-3">
+                        <p className="text-xs font-semibold text-foreground">{a.name}</p>
+                        {a.hint && <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{a.hint}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Foundation: who we're selling to, what we sell. Everything else lives in its engine */}
               <div>
