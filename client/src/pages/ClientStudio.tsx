@@ -694,6 +694,9 @@ interface Avatar {
   name: string;
   hint?: string;
 }
+// Field labels that live UNDER an avatar (never avatar names themselves).
+const AVATAR_FIELD_LABEL =
+  /^(pains?|pain\s*points?|desires?|dream\s*outcomes?|objections?|awareness(\s*level)?|situation|profile|snapshot|who\s+they\s+are|demographics?|psychographics?|goals?|fears?|frustrations?|triggers?|beliefs?|context)$/i;
 function parseSubAvatars(doc?: ClientDoc): Avatar[] {
   if (!doc) return [];
   const tidy = (s: string) => s.replace(/\*\*/g, "").replace(/[:.]\s*$/, "").trim();
@@ -707,6 +710,9 @@ function parseSubAvatars(doc?: ClientDoc): Avatar[] {
   const lines = doc.content.split("\n");
   let inSection = false;
   let sectionLevel = 0;
+  // Once we descend into an avatar's OWN subsection, its body bullets are
+  // Pains/Desires/Objections — NOT more avatars. Stop bullet-parsing there.
+  let inAvatarBody = false;
   for (let i = 0; i < lines.length; i++) {
     const h = lines[i].match(/^(#{1,4})\s+(.+)$/);
     if (h) {
@@ -715,9 +721,13 @@ function parseSubAvatars(doc?: ClientDoc): Avatar[] {
       if (/sub[- ]?avatars?\b/i.test(text) && !/^sub[- ]?avatar\s*\d/i.test(text)) {
         inSection = true;
         sectionLevel = level;
+        inAvatarBody = false;
         continue;
       }
-      if (inSection && level <= sectionLevel) inSection = false;
+      if (inSection && level <= sectionLevel) {
+        inSection = false;
+        inAvatarBody = false;
+      }
       const named = text.match(/^(?:sub[- ]?)?avatar\s*\d*\s*[:–-]\s*(.+)$/i);
       if (named || (inSection && level > sectionLevel)) {
         const av = splitNameHint(named ? named[1] : text);
@@ -732,14 +742,19 @@ function parseSubAvatars(doc?: ClientDoc): Avatar[] {
           }
         }
         out.push(av);
+        // a heading inside the section = an avatar's own subsection begins
+        if (inSection && level > sectionLevel) inAvatarBody = true;
       }
-    } else if (inSection) {
+    } else if (inSection && !inAvatarBody) {
+      // avatars listed as top-level bold bullets directly under '## Sub-Avatars'
       const bullet = lines[i].match(/^\s*(?:[-*]|\d+\.)\s+\*\*([^*]+)\*\*\s*[:—–-]?\s*(.*)$/);
       if (bullet) out.push({ name: tidy(bullet[1]).slice(0, 40), hint: bullet[2] ? tidy(bullet[2]).slice(0, 72) : undefined });
     }
   }
   const seen = new Set<string>();
-  return out.filter((a) => a.name && !seen.has(a.name) && seen.add(a.name)).slice(0, 6);
+  return out
+    .filter((a) => a.name && !AVATAR_FIELD_LABEL.test(a.name.trim()) && !seen.has(a.name) && seen.add(a.name))
+    .slice(0, 6);
 }
 
 /** The client's own live follower/subscriber counts, with inline handle setup. */
@@ -1132,6 +1147,13 @@ export default function ClientStudio() {
                   clientId={clientId}
                   invalidate={invalidate}
                 />
+              </StudioBlock>
+              <StudioBlock
+                title="VSL sequences"
+                hint="For the VSL funnel: opt-in to book, then the two call-closers. Aggressive cadence, a new email every 3-8h, case-study dense"
+                frame="border-emerald-500/25 bg-emerald-500/[0.05]"
+              >
+                <PrebuiltSequences funnelType="vsl" job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} />
               </StudioBlock>
               <StudioBlock title="Or write a custom email" hint="Pick the purpose, add specifics: swipe-file style, ConvertKit-ready" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
                 <EngineCard engine={engineByKind("more_emails")} job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />

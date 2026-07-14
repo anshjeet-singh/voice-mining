@@ -601,39 +601,61 @@ export const ENGINES: Array<{
  * with a fully-specified request, so the operator never has to describe the
  * sequence — they just click the one they need.
  */
-export const PREBUILT_SEQUENCES: Record<"webinar" | "call", Array<{ label: string; blurb: string; request: string }>> = {
+const AGGRESSIVE = "AGGRESSIVE cadence: a NEW email every 3-8 HOURS, each with a send-timing label (e.g. +3h, +9h, +18h, +1d, +1d 6h). Every email is VALUE-PACKED and DENSE with nurture and leads with a real CASE STUDY or proof story, then breaks one limiting belief. Never a bare reminder — each email earns the open on its own, and urgency + proof escalate as it runs.";
+export const PREBUILT_SEQUENCES: Record<"webinar" | "call" | "vsl", Array<{ label: string; blurb: string; request: string }>> = {
   webinar: [
     {
       label: "Pre-webinar reminder",
-      blurb: "7 emails, opt-in to live: value + nurture, every one restates date, time, and join link",
+      blurb: "7 emails, opt-in to live: value + a proof story in each, every one restates date, time, and join link",
       request:
-        "Write the PRE-WEBINAR REMINDER sequence as ONE document titled 'Pre-Webinar Reminder Sequence': EXACTLY 7 emails sent from webinar opt-in through the live event, high value and high nurture, each one an open loop that also clearly restates the webinar DATE, TIME, and the [REGISTRATION LINK] / join link. Ramp the reminders (registration confirmation, what-you'll-discover, a proof story, speaker credibility, day-before, day-of, and 1-hour-before). Every email carries standalone value, never a bare reminder. CTA destination is the webinar join link.",
+        "Write the PRE-WEBINAR REMINDER sequence as ONE document titled 'Pre-Webinar Reminder Sequence': EXACTLY 7 emails sent from webinar opt-in through the live event, high value and high nurture, each one an open loop that leads with a CASE STUDY or proof story AND clearly restates the webinar DATE, TIME, and the [REGISTRATION LINK] / join link. Ramp the reminders (registration confirmation, what-you'll-discover, a proof story, speaker credibility, day-before, day-of, and 1-hour-before). Every email carries standalone value, never a bare reminder. CTA destination is the webinar join link.",
     },
     {
       label: "Post-webinar (attended)",
-      blurb: "For attendees who didn't buy: value, case studies, proof, belief-breaking, FAQ. CTA = book a call or join the free community",
+      blurb: "Attendees who didn't buy: a new email every 3-8h, case-study heavy, belief-breaking. CTA = book a call or join the free community",
       request:
-        "Write the POST-WEBINAR ATTENDED sequence as ONE document titled 'Post-Webinar Attended Sequence', for people who watched the webinar live but did NOT buy: jam-packed with value and nurture, case studies, social proof, breaking every FINAL limiting belief, answering the real FAQs and objections raised on the webinar. The CTA is always to BOOK A CALL with the team ([VSL LINK]) or, as the softer option, join the free Skool community ([COMMUNITY LINK]) for more proof and value. 5-7 emails, each earning the open.",
+        "Write the POST-WEBINAR ATTENDED sequence as ONE document titled 'Post-Webinar Attended Sequence', for people who watched the webinar live but did NOT buy. " + AGGRESSIVE + " 8-12 emails. Break every FINAL limiting belief, answer the real FAQs and objections raised on the webinar, stack proof. The CTA is always to BOOK A CALL with the team ([VSL LINK]) or, as the softer option, join the free Skool community ([COMMUNITY LINK]).",
     },
     {
       label: "No-show / replay",
-      blurb: "48h replay push days 1-3 (urgency + FOMO), then days 4-14 'add the next free training to your calendar'",
+      blurb: "48h replay push (urgency + FOMO), a new email every 3-8h, then pivot to the next free training",
       request:
-        "Write the NO-SHOW REPLAY sequence as ONE document titled 'No-Show Replay Sequence', for people who registered but did NOT attend: heavy nurture with maximum urgency and FOMO. DAYS 1-3: push the webinar REPLAY hard, which is live for only 48 HOURS ([REPLAY LINK]), value + proof + a real expiry. DAYS 4-14: pivot to inviting them to add the next live 'free training' (the webinar) to their calendar ([REGISTRATION LINK]), still high value, still building the case. Goal: they watch the replay or show up to the next one. About 8-10 emails across the 14 days with send-timing labels.",
+        "Write the NO-SHOW REPLAY sequence as ONE document titled 'No-Show Replay Sequence', for people who registered but did NOT attend. " + AGGRESSIVE + " DAYS 1-3: push the webinar REPLAY hard, live only 48 HOURS ([REPLAY LINK]), value + proof + a real expiry. DAYS 4-14: pivot to inviting them to add the next live 'free training' to their calendar ([REGISTRATION LINK]). 10-14 emails across the 14 days.",
     },
   ],
   call: [
     {
       label: "Post-booking show-up",
-      blurb: "Booking to call: confirmation, value-intensive nurture, one FAQ email, 24h + 3h reminders",
+      blurb: "Booking to call: confirmation, case-study-heavy value nurture, one FAQ email, 24h + 3h reminders",
       request:
-        "Write the POST-BOOKING SHOW-UP sequence as ONE document titled 'Post-Booking Show-Up Sequence': instant confirmation (what happens next, calendar add, the call-confirmed video at [CALL CONFIRMED VIDEO]), then value-intensive emails between booking and the call each breaking one limiting belief and sending them back into the community, one straight FAQ email, plus 24h and 3h reminders. Every email carries standalone value, send-timing labels, CTA keeps the call.",
+        "Write the POST-BOOKING SHOW-UP sequence as ONE document titled 'Post-Booking Show-Up Sequence': instant confirmation (what happens next, calendar add, the call-confirmed video at [CALL CONFIRMED VIDEO]), then value-intensive emails between booking and the call each leading with a real CASE STUDY and breaking one limiting belief, one straight FAQ email, plus 24h and 3h reminders. Every email carries standalone value, send-timing labels, CTA keeps the call.",
     },
     {
       label: "No-show / re-engagement",
-      blurb: "No-show rebook (no shame) + post-call follow-up for those who didn't close",
+      blurb: "No-show rebook (no shame) + post-call follow-up, case-study heavy, a new email every 3-8h",
       request:
-        "Write the NO-SHOW + RE-ENGAGEMENT sequence as ONE document titled 'No-Show and Re-Engagement Sequence', two labeled tracks: (1) no-show recovery, 3 emails that rebook without shaming (missed-you + easy rebook, cost-of-the-unsolved-problem with a proof story, last-touch pointing back into the community); (2) post-call follow-up for prospects who didn't close, 3 emails (recap of their situation and the offer, objection reframe with proof, honest final follow-up). Send-timing labels, CTA is rebook / [VSL LINK].",
+        "Write the NO-SHOW + RE-ENGAGEMENT sequence as ONE document titled 'No-Show and Re-Engagement Sequence', two labeled tracks. " + AGGRESSIVE + " (1) no-show recovery, 4-5 emails that rebook without shaming (missed-you + easy rebook, cost-of-the-unsolved-problem with a proof story, proof stack, last-touch pointing back into the community); (2) post-call follow-up for prospects who didn't close, 4-5 emails (recap of their situation and the offer, objection reframe with proof, results stack, honest final follow-up). CTA is rebook / [VSL LINK].",
+    },
+  ],
+  // The VSL funnel: opt-in -> book -> call. Two of the three are pure call-closers.
+  vsl: [
+    {
+      label: "Opted in, not booked",
+      blurb: "VSL opt-ins who haven't booked: a new email every 3-8h, case-study heavy, drives the booking",
+      request:
+        "Write the VSL OPTED-IN (NOT BOOKED) sequence as ONE document titled 'VSL Opted-In (Not Booked) Sequence', for people who opted into the VSL funnel but have NOT booked a call. " + AGGRESSIVE + " 8-12 emails across the first ~4 days. Teach something usable in every email, then drive hard to BOOK THE CALL ([VSL LINK] / booking calendar).",
+    },
+    {
+      label: "No-show recovery",
+      blurb: "Booked then no-showed: rebook fast, no shame, case-study heavy, a new email every 3-8h",
+      request:
+        "Write the VSL NO-SHOW RECOVERY sequence as ONE document titled 'VSL No-Show Recovery Sequence', for people who booked a call and did NOT show. " + AGGRESSIVE + " 6-9 emails. Rebook WITHOUT shaming — missed-you + one-click rebook, cost-of-the-unsolved-problem carried by a real case study, proof stack, honest last-touch. CTA is REBOOK the call ([VSL LINK] / booking calendar). This is one of the two call-closers.",
+    },
+    {
+      label: "Post-call follow-ups",
+      blurb: "Took the call, didn't close: proof-heavy follow-ups every 3-8h that close the deal",
+      request:
+        "Write the VSL POST-CALL FOLLOW-UP sequence as ONE document titled 'VSL Post-Call Follow-Up Sequence', for prospects who TOOK the call but did NOT close. " + AGGRESSIVE + " 6-9 emails. Recap their exact situation and the offer, reframe each objection with proof, stack results, cost-of-inaction, honest final follow-up. CTA is close / rebook a closing call ([VSL LINK]). This plus No-Show Recovery are the two call-closers.",
     },
   ],
 };
@@ -645,7 +667,7 @@ export function PrebuiltSequences({
   clientId,
   invalidate,
 }: {
-  funnelType: "webinar" | "call";
+  funnelType: "webinar" | "call" | "vsl";
   job: StageJob;
   clientId: number;
   invalidate: () => void;
