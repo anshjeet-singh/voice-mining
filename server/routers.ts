@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { invokeLLM } from "./_core/llm";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -428,6 +429,41 @@ export const appRouter = router({
         if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
         await requireClient(doc.clientId, ctx.user.id);
         await updateClientDocument(input.id, input.content);
+        return { ok: true };
+      }),
+
+    /**
+     * Focused AI edit of ONE document. Rewrites just this doc with the operator's
+     * feedback via the server LLM (fast, cheap, reliable) and saves it — never
+     * touches the heavy worker pipeline or any other document.
+     */
+    aiEditDocument: protectedProcedure
+      .input(z.object({ id: z.number(), feedback: z.string().min(1).max(10000) }))
+      .mutation(async ({ ctx, input }) => {
+        const doc = await getClientDocumentById(input.id);
+        if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireClient(doc.clientId, ctx.user.id);
+        const result = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are an elite direct-response copywriter editing ONE marketing document for an agency. Rewrite the FULL document applying the operator's feedback precisely. Keep the same overall structure, section headings and markdown formatting UNLESS the feedback explicitly asks to change them. Preserve every [PLACEHOLDER] token exactly as written. Keep the copy vibrant, high-energy and benefit-driven, never flatten it. Do NOT use em dashes anywhere. Output ONLY the complete rewritten document in markdown, with no preamble, no commentary and no surrounding code fences.",
+            },
+            {
+              role: "user",
+              content: `OPERATOR FEEDBACK (apply this to the document):\n${input.feedback}\n\nCURRENT DOCUMENT:\n${doc.content}`,
+            },
+          ],
+          maxTokens: 8192,
+        });
+        let out = (result.choices[0]?.message?.content ?? "").trim();
+        const fence = out.match(/^```(?:markdown|md)?\s*([\s\S]*?)\s*```$/);
+        if (fence) out = fence[1].trim();
+        if (out.length < 50) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The AI returned an empty rewrite. Try again." });
+        }
+        await updateClientDocument(input.id, out);
         return { ok: true };
       }),
 

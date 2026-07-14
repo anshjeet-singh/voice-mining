@@ -146,11 +146,22 @@ function DocRow({ doc, invalidate }: { doc: ClientDoc; invalidate?: () => void }
   const [draft, setDraft] = useState(doc.content);
   const html = extractHtml(doc.content);
   const sections = useMemo(() => splitSections(stripHtmlBlock(doc.content)), [doc.content]);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiMsg, setAiMsg] = useState("");
   const save = trpc.clients.updateDocument.useMutation({
     onSuccess: () => {
       invalidate?.();
       setEditing(false);
       toast.success("Saved");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const aiEdit = trpc.clients.aiEditDocument.useMutation({
+    onSuccess: () => {
+      invalidate?.();
+      setAiOpen(false);
+      setAiMsg("");
+      toast.success("Updated");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -161,17 +172,29 @@ function DocRow({ doc, invalidate }: { doc: ClientDoc; invalidate?: () => void }
           <FileText className="w-3 h-3 text-primary flex-shrink-0" />
           <span className="flex-1 text-xs font-medium text-foreground truncate">{doc.title}</span>
         </button>
-        {invalidate && !editing && (
-          <button
-            onClick={() => {
-              setDraft(doc.content);
-              setEditing(true);
-              setOpen(true);
-            }}
-            className="text-[11px] font-medium text-muted-foreground hover:text-foreground px-1.5"
-          >
-            Edit
-          </button>
+        {invalidate && !editing && !aiOpen && (
+          <>
+            <button
+              onClick={() => {
+                setAiOpen(true);
+                setOpen(true);
+              }}
+              className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 px-1.5"
+            >
+              <Sparkles className="w-3 h-3" />
+              AI
+            </button>
+            <button
+              onClick={() => {
+                setDraft(doc.content);
+                setEditing(true);
+                setOpen(true);
+              }}
+              className="text-[11px] font-medium text-muted-foreground hover:text-foreground px-1.5"
+            >
+              Edit
+            </button>
+          </>
         )}
         <CopyButton text={doc.content} />
         <button onClick={() => setOpen(!open)}>
@@ -180,7 +203,43 @@ function DocRow({ doc, invalidate }: { doc: ClientDoc; invalidate?: () => void }
       </div>
       {open && (
         <div className="px-2.5 pb-2.5 space-y-3">
-          {editing ? (
+          {aiOpen ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground">Tell the AI what to change in this document</span>
+              </div>
+              <textarea
+                value={aiMsg}
+                onChange={(e) => setAiMsg(e.target.value)}
+                rows={4}
+                placeholder="e.g. Swap the tagline for: [paste it]. Rewrite the About page as a value stack with dollar anchors. Keep the VSL script."
+                className="w-full resize-none rounded-lg border border-border/50 bg-background/60 p-3 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  disabled={aiEdit.isPending || !aiMsg.trim()}
+                  onClick={() => aiEdit.mutate({ id: doc.id, feedback: aiMsg.trim() })}
+                  className="h-7 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {aiEdit.isPending ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1.5" />}
+                  {aiEdit.isPending ? "Rewriting this doc..." : "Rewrite this doc"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setAiOpen(false);
+                    setAiMsg("");
+                  }}
+                  className="h-7 text-xs"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : editing ? (
             <>
               <textarea
                 value={draft}
