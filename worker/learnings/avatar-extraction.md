@@ -18,3 +18,8 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-14 · job 420001 · client: Trent Kus -->
 - Sub-avatar sets often need a cross-cutting PSYCHOGRAPHIC overlay (a burned/skeptic, a fearful, an already-scaled disposition) that sits on top of the demographic segments rather than beside them. It still gets a parseable `### Name — descriptor` heading and its own pains/desires/objections, but it should be marked "cross-cutting" with no separate % of pool (the three demographic segments still sum to 100%), so the roster does not double-count the pool or force a false demographic on an emotional-state segment.
+
+<!-- 2026-07-14 · job 420003 · client: Blake Matthews -->
+- The output template only defines a single flat "Primary Avatar" block. It must require a Sub-Avatars section of 3 to 5 entries, each written as a `### <Short Name> — <descriptor>` heading where the descriptor after the dash stands alone and names occupation/role, income band, and situation in plain words. The downstream app parses that name-plus-descriptor into audience chips, so a descriptor that only makes sense next to the name, or that omits the income band/role, breaks the parse. This is true for every client, not a per-client preference.
+- The dash inside the sub-avatar heading is a load-bearing em dash the parser depends on. It is the single exception to the global no-em-dash rule, which applies everywhere else in the doc. Encode that exception in the skill so runs do not either strip the required dash or leak stray em dashes into body prose.
+- Add an explicit Hidden Motivations line (status, control, relief) to the output. The process asks for it but the template drops it every time.

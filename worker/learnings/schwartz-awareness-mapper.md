@@ -7,3 +7,7 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-14 · job 420001 · client: Trent Kus -->
 - The awareness map reads as a usable routing table only when each stage row carries four columns together: the segment(s) that sit there, the message focus, the offer tier it points at, and its share of the pool, ending at the funnel-branch handoff (call funnel ends at the VSL-to-application). Presenting stages as a bare Schwartz ladder without the offer-tier and %-of-pool columns forces every downstream skill to re-derive the routing.
+
+<!-- 2026-07-14 · job 420003 · client: Blake Matthews -->
+- The awareness output should not be a bare Schwartz ladder. It must be a routing table with, per row, the segment(s) sitting there, the message focus, the offer tier it points at, and its % of pool. Omitting offer-tier and %-of-pool forces every downstream skill (deck, emails, ads) to re-derive routing and is a recurring defect.
+- Tie the ladder endpoint to the funnel branch: webinar funnels end on "take the spot / book the call," call funnels end on the VSL-to-application handoff, and the Big Domino is framed to that branch.
