@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { AppShell } from "@/components/AppShell";
@@ -904,17 +904,6 @@ export default function ClientStudio() {
   const intelReels = useMemo(() => parseIntelReels(intelDoc), [intelDoc]);
   const avatars = useMemo(() => parseSubAvatars(documents.find((d) => d.docType === "icp_snapshot")), [documents]);
 
-  // Funnel pipeline: split the Video Scripts doc into recordable cards once
-  const splitFunnel = trpc.clients.splitFunnelScripts.useMutation({ onSuccess: invalidate });
-  const splitAttempted = useRef(false);
-  const hasScriptsDoc = documents.some((d) => d.docType === "video_scripts");
-  const hasFunnelAssets = documents.some((d) => d.docType === "funnel_asset_extra");
-  useEffect(() => {
-    if (!data || splitAttempted.current || !hasScriptsDoc || hasFunnelAssets) return;
-    splitAttempted.current = true;
-    splitFunnel.mutate({ clientId });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, hasScriptsDoc, hasFunnelAssets, clientId]);
   const engineDocCount = ENGINES.reduce((n, e) => n + docsFor(e.docType).length, 0);
   const postedCount = documents.filter((d) => d.docType.endsWith("_extra") && d.status === "posted").length;
   const emailCount =
@@ -1090,42 +1079,17 @@ export default function ClientStudio() {
               <SectionHeader id="funnel" />
               <StudioBlock
                 title="Generate landing pages"
-                hint="Pick the page type, audience, and offer. High-converting copy section by section with desktop + mobile layout notes, ready to paste into GHL"
+                hint="Pick the audience and offer. Fills our brand templates with this client's copy and returns the two GHL-ready page code blocks plus every recording script"
                 frame="border-sky-500/25 bg-sky-500/[0.05]"
               >
                 <EngineCard engine={engineByKind("more_landers")} job={jobs.more_landers ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
               </StudioBlock>
               <StudioBlock
-                title="Landing page pipeline"
-                hint="One card per page: approve it, mark posted once it's built and live in GHL. Write your own too"
+                title="Asset pipeline"
+                hint="Every funnel file lands here: the VSL landing code, the post-booking code, and the recording script for the client. Approve, then mark posted once it's live. Write your own too"
                 frame="border-sky-500/25 bg-sky-500/[0.05]"
               >
                 <DocBoard docs={docsFor("lander_extra")} invalidate={invalidate} clientId={clientId} docType="lander_extra" />
-              </StudioBlock>
-              <StudioBlock
-                title="Recording pipeline"
-                hint="One card per video to record: the VSL, the call-confirmed video, and every breakout. Mark posted once filmed and live"
-                frame="border-sky-500/25 bg-sky-500/[0.05]"
-              >
-                {splitFunnel.isPending ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <p className="text-[11px]">Breaking the video scripts into recordable cards...</p>
-                  </div>
-                ) : (
-                  <DocBoard docs={docsFor("funnel_asset_extra")} invalidate={invalidate} clientId={clientId} docType="funnel_asset_extra" />
-                )}
-              </StudioBlock>
-              <StudioBlock
-                title="Build page copy"
-                hint="The funnel pages' complete final copy from the build"
-                frame="border-sky-500/25 bg-sky-500/[0.05]"
-              >
-                <div className="space-y-1.5">
-                  {["funnel_core", "funnel_structure"].flatMap((t) => docsFor(t)).map((d) => (
-                    <DocRow key={d.id} doc={d} />
-                  ))}
-                </div>
               </StudioBlock>
             </>
           )}
