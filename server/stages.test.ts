@@ -160,11 +160,15 @@ describe("stage registry", () => {
     expect(desc).toContain("9 BREAKOUT SCRIPTS");
     // Offer routing carries through to the page CTA
     expect(desc).toContain("HIGH TICKET -> [VSL LINK]");
-    // Three SPLIT units: landing page, post-booking page, video scripts
+    // Six SPLIT units: 2 HTML pages + VSL/confirmation/offer-breakdown scripts + the 9 breakouts
     expect(desc).toContain("<!-- SPLIT -->");
+    expect(desc).toContain("SIX units");
     expect(desc).toContain("# VSL Landing Page");
     expect(desc).toContain("# Post-Booking Page");
-    expect(desc).toContain("# Video Scripts");
+    expect(desc).toContain("# VSL Script");
+    expect(desc).toContain("# Post-Booking Confirmation Script");
+    expect(desc).toContain("# Offer Breakdown Script");
+    expect(desc).toContain("# Breakout Video Scripts");
     expect(spec.childSkills.join()).toContain("vsl-and-sales-page-writer");
     expect(spec.childSkills.join()).toContain("confirmation-page-that-converts");
     // On-demand, gated on ads
