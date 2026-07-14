@@ -1,0 +1,8 @@
+# Learnings: pre-webinar-email-writer
+
+Accumulated craft lessons applied on every run.
+
+<!-- 2026-07-14 · job 360009 · client: Blake Matthews -->
+- A pre-webinar show-up sequence is NOT the "shortest emails in the system" logistics-only reminder set that cc-email-swipe-style.md sequence type 2 implies. The operator's standing requirement is a value-ramped reminder arc where EVERY email carries standalone value and an open loop AND restates the event date, time, and join link. Codify the default 7-email ramp for a tight webinar window: (1) registration confirmation + frame, (2) what-you'll-discover / agenda as benefits, (3) proof story, (4) speaker credibility / why-free, (5) day-before problem-agitation, (6) day-of + what-to-bring, (7) 1-hour-before urgency. Never ship a bare reminder ("your call is tomorrow, don't forget"); each reminder installs a belief or delivers a story on top of the logistics.
+- The skill's own Output Format block (EMAIL N | Platform | Timing / Quadrant / Subject) conflicts with the agency's client-facing contract in cc-email-swipe-style.md (Send / Subject / Preview text on their own lines, "To your success," + a fresh topic-matched nickname in quotes, mandatory P.S.). When producing a client-facing FINAL deliverable under the orchestrator, the cc-email-swipe-style block layout wins and the quadrant/platform header is internal-only and must be dropped. State the precedence so the writer does not ship the internal header format to a client.
+- In client-facing / orchestrator mode, ship exactly one final subject and one preview per email. The swipe's "write 2-3 subject options" is a working step, not the deliverable; option lists are forbidden in the final doc.
