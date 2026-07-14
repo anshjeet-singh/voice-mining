@@ -66,3 +66,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-13 · job 360003 · client: Blake Matthews -->
 - The community-nurture SMS track is now named in Step 5, but its send cadence is still left to the writer. In practice it maps to the emails-and-booking 14-angle arc's KEY beats as roughly 7 texts (join-day welcome, toolkit pointer, proof story #1, the mechanism, the top objection, cost-of-inaction plus founder, direct ask plus honest scarcity), not one text per email. Naming this 7-beat mapping in the SMS block would stop each writer re-deriving which of the 14 email angles get a companion text.
+
+<!-- 2026-07-14 · job 390001 · client: Blake Matthews -->
+- The Brand & Positioning exemplar (Ibby Credit DWY) opens with a `> Why this doc exists / Built from: [Market Intelligence Report, Client Voice recording, Competitor sheet]` blockquote. That opening directly violates the deliverable's own "no meta preamble, never open with Sources:" document rule. When matching the exemplar shape, drop the opening blockquote in the final client-facing doc and start on the single `#` title into Section 1. This is systemic: every client's Brand doc should ship without the exemplar's "why this doc exists / built from" preamble.
