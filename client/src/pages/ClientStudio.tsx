@@ -2,18 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { AppShell } from "@/components/AppShell";
-import { MarkdownDoc } from "@/components/MarkdownDoc";
 import {
   AssetGallery,
   CopyButton,
   DocBoard,
+  DocSections,
   ENGINES,
   EngineCard,
-  HtmlPreview,
   PrebuiltSequences,
   RefImagePanel,
-  extractHtml,
-  stripHtmlBlock,
   type ClientAssetMeta,
   type ClientDoc,
   type RefImageMeta,
@@ -119,139 +116,12 @@ function SectionHeader({ id }: { id: string }) {
   );
 }
 
-/** Split a markdown doc into its H1-H3 sections so each can be copied on its own. */
-function splitSections(md: string): Array<{ title: string; text: string; level: number }> {
-  const out: Array<{ title: string; text: string; level: number }> = [];
-  let cur: { title: string; text: string; level: number } | null = null;
-  for (const ln of md.split("\n")) {
-    const h = ln.match(/^(#{1,3})\s+(.+)$/);
-    if (h) {
-      if (cur) out.push(cur);
-      cur = { title: h[2].replace(/[#*`]/g, "").trim(), text: ln + "\n", level: h[1].length };
-    } else if (cur) {
-      cur.text += ln + "\n";
-    } else if (ln.trim()) {
-      cur = { title: "Intro", text: ln + "\n", level: 2 };
-    }
-  }
-  if (cur) out.push(cur);
-  return out.map((s) => ({ ...s, text: s.text.trim() })).filter((s) => s.text);
-}
-
-/** Minimal markdown -> HTML for clean print/PDF output (headings, bold, italic,
- *  bullets, numbered lists, blockquotes, tables, rules). */
-function mdToHtml(md: string): string {
-  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const inline = (s: string) =>
-    esc(s)
-      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-      .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
-      .replace(/`([^`]+)`/g, "<code>$1</code>");
-  const out: string[] = [];
-  let list: "ul" | "ol" | null = null;
-  let inTable = false;
-  const closeList = () => {
-    if (list) {
-      out.push(`</${list}>`);
-      list = null;
-    }
-  };
-  const closeTable = () => {
-    if (inTable) {
-      out.push("</tbody></table>");
-      inTable = false;
-    }
-  };
-  for (const ln of md.split("\n")) {
-    const h = ln.match(/^(#{1,3})\s+(.+)$/);
-    if (h) {
-      closeList();
-      closeTable();
-      out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`);
-      continue;
-    }
-    if (/^\s*>\s?/.test(ln)) {
-      closeList();
-      closeTable();
-      out.push(`<blockquote>${inline(ln.replace(/^\s*>\s?/, ""))}</blockquote>`);
-      continue;
-    }
-    if (/^\s*---\s*$/.test(ln)) {
-      closeList();
-      closeTable();
-      out.push("<hr/>");
-      continue;
-    }
-    const bullet = ln.match(/^\s*[-*]\s+(.+)$/);
-    if (bullet) {
-      closeTable();
-      if (list !== "ul") {
-        closeList();
-        out.push("<ul>");
-        list = "ul";
-      }
-      out.push(`<li>${inline(bullet[1])}</li>`);
-      continue;
-    }
-    const num = ln.match(/^\s*\d+\.\s+(.+)$/);
-    if (num) {
-      closeTable();
-      if (list !== "ol") {
-        closeList();
-        out.push("<ol>");
-        list = "ol";
-      }
-      out.push(`<li>${inline(num[1])}</li>`);
-      continue;
-    }
-    const row = ln.match(/^\s*\|(.+)\|\s*$/);
-    if (row) {
-      closeList();
-      if (/^[\s|:-]+$/.test(row[1])) continue; // header separator row
-      if (!inTable) {
-        out.push("<table><tbody>");
-        inTable = true;
-      }
-      out.push("<tr>" + row[1].split("|").map((c) => `<td>${inline(c.trim())}</td>`).join("") + "</tr>");
-      continue;
-    }
-    closeList();
-    closeTable();
-    if (ln.trim()) out.push(`<p>${inline(ln)}</p>`);
-  }
-  closeList();
-  closeTable();
-  return out.join("\n");
-}
-
-/** Open a clean print window for a section so the operator can Save as PDF. */
-function printPdf(title: string, md: string) {
-  const w = window.open("", "_blank", "width=840,height=1000");
-  if (!w) return;
-  const css =
-    "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111;max-width:720px;margin:36px auto;padding:0 28px;line-height:1.55}" +
-    "h1{font-size:24px;margin:0 0 12px}h2{font-size:19px;margin:22px 0 8px}h3{font-size:16px;margin:18px 0 6px}" +
-    "blockquote{border-left:3px solid #3f6fff;margin:12px 0;padding:6px 14px;color:#222;background:#f4f7ff;border-radius:4px}" +
-    "table{border-collapse:collapse;width:100%;margin:12px 0}td{border:1px solid #ddd;padding:7px 10px;font-size:14px}" +
-    "ul,ol{margin:8px 0 8px 2px;padding-left:20px}li{margin:4px 0}hr{border:none;border-top:1px solid #e2e2e2;margin:18px 0}" +
-    "code{background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:13px}p{margin:8px 0}strong{font-weight:700}" +
-    "@media print{body{margin:0 auto}}";
-  w.document.write(
-    `<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/[<>]/g, "")}</title><style>${css}</style></head><body>${mdToHtml(md)}</body></html>`
-  );
-  w.document.close();
-  w.focus();
-  setTimeout(() => w.print(), 350);
-}
-
 /** Readable doc row for the foundation/community/campaign libraries: copy, copy
  *  a single section, edit inline, and preview. Editable when `invalidate` is set. */
 function DocRow({ doc, invalidate }: { doc: ClientDoc; invalidate?: () => void }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(doc.content);
-  const html = extractHtml(doc.content);
-  const sections = useMemo(() => splitSections(stripHtmlBlock(doc.content)), [doc.content]);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiMsg, setAiMsg] = useState("");
   const save = trpc.clients.updateDocument.useMutation({
@@ -376,36 +246,7 @@ function DocRow({ doc, invalidate }: { doc: ClientDoc; invalidate?: () => void }
               </div>
             </>
           ) : (
-            <>
-              {html && <HtmlPreview html={html} filename={doc.title} />}
-              <div className="max-h-[28rem] overflow-y-auto rounded-lg bg-background/40 p-3 space-y-4">
-                {sections.map((s, i) => {
-                  const body = s.text.replace(/^#{1,3}\s+.+\n?/, "").trim();
-                  return (
-                    <div key={i} className={s.level >= 3 ? "pl-3" : ""}>
-                      <div className="flex items-center gap-2 mb-1 border-b border-border/25 pb-1">
-                        <h4
-                          className={`flex-1 min-w-0 font-semibold text-foreground ${
-                            s.level <= 1 ? "text-sm" : s.level === 2 ? "text-[13px]" : "text-xs text-foreground/80"
-                          }`}
-                        >
-                          {s.title}
-                        </h4>
-                        <button
-                          onClick={() => printPdf(s.title, s.text)}
-                          className="text-[10px] font-medium text-muted-foreground hover:text-foreground flex-shrink-0"
-                          title="Open a print view to save this section as a PDF"
-                        >
-                          PDF
-                        </button>
-                        <CopyButton text={s.text} label="" className="opacity-60 hover:opacity-100 flex-shrink-0" />
-                      </div>
-                      {body && <MarkdownDoc content={body} />}
-                    </div>
-                  );
-                })}
-              </div>
-            </>
+            <DocSections content={doc.content} title={doc.title} />
           )}
         </div>
       )}
@@ -1541,7 +1382,7 @@ export default function ClientStudio() {
               </StudioBlock>
               <StudioBlock
                 title="VSL sequences"
-                hint="For the VSL funnel: opt-in to book, then the two call-closers. Aggressive cadence, a new email every 3-8h, case-study dense"
+                hint="For the VSL funnel: opt-in, booked pre-call nurture, no-show recovery, post-call follow-ups. One click generates all four, or pick one. Aggressive cadence, case-study dense"
                 frame="border-emerald-500/25 bg-emerald-500/[0.05]"
               >
                 <PrebuiltSequences funnelType="vsl" job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} />

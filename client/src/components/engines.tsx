@@ -3,7 +3,7 @@
  * gallery, and their types. Used by the pipeline page (ClientDetail) and
  * the Client Studio dashboard.
  */
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
@@ -646,6 +646,12 @@ export const PREBUILT_SEQUENCES: Record<"webinar" | "call" | "vsl", Array<{ labe
         "Write the VSL OPTED-IN (NOT BOOKED) sequence as ONE document titled 'VSL Opted-In (Not Booked) Sequence', for people who opted into the VSL funnel but have NOT booked a call. " + AGGRESSIVE + " 8-12 emails across the first ~4 days. Teach something usable in every email, then drive hard to BOOK THE CALL ([VSL LINK] / booking calendar).",
     },
     {
+      label: "Booked, pre-call nurture",
+      blurb: "Booked a call: PURE value nurture to the call. Case studies, proof, belief-breaking, FAQ. No logistics, a new email every 3-8h",
+      request:
+        "Write the VSL BOOKED PRE-CALL NURTURE sequence as ONE document titled 'VSL Booked Pre-Call Nurture Sequence', for people who have BOOKED a call and are waiting for it. This is PURE nurture, NOT logistics: do NOT restate the call time, do NOT do calendar reminders or 'add to calendar' or 'here is when your call is', none of that (a separate confirmation flow handles logistics). " + AGGRESSIVE + " 6-9 emails. Jam every email with real CASE STUDIES and social proof, break every remaining limiting belief before the call, and answer the biggest FAQs and objections so they show up already sold. Keep the CTA soft (see you on the call, more proof inside), destination [VSL LINK] or the community.",
+    },
+    {
       label: "No-show recovery",
       blurb: "Booked then no-showed: rebook fast, no shame, case-study heavy, a new email every 3-8h",
       request:
@@ -681,9 +687,24 @@ export function PrebuiltSequences({
   });
   const busy = job?.status === "queued" || job?.status === "running";
   const sequences = PREBUILT_SEQUENCES[funnelType];
+  // One click writes EVERY sequence for this funnel in a single run: each lands
+  // as its own card via the SPLIT markers.
+  const batchRequest =
+    `Write ALL ${sequences.length} of the email sequences below in ONE run. Output EACH sequence as its OWN document separated by a line containing exactly <!-- SPLIT --> so each files as its own card. Build every sequence to full quality, do not summarize or skip any.\n\n` +
+    sequences.map((s, i) => `=== SEQUENCE ${i + 1}: ${s.label} ===\n${s.request}`).join("\n\n");
 
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+    <div className="space-y-2.5">
+      <button
+        disabled={busy || generate.isPending}
+        onClick={() => generate.mutate({ clientId, stage: "more_emails", feedback: batchRequest })}
+        className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary/90 text-primary-foreground font-semibold text-xs py-2.5 hover:bg-primary transition-colors disabled:opacity-50"
+      >
+        {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+        Generate all {sequences.length} sequences
+      </button>
+      <p className="text-[10px] text-muted-foreground text-center">or generate one at a time</p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
       {sequences.map((s) => (
         <button
           key={s.label}
@@ -698,6 +719,7 @@ export function PrebuiltSequences({
           <p className="text-[10px] text-muted-foreground leading-snug">{s.blurb}</p>
         </button>
       ))}
+      </div>
     </div>
   );
 }
@@ -996,6 +1018,176 @@ const BOARD_COLUMNS = [
   { id: "posted", label: "Posted", tint: "bg-sky-500/[0.07] border-sky-500/25" },
 ] as const;
 
+/** Split a markdown doc into its H1-H3 sections so each can be copied on its own. */
+export function splitSections(md: string): Array<{ title: string; text: string; level: number }> {
+  const out: Array<{ title: string; text: string; level: number }> = [];
+  let cur: { title: string; text: string; level: number } | null = null;
+  for (const ln of md.split("\n")) {
+    const h = ln.match(/^(#{1,3})\s+(.+)$/);
+    if (h) {
+      if (cur) out.push(cur);
+      cur = { title: h[2].replace(/[#*`]/g, "").trim(), text: ln + "\n", level: h[1].length };
+    } else if (cur) {
+      cur.text += ln + "\n";
+    } else if (ln.trim()) {
+      cur = { title: "Intro", text: ln + "\n", level: 2 };
+    }
+  }
+  if (cur) out.push(cur);
+  return out.map((s) => ({ ...s, text: s.text.trim() })).filter((s) => s.text);
+}
+
+/** Minimal markdown -> HTML for clean print/PDF output. */
+function mdToHtml(md: string): string {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = (s: string) =>
+    esc(s)
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>");
+  const out: string[] = [];
+  let list: "ul" | "ol" | null = null;
+  let inTable = false;
+  const closeList = () => {
+    if (list) {
+      out.push(`</${list}>`);
+      list = null;
+    }
+  };
+  const closeTable = () => {
+    if (inTable) {
+      out.push("</tbody></table>");
+      inTable = false;
+    }
+  };
+  for (const ln of md.split("\n")) {
+    const h = ln.match(/^(#{1,3})\s+(.+)$/);
+    if (h) {
+      closeList();
+      closeTable();
+      out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`);
+      continue;
+    }
+    if (/^\s*>\s?/.test(ln)) {
+      closeList();
+      closeTable();
+      out.push(`<blockquote>${inline(ln.replace(/^\s*>\s?/, ""))}</blockquote>`);
+      continue;
+    }
+    if (/^\s*---\s*$/.test(ln)) {
+      closeList();
+      closeTable();
+      out.push("<hr/>");
+      continue;
+    }
+    const bullet = ln.match(/^\s*[-*]\s+(.+)$/);
+    if (bullet) {
+      closeTable();
+      if (list !== "ul") {
+        closeList();
+        out.push("<ul>");
+        list = "ul";
+      }
+      out.push(`<li>${inline(bullet[1])}</li>`);
+      continue;
+    }
+    const num = ln.match(/^\s*\d+\.\s+(.+)$/);
+    if (num) {
+      closeTable();
+      if (list !== "ol") {
+        closeList();
+        out.push("<ol>");
+        list = "ol";
+      }
+      out.push(`<li>${inline(num[1])}</li>`);
+      continue;
+    }
+    const row = ln.match(/^\s*\|(.+)\|\s*$/);
+    if (row) {
+      closeList();
+      if (/^[\s|:-]+$/.test(row[1])) continue;
+      if (!inTable) {
+        out.push("<table><tbody>");
+        inTable = true;
+      }
+      out.push("<tr>" + row[1].split("|").map((c) => `<td>${inline(c.trim())}</td>`).join("") + "</tr>");
+      continue;
+    }
+    closeList();
+    closeTable();
+    if (ln.trim()) out.push(`<p>${inline(ln)}</p>`);
+  }
+  closeList();
+  closeTable();
+  return out.join("\n");
+}
+
+/** Open a clean print window for a section so the operator can Save as PDF. */
+function printPdf(title: string, md: string) {
+  const w = window.open("", "_blank", "width=840,height=1000");
+  if (!w) return;
+  const css =
+    "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111;max-width:720px;margin:36px auto;padding:0 28px;line-height:1.55}" +
+    "h1{font-size:24px;margin:0 0 12px}h2{font-size:19px;margin:22px 0 8px}h3{font-size:16px;margin:18px 0 6px}" +
+    "blockquote{border-left:3px solid #3f6fff;margin:12px 0;padding:6px 14px;color:#222;background:#f4f7ff;border-radius:4px}" +
+    "table{border-collapse:collapse;width:100%;margin:12px 0}td{border:1px solid #ddd;padding:7px 10px;font-size:14px}" +
+    "ul,ol{margin:8px 0 8px 2px;padding-left:20px}li{margin:4px 0}hr{border:none;border-top:1px solid #e2e2e2;margin:18px 0}" +
+    "code{background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:13px}p{margin:8px 0}strong{font-weight:700}" +
+    "@media print{body{margin:0 auto}}";
+  w.document.write(
+    `<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/[<>]/g, "")}</title><style>${css}</style></head><body>${mdToHtml(md)}</body></html>`
+  );
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 350);
+}
+
+/**
+ * Shared read view for ANY document: renders the HTML preview if present, then
+ * the doc section by section, with a per-section Copy and PDF button that appear
+ * ONLY on sections with real body content (never on bare headings/dividers).
+ */
+export function DocSections({ content, title }: { content: string; title: string }) {
+  const html = extractHtml(content);
+  const sections = useMemo(() => splitSections(stripHtmlBlock(content)), [content]);
+  return (
+    <div className="space-y-3">
+      {html && <HtmlPreview html={html} filename={title} />}
+      <div className="max-h-96 overflow-y-auto rounded-lg bg-card/40 p-3 space-y-4">
+        {sections.map((s, i) => {
+          const body = s.text.replace(/^#{1,3}\s+.+\n?/, "").trim();
+          return (
+            <div key={i} className={s.level >= 3 ? "pl-3" : ""}>
+              <div className="flex items-center gap-2 mb-1 border-b border-border/25 pb-1">
+                <h4
+                  className={`flex-1 min-w-0 font-semibold text-foreground ${
+                    s.level <= 1 ? "text-sm" : s.level === 2 ? "text-[13px]" : "text-xs text-foreground/80"
+                  }`}
+                >
+                  {s.title}
+                </h4>
+                {body && (
+                  <>
+                    <button
+                      onClick={() => printPdf(s.title, s.text)}
+                      className="text-[10px] font-medium text-muted-foreground hover:text-foreground flex-shrink-0"
+                      title="Open a print view to save this section as a PDF"
+                    >
+                      PDF
+                    </button>
+                    <CopyButton text={body} label="" className="opacity-60 hover:opacity-100 flex-shrink-0" />
+                  </>
+                )}
+              </div>
+              {body && <MarkdownDoc content={body} />}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function DocBoard({
   docs,
   invalidate,
@@ -1195,14 +1387,7 @@ export function DocBoard({
                               </div>
                             </div>
                           ) : (
-                            <div className="space-y-3">
-                              {extractHtml(doc.content) && (
-                                <HtmlPreview html={extractHtml(doc.content)!} filename={doc.title} />
-                              )}
-                              <div className="max-h-96 overflow-y-auto rounded-lg bg-card/40 p-3">
-                                <MarkdownDoc content={stripHtmlBlock(doc.content)} />
-                              </div>
-                            </div>
+                            <DocSections content={doc.content} title={doc.title} />
                           )}
                         </div>
                       )}
