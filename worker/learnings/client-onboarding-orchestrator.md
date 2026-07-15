@@ -86,3 +86,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-15 · job 420009 · client: Trent Kus -->
 - When Foundation docs run in parallel (each a separate deliverable), any REVISION FEEDBACK block in the prompt may target only one sibling deliverable. State that a Foundation run must scope revision feedback to the deliverable it names and produce the others fresh against the locked spine, so a "redo the 14-day email sequence" note does not get misapplied to the ICP/Offers/Brand/Course run.
+
+<!-- 2026-07-15 · job 420009 · client: Trent Kus -->
+- The Brand & Positioning template is listed as 14 bare section titles (One-Liner, Big Idea, Market Fit Check, ...) with no per-section content contract, which forces every writer to reconstruct what each section must contain. The skill should carry a one-line "what goes here" contract per section (e.g. Awareness Levels & Big Domino = a 4-column routing table of segment / message focus / offer tier / % of pool, tensed to the funnel branch; Problem & Solution Mechanism = both mechanism halves plus the "secret is in the ___" line). This is systemic across every client build.

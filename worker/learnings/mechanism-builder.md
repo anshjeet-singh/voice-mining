@@ -23,3 +23,7 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-15 · job 420009 · client: Trent Kus -->
 - The skill's Output labels ("Failed Method / New Mechanism / Mechanism Name / Why It Works") are internal scaffolding. In a client-facing deliverable they must be rewritten into prose: name the mechanism inline and split it into a problem half (removes self-blame) and a solution half (the named steps), rather than printing the labeled fields as-is.
+
+<!-- 2026-07-15 · job 420009 · client: Trent Kus -->
+- The SKILL.md output scaffold (Failed Method / New Mechanism / Mechanism Name / Why It Works) does not enforce the TWO required halves the frameworks demand: the unique mechanism behind the PROBLEM (root cause that removes self-blame) AND the unique mechanism behind the SOLUTION. A solution-only mechanism reads as a lecture and fails the sophisticated-market credibility test. The output template should split "New Mechanism" into "Problem Mechanism" and "Solution Mechanism," and add the completion test as a required field: the copy must be able to finish "the secret is in the ___." This is systemic for every client, not Trent-specific.
+- The skill has no compliance guard. For regulated niches (finance, credit, lending, health, legal), clients routinely reveal non-compliant or self-described-illegal methods in onboarding. The skill should state that the mechanism is built ONLY on the legitimate, publishable version, and that any legal-exposure detail routes to a human and never enters an asset.
