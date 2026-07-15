@@ -83,3 +83,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-15 · job 420008 · client: Trent Kus -->
 - When Foundation docs are regenerated in parallel and the operator supplies revision feedback, scope the feedback to the specific deliverable it names before handing it to each parallel run. This run's Course Outline received revision feedback that only concerned the 14-day email sequence, which is a different deliverable and stage; passing deliverable-specific feedback to every parallel Foundation run wastes reads and risks a run "fixing" something outside its scope.
+
+<!-- 2026-07-15 · job 420009 · client: Trent Kus -->
+- When Foundation docs run in parallel (each a separate deliverable), any REVISION FEEDBACK block in the prompt may target only one sibling deliverable. State that a Foundation run must scope revision feedback to the deliverable it names and produce the others fresh against the locked spine, so a "redo the 14-day email sequence" note does not get misapplied to the ICP/Offers/Brand/Course run.

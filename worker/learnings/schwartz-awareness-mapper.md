@@ -11,3 +11,6 @@ Accumulated craft lessons applied on every run.
 <!-- 2026-07-14 · job 420003 · client: Blake Matthews -->
 - The awareness output should not be a bare Schwartz ladder. It must be a routing table with, per row, the segment(s) sitting there, the message focus, the offer tier it points at, and its % of pool. Omitting offer-tier and %-of-pool forces every downstream skill (deck, emails, ads) to re-derive routing and is a recurring defect.
 - Tie the ladder endpoint to the funnel branch: webinar funnels end on "take the spot / book the call," call funnels end on the VSL-to-application handoff, and the Big Domino is framed to that branch.
+
+<!-- 2026-07-15 · job 420009 · client: Trent Kus -->
+- The skill outputs one awareness stage, but the mother pipeline needs a stage PER sub-avatar plus a cross-cutting overlay that can sit at a different (more distrustful) awareness than its underlying demographic segment. State that the map is produced per sub-avatar and that a psychographic overlay (e.g. a burned skeptic) is mapped separately from the demographic segments it spans.
