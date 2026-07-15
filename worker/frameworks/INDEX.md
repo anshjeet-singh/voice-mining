@@ -26,6 +26,10 @@ Skool community + about page VSL:
 - skool-about-vsl.md, suby-sell-the-click.md, hormozi-leads.md
 - rackham-spin-selling.md (implication chains in monologue form)
 
+Free-community lead magnets (the 3 mini-courses inside the free community):
+- lead-magnet-craft.md (THE bar: each magnet = course name + description + THREE in-depth pages of 700 to 1200 words with worked-example tables, step-by-step walkthroughs, common-mistakes beats and recaps, plus TWO structured fill-in worksheets and a film-ready Loom script; depth AND scannability, no fluff, no em dashes, compliance-safe)
+- hormozi-leads.md (the lead magnet as the free thing that solves ONE narrow bottleneck), hooks-and-proof.md
+
 Funnel structure + landing pages:
 - funnel-structure.md, suby-headline-machine.md (headline non-negotiables), suby-sell-the-click.md, copy-quality-bar.md
 - dr-masters-scavenge.md (Brown's minimum viable funnel, Wojo's offer > messaging > creative > page triage)
