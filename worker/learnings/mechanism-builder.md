@@ -17,3 +17,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-14 · job 420001 · client: Trent Kus -->
 - The output scaffold (Failed Method / New Mechanism / Mechanism Name / Why It Works) only forces the SOLUTION half of the mechanism. It should also force the PROBLEM-mechanism half (the hidden root cause that removes self-blame) and a literal "the secret is in the ___" completion line, because a solution-only mechanism reads as a lecture and fails the sophisticated-market credibility test. Make both halves and the completion test required fields in the template.
+
+<!-- 2026-07-15 · job 420008 · client: Trent Kus -->
+- The skill should state the completion test explicitly (the copy must be able to finish "the secret is in the ___") and require BOTH mechanism halves: the unique mechanism behind the PROBLEM (the root cause that removes self-blame) and the unique mechanism behind the SOLUTION. The current template lists only "New Mechanism / Why It Works," which lets a writer ship a solution-only mechanism that fails the quality bar.
