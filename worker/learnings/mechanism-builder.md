@@ -20,3 +20,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-15 · job 420008 · client: Trent Kus -->
 - The skill should state the completion test explicitly (the copy must be able to finish "the secret is in the ___") and require BOTH mechanism halves: the unique mechanism behind the PROBLEM (the root cause that removes self-blame) and the unique mechanism behind the SOLUTION. The current template lists only "New Mechanism / Why It Works," which lets a writer ship a solution-only mechanism that fails the quality bar.
+
+<!-- 2026-07-15 · job 420009 · client: Trent Kus -->
+- The skill's Output labels ("Failed Method / New Mechanism / Mechanism Name / Why It Works") are internal scaffolding. In a client-facing deliverable they must be rewritten into prose: name the mechanism inline and split it into a problem half (removes self-blame) and a solution half (the named steps), rather than printing the labeled fields as-is.
