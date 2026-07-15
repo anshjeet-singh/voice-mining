@@ -11,3 +11,6 @@ Accumulated craft lessons applied on every run.
 <!-- 2026-07-14 · job 420001 · client: Trent Kus -->
 - The free community About page must: open on a real hook (never "anyone who wants X"), place the founder credibility line near the top, list what members unlock for free as a green-tick list containing exactly three named lead magnets, add 🎁 gift-box bonuses (weekly live Q&A, a 1-on-1 onboarding call, community access), carry one "✅ This is FOR..." line and one "❌ This is NOT for..." line, and close on a command CTA. Its single job is to move people toward the paid offer and a booked call.
 - The free tagline is a punchy four-line emoji format selling the dream, with the last line always a "👇 Join below" style command.
+
+<!-- 2026-07-15 · job 450001 · client: Trent Kus -->
+- The Community Pipeline Plan and the Start Here / About assets should enumerate the FULL lead-magnet library, not just the 5-part free video course. When email sequences later reference community assets by name, a thin asset list in the Skool doc forces the email writer to either invent assets or default to the video course. Capture every real lead magnet (ebooks, guides, playbooks, affiliate offer) at the Skool-build stage so downstream email value pointers stay accurate and varied.

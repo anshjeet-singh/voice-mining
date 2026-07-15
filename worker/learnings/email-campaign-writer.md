@@ -45,3 +45,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-15 · job 420010 · client: Trent Kus -->
 - For a 14-day free-community nurture that runs the two-CTA model (book the call + add the recurring live Q&A to calendar), the Q&A "add to calendar" CTA should resolve to `[CALENDAR LINK]`, not `[COMMUNITY LINK]`. Reserve `[COMMUNITY LINK]` for the value-delivery pointer that sends the reader INTO the group to consume a named asset. Keeping the two link roles distinct prevents the "add to calendar" ask and the "go consume this asset" pointer from collapsing into one ambiguous destination.
+
+<!-- 2026-07-15 · job 450001 · client: Trent Kus -->
+- Before writing the 14-day free-community nurture's value pointers, confirm the client's ACTUAL lead-magnet inventory. The approved Skool doc often names a single video course as the headline free asset, but clients frequently have a wider library of downloadable guides/ebooks. Default to distributing pointers across all real named magnets (one distinct asset per value email) rather than leaning on one numbered course, and match the reader's day-of-sequence topic to the most relevant magnet.
