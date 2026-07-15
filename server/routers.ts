@@ -139,6 +139,49 @@ async function requireClient(clientId: number, userId: number) {
   return client;
 }
 
+// Foundation docs, most-grounding first, that the on-demand AI reads to ground
+// every document it writes in this client's real strategy.
+const CONTEXT_PRIORITY = [
+  "icp_snapshot",
+  "offers",
+  "brand_positioning",
+  "skool_free_community",
+  "skool_paid_community",
+  "course_outline",
+  "funnel_structure",
+  "skool_lead_magnets",
+];
+
+/**
+ * Build a compact context block from the client's approved foundation docs
+ * (ICP, offers, brand voice, community structure) so the server-side AI writes
+ * grounded, on-brand documents instead of generic filler.
+ */
+async function buildClientContext(clientId: number, budget = 48000): Promise<string> {
+  const client = await getClientById(clientId);
+  const docs = await getClientDocuments(clientId);
+  const foundation = docs
+    .filter((d) => d.kind === "foundation" && d.content && d.content.trim().length > 40)
+    .sort((a, b) => {
+      const ia = CONTEXT_PRIORITY.indexOf(a.docType);
+      const ib = CONTEXT_PRIORITY.indexOf(b.docType);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+  let out = client ? `CLIENT: ${client.name} — niche: ${client.niche} — funnel: ${client.funnelType}\n` : "";
+  for (const d of foundation) {
+    const block = `\n\n===== ${d.title} =====\n${d.content.trim()}`;
+    if (out.length + block.length > budget) {
+      out += block.slice(0, Math.max(0, budget - out.length));
+      break;
+    }
+    out += block;
+  }
+  return out.trim() || "(No approved foundation documents yet — use strong direct-response best practice for this niche.)";
+}
+
+const CREATE_DOC_SYSTEM =
+  "You are an elite direct-response copywriter and course builder producing ONE finished deliverable for a done-for-you marketing agency. Build EXACTLY what the operator asks for, in full, at agency quality. Rules: (1) Ground everything in the client's real ICP, offers, voice and community from the CONTEXT — never invent an offer or price that contradicts it. (2) Deliver the WHOLE thing, not an outline or a sample: if they ask for a 14-email sequence, write all 14 emails in full with subject lines and a clear send-day/time label on each; if they ask for a worksheet or lesson, build it out completely. (3) Aggressive, high-energy, benefit-led copy; real proof or a literal [PROOF: ...] placeholder where a specific result is needed. (4) Scannable markdown: headings, bold, short paragraphs, bullets. (5) NEVER use em dashes; write ranges with 'to'. (6) Keep any [PLACEHOLDER] tokens literal. Output ONLY the finished document in markdown, with no preamble, no commentary and no surrounding code fences.";
+
 export const appRouter = router({
   system: systemRouter,
 
@@ -443,19 +486,20 @@ export const appRouter = router({
         const doc = await getClientDocumentById(input.id);
         if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
         await requireClient(doc.clientId, ctx.user.id);
+        const context = await buildClientContext(doc.clientId);
         const result = await invokeLLM({
           messages: [
             {
               role: "system",
               content:
-                "You are an elite direct-response copywriter editing ONE marketing document for an agency. Rewrite the FULL document applying the operator's feedback precisely. Keep the same overall structure, section headings and markdown formatting UNLESS the feedback explicitly asks to change them. Preserve every [PLACEHOLDER] token exactly as written. Keep the copy vibrant, high-energy and benefit-driven, never flatten it. Do NOT use em dashes anywhere. Output ONLY the complete rewritten document in markdown, with no preamble, no commentary and no surrounding code fences.",
+                "You are an elite direct-response copywriter revising ONE marketing document for a done-for-you agency. Apply the operator's instruction and return the FULL document, materially improved. If the instruction asks to regenerate, rewrite, redo, refresh or 'make it better' without other specifics, produce a genuinely NEW and stronger version from scratch — change the angles, hooks and examples; do NOT echo the current text back. Ground everything in the client's real ICP, offers, voice and community from the CONTEXT. Keep the deliverable complete (if it is a multi-part sequence, keep every part in full). Preserve every [PLACEHOLDER] token exactly. Keep the copy vibrant, high-energy and benefit-driven. NEVER use em dashes; write ranges with 'to'. Output ONLY the complete document in markdown, with no preamble, no commentary and no surrounding code fences.",
             },
             {
               role: "user",
-              content: `OPERATOR FEEDBACK (apply this to the document):\n${input.feedback}\n\nCURRENT DOCUMENT:\n${doc.content}`,
+              content: `CLIENT CONTEXT (ground the rewrite in this):\n${context}\n\n=======================\n\nOPERATOR INSTRUCTION:\n${input.feedback}\n\nCURRENT DOCUMENT:\n${doc.content}`,
             },
           ],
-          maxTokens: 16384,
+          maxTokens: 32000,
         });
         let out = (result.choices[0]?.message?.content ?? "").trim();
         const fence = out.match(/^```(?:markdown|md)?\s*([\s\S]*?)\s*```$/);
@@ -465,6 +509,53 @@ export const appRouter = router({
         }
         await updateClientDocument(input.id, out);
         return { ok: true };
+      }),
+
+    /**
+     * Create ONE finished document from scratch, server-side, grounded in the
+     * client's foundation docs. Lands as a draft card on the chosen engine board.
+     * Fast and reliable — never touches the heavy worker pipeline.
+     */
+    aiCreateDocument: protectedProcedure
+      .input(
+        z.object({
+          clientId: z.number(),
+          docType: z.string().regex(/^[a-z_]+_extra$/),
+          title: z.string().min(1).max(300),
+          instructions: z.string().min(1).max(10000),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const context = await buildClientContext(input.clientId);
+        const result = await invokeLLM({
+          messages: [
+            { role: "system", content: CREATE_DOC_SYSTEM },
+            {
+              role: "user",
+              content: `CLIENT CONTEXT (their real ICP, offers, voice and community — ground the whole document in this):\n${context}\n\n=======================\n\nDOCUMENT TO CREATE\nTitle: ${input.title}\n\nWhat the operator wants:\n${input.instructions}`,
+            },
+          ],
+          maxTokens: 32000,
+        });
+        let out = (result.choices[0]?.message?.content ?? "").trim();
+        const fence = out.match(/^```(?:markdown|md)?\s*([\s\S]*?)\s*```$/);
+        if (fence) out = fence[1].trim();
+        if (out.length < 120) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "The AI returned almost nothing. Add a little more detail to the instructions and try again.",
+          });
+        }
+        const id = await createClientDocument({
+          clientId: input.clientId,
+          kind: "deliverable",
+          docType: input.docType,
+          title: input.title.trim(),
+          content: out,
+          status: "draft",
+        });
+        return { id };
       }),
 
     deleteDocument: protectedProcedure

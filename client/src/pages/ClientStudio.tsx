@@ -868,45 +868,36 @@ function parseSubAvatars(doc?: ClientDoc): Avatar[] {
  */
 // Copy/script doc-sets the AI can rewrite with feedback. NOT the rendered ad
 // creatives — those live on the reject button in the Ads engine.
-const AI_TARGETS = [
-  { key: "foundation", label: "Foundation" }, // ICP, Offers, Brand, Course
-  { key: "skool", label: "Skool" }, // Free + Paid community
-  { key: "emails", label: "Emails" },
-  { key: "more_scripts", label: "Ad scripts" },
-  { key: "more_content_ig", label: "Short-Form" },
-  { key: "more_content_yt", label: "YouTube" },
-  { key: "more_landers", label: "Funnel" },
+// Where an AI-created document lands. Each maps to an engine board's docType.
+const CREATE_SECTIONS = [
+  { key: "emails_extra", label: "Emails" },
+  { key: "skool_extra", label: "Skool" },
+  { key: "ad_scripts_extra", label: "Ad scripts" },
+  { key: "lander_extra", label: "Funnel" },
+  { key: "content_ig_extra", label: "Short-form" },
+  { key: "content_yt_extra", label: "YouTube" },
 ] as const;
-type AiTarget = (typeof AI_TARGETS)[number]["key"];
 
-// Prefix that forces the worker to distill a systemic preference into
-// worker/learnings/<skill>.md so it applies to EVERY future client, not just this one.
-const PERMANENT_RULE_PREFIX =
-  "[PERMANENT RULE — this is a SYSTEMIC operator preference that is true for EVERY client, not just this one (e.g. formatting, structure, voice). You MUST distill it into craft_lessons.md for the relevant skill so it is applied on all future runs.]\n\n";
-
-function FoundationRefine({
-  clientId,
-  invalidate,
-  jobs,
-}: {
-  clientId: number;
-  invalidate: () => void;
-  jobs: Record<string, { status?: string | null; progress?: string | null } | null>;
-}) {
-  const [target, setTarget] = useState<AiTarget>("foundation");
-  const [msg, setMsg] = useState("");
-  const [teach, setTeach] = useState(false);
-  const gen = trpc.clients.generateStage.useMutation({
+function FoundationRefine({ clientId, invalidate }: { clientId: number; invalidate: () => void }) {
+  const [docType, setDocType] = useState<string>("emails_extra");
+  const [title, setTitle] = useState("");
+  const [instructions, setInstructions] = useState("");
+  const create = trpc.clients.aiCreateDocument.useMutation({
     onSuccess: () => {
       invalidate();
-      setMsg("");
-      toast.success(teach ? "On it, and I'll teach this to every future build" : "On it. Cashflow Coaches AI is updating that set");
-      setTeach(false);
+      setTitle("");
+      setInstructions("");
+      toast.success(`Created. It's a draft in the ${CREATE_SECTIONS.find((s) => s.key === docType)?.label} pipeline`);
     },
     onError: (err) => toast.error(err.message),
   });
-  const job = jobs[target];
-  const busy = job?.status === "queued" || job?.status === "running" || gen.isPending;
+  const canGo = title.trim().length > 0 && instructions.trim().length > 0;
+  const chip = (active: boolean) =>
+    `px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+      active
+        ? "bg-primary/20 text-primary border border-primary/40"
+        : "bg-card/60 text-muted-foreground border border-border/40 hover:text-foreground"
+    }`;
   return (
     <div className="rounded-xl border border-primary/25 bg-gradient-to-r from-primary/[0.07] to-transparent p-4">
       <div className="flex items-center gap-2 mb-2.5">
@@ -915,54 +906,46 @@ function FoundationRefine({
         </div>
         <div>
           <p className="text-sm font-semibold text-foreground">Cashflow Coaches AI</p>
-          <p className="text-[10.5px] text-muted-foreground leading-tight">Rebuilds a whole set via your Mac worker, and can teach a permanent rule. To change one document, use the ✨ AI on that document's card instead (instant, no worker).</p>
+          <p className="text-[10.5px] text-muted-foreground leading-tight">
+            Write any document from scratch, instantly. Grounded in this client's ICP, offers and voice. It lands as a draft card in the section you pick. To change a document that already exists, use the ✨ AI on its card.
+          </p>
         </div>
       </div>
-      {busy ? (
-        <div className="flex items-center gap-2 py-2">
+      {create.isPending ? (
+        <div className="flex items-center gap-2 py-3">
           <Loader2 className="w-3.5 h-3.5 text-primary animate-spin flex-shrink-0" />
-          <p className="text-[11px] text-muted-foreground">
-            {job?.status === "queued" || gen.isPending ? "Queued, waiting for your Mac worker" : job?.progress || "Working on it..."}
-          </p>
+          <p className="text-[11px] text-muted-foreground">Writing "{title.trim() || "your document"}"...</p>
         </div>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-            <span className="text-[11px] text-muted-foreground mr-0.5">Update</span>
-            {AI_TARGETS.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTarget(t.key)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
-                  target === t.key
-                    ? "bg-primary/20 text-primary border border-primary/40"
-                    : "bg-card/60 text-muted-foreground border border-border/40 hover:text-foreground"
-                }`}
-              >
-                {t.label}
+            <span className="text-[11px] text-muted-foreground mr-0.5">Section</span>
+            {CREATE_SECTIONS.map((s) => (
+              <button key={s.key} onClick={() => setDocType(s.key)} className={chip(docType === s.key)}>
+                {s.label}
               </button>
             ))}
           </div>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Document title, e.g. 14-Day Skool Community Sequence"
+            className="w-full rounded-lg border border-border/50 bg-background/50 p-2.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50 mb-2"
+          />
           <textarea
-            value={msg}
-            onChange={(e) => setMsg(e.target.value)}
-            rows={3}
-            placeholder="Tell the AI what to fix, update, or create..."
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            rows={4}
+            placeholder="Say exactly what you want, in full. e.g. 14 emails, one per day for 14 days, aggressive cadence, case-study heavy. Nurture free-community members toward booking a call. Write every email in full with subject lines and a send-day label."
             className="w-full resize-none rounded-lg border border-border/50 bg-background/50 p-3 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
           />
-          <label className="mt-2 flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" checked={teach} onChange={() => setTeach((v) => !v)} className="w-3.5 h-3.5 accent-primary cursor-pointer" />
-            <span className="text-[11px] text-muted-foreground">
-              Make this a <span className="text-foreground font-medium">permanent rule</span> for every future build (not just this client)
-            </span>
-          </label>
           <button
-            disabled={!msg.trim()}
-            onClick={() => gen.mutate({ clientId, stage: target, feedback: (teach ? PERMANENT_RULE_PREFIX : "") + msg.trim() })}
+            disabled={!canGo}
+            onClick={() => create.mutate({ clientId, docType, title: title.trim(), instructions: instructions.trim() })}
             className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
           >
             <Sparkles className="w-3 h-3" />
-            Create
+            Create document
           </button>
         </>
       )}
@@ -1229,11 +1212,7 @@ export default function ClientStudio() {
               )}
 
               {/* AI: update any doc-set (Foundation / Skool / Emails / Ads) from the Overview */}
-              <FoundationRefine
-                clientId={clientId}
-                invalidate={invalidate}
-                jobs={jobs as unknown as Record<string, { status?: string | null; progress?: string | null } | null>}
-              />
+              <FoundationRefine clientId={clientId} invalidate={invalidate} />
 
               {/* The client's own live socials */}
               <ClientSocials clientId={clientId} client={data.client} invalidate={invalidate} />
