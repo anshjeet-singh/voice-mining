@@ -8,8 +8,8 @@ import {
   DocBoard,
   DocSections,
   ENGINES,
+  EmailEngineCard,
   EngineCard,
-  PrebuiltSequences,
   RefImagePanel,
   type ClientAssetMeta,
   type ClientDoc,
@@ -1369,26 +1369,17 @@ export default function ClientStudio() {
             <>
               <SectionHeader id="emails" />
               <StudioBlock
-                title={data.client.funnelType === "webinar" ? "Webinar sequences" : "Call funnel sequences"}
-                hint="One click writes the whole sequence in your swipe-file style. It lands as a card in the pipeline below"
+                title="Generate emails"
+                hint="Pick a type. VSL or Webinar/Call reveals its sequences to pick; the rest write one-off emails. Audience and offer apply to all. Everything lands as a card below"
                 frame="border-emerald-500/25 bg-emerald-500/[0.05]"
               >
-                <PrebuiltSequences
-                  funnelType={data.client.funnelType === "webinar" ? "webinar" : "call"}
+                <EmailEngineCard
                   job={jobs.more_emails ?? null}
                   clientId={clientId}
                   invalidate={invalidate}
+                  avatars={avatars}
+                  funnelType={data.client.funnelType === "webinar" ? "webinar" : "call"}
                 />
-              </StudioBlock>
-              <StudioBlock
-                title="VSL sequences"
-                hint="For the VSL funnel: opt-in, booked pre-call nurture, no-show recovery, post-call follow-ups. One click generates all four, or pick one. Aggressive cadence, case-study dense"
-                frame="border-emerald-500/25 bg-emerald-500/[0.05]"
-              >
-                <PrebuiltSequences funnelType="vsl" job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} />
-              </StudioBlock>
-              <StudioBlock title="Or write a custom email" hint="Pick the purpose, add specifics: swipe-file style, ConvertKit-ready" frame="border-emerald-500/25 bg-emerald-500/[0.05]">
-                <EngineCard engine={engineByKind("more_emails")} job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
               </StudioBlock>
               <StudioBlock
                 title="Email pipeline"

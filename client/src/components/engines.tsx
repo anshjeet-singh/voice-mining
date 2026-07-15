@@ -724,6 +724,213 @@ export function PrebuiltSequences({
   );
 }
 
+/** Short chip labels for the sequence sub-row. */
+const SEQ_SHORT: Record<string, string> = {
+  "Pre-webinar reminder": "Pre-webinar",
+  "Post-webinar (attended)": "Post-webinar",
+  "No-show / replay": "Replay",
+  "Post-booking show-up": "Show-up",
+  "No-show / re-engagement": "Re-engage",
+  "Opted in, not booked": "Opt-in",
+  "Booked, pre-call nurture": "Pre-call",
+  "No-show recovery": "No-show",
+  "Post-call follow-ups": "Follow-up",
+};
+
+/**
+ * The whole email engine in ONE card: pick a Type. VSL or Webinar/Call reveals a
+ * sequence sub-row (pick any); the other types write one-off emails with a count.
+ * Audience and offer apply to everything. Fires one more_emails job that splits
+ * into cards.
+ */
+export function EmailEngineCard({
+  job,
+  clientId,
+  invalidate,
+  avatars = [],
+  funnelType,
+}: {
+  job: StageJob;
+  clientId: number;
+  invalidate: () => void;
+  avatars?: Array<{ name: string; hint?: string }>;
+  funnelType: "webinar" | "call";
+}) {
+  const chip = (active: boolean) =>
+    `px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+      active
+        ? "bg-primary/20 text-primary border border-primary/40"
+        : "bg-card/60 text-muted-foreground border border-border/40 hover:text-foreground"
+    }`;
+  const funnelKey = funnelType === "webinar" ? "webinar" : "call";
+  const TYPES: Array<{ key: string; label: string; seq?: "webinar" | "call" | "vsl"; campaign?: string }> = [
+    { key: funnelKey, label: funnelType === "webinar" ? "Webinar" : "Call", seq: funnelKey },
+    { key: "vsl", label: "VSL", seq: "vsl" },
+    { key: "broadcast", label: "Broadcast", campaign: "a one-off BROADCAST / promo email" },
+    { key: "nurture", label: "Nurture", campaign: "a community NURTURE email" },
+    { key: "cash", label: "Cash", campaign: "a CASH INJECTION / flash-offer email" },
+    { key: "news", label: "Newsletter", campaign: "a value NEWSLETTER email" },
+    { key: "reengage", label: "Re-engage", campaign: "a RE-ENGAGEMENT email for a cold list" },
+  ];
+  const [typeKey, setTypeKey] = useState(TYPES[0].key);
+  const type = TYPES.find((t) => t.key === typeKey)!;
+  const seqList = type.seq ? PREBUILT_SEQUENCES[type.seq] : [];
+  const [seqSel, setSeqSel] = useState<string[]>(() => (TYPES[0].seq ? PREBUILT_SEQUENCES[TYPES[0].seq].map((s) => s.label) : []));
+  const [count, setCount] = useState(1);
+  const [audience, setAudience] = useState<string[]>([]);
+  const [offer, setOffer] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const pickType = (key: string) => {
+    setTypeKey(key);
+    const t = TYPES.find((x) => x.key === key)!;
+    setSeqSel(t.seq ? PREBUILT_SEQUENCES[t.seq].map((s) => s.label) : []);
+  };
+
+  const generate = trpc.clients.generateStage.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success("Queued. Your Mac worker will write it");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const busy = job?.status === "queued" || job?.status === "running";
+
+  const context = () => {
+    let s = "";
+    if (audience.length) {
+      const picked = audience.map((n) => {
+        const a = avatars.find((av) => av.name === n);
+        return a?.hint ? `${a.name} (${a.hint})` : n;
+      });
+      s += ` AUDIENCE: write to ${picked.join(" + ")}.`;
+    }
+    const offerReq = OFFER_LADDER.find((o) => o.label === offer)?.request;
+    if (offerReq) s += ` ${offerReq}`;
+    if (notes.trim()) s += ` EXTRA DIRECTION: ${notes.trim()}`;
+    return s;
+  };
+
+  const buildRequest = () => {
+    if (type.seq) {
+      const chosen = seqList.filter((s) => seqSel.includes(s.label));
+      return (
+        `Write ${chosen.length} email sequence(s) for this funnel in ONE run. Output EACH sequence as its OWN document separated by a line containing exactly <!-- SPLIT --> so each files as its own card. Build every one to full quality.${context()}\n\n` +
+        chosen.map((s, i) => `=== SEQUENCE ${i + 1}: ${s.label} ===\n${s.request}`).join("\n\n")
+      );
+    }
+    return `Write ${count} ${type.campaign}, swipe-file style and ConvertKit-ready, each as its OWN document separated by a line containing exactly <!-- SPLIT -->.${context()}`;
+  };
+
+  const canGo = type.seq ? seqSel.length > 0 : true;
+  const genLabel = type.seq ? `Generate ${seqSel.length}` : `Generate ${count}`;
+
+  if (busy) {
+    return (
+      <div className="flex items-center gap-2 py-1">
+        <Loader2 className="w-3.5 h-3.5 text-primary animate-spin flex-shrink-0" />
+        <p className="text-[11px] text-muted-foreground">
+          {job?.status === "queued" ? "Waiting for your Mac worker" : job?.progress || "Writing your emails..."}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-2.5">
+        <p className="text-[11px] text-muted-foreground mb-1">Type</p>
+        <div className="flex flex-wrap gap-1.5">
+          {TYPES.map((t) => (
+            <button key={t.key} onClick={() => pickType(t.key)} className={chip(typeKey === t.key)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {type.seq && (
+        <div className="mb-2.5">
+          <p className="text-[11px] text-muted-foreground mb-1">Sequences (pick any)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {seqList.map((s) => (
+              <button
+                key={s.label}
+                title={s.blurb}
+                onClick={() => setSeqSel((prev) => (prev.includes(s.label) ? prev.filter((x) => x !== s.label) : [...prev, s.label]))}
+                className={chip(seqSel.includes(s.label))}
+              >
+                {SEQ_SHORT[s.label] ?? s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!type.seq && (
+        <div className="flex items-center gap-3 mb-2.5">
+          <span className="text-[11px] text-muted-foreground w-10">Count</span>
+          <input
+            type="range"
+            min={1}
+            max={15}
+            value={count}
+            onChange={(e) => setCount(Number(e.target.value))}
+            className="flex-1 h-1.5 accent-primary cursor-pointer"
+          />
+          <span className="w-8 text-center text-xs font-semibold text-foreground bg-card/60 rounded px-1.5 py-0.5 tabular-nums">{count}</span>
+        </div>
+      )}
+
+      {avatars.length > 0 && (
+        <div className="mb-2.5">
+          <p className="text-[11px] text-muted-foreground mb-1">Audience</p>
+          <div className="flex flex-wrap gap-1.5">
+            {avatars.map((av) => (
+              <button
+                key={av.name}
+                title={av.hint}
+                onClick={() => setAudience((p) => (p.includes(av.name) ? p.filter((x) => x !== av.name) : [...p, av.name]))}
+                className={chip(audience.includes(av.name))}
+              >
+                {av.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mb-2.5">
+        <p className="text-[11px] text-muted-foreground mb-1">Offer</p>
+        <div className="flex flex-wrap gap-1.5">
+          {OFFER_LADDER.map((o) => (
+            <button key={o.label} onClick={() => setOffer(offer === o.label ? "" : o.label)} className={chip(offer === o.label)}>
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <Textarea
+        placeholder="Optional: the occasion, a deadline, an asset to push, any extra direction..."
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        className="min-h-14 text-[11px] mb-2.5"
+      />
+
+      <Button
+        size="sm"
+        disabled={generate.isPending || !canGo}
+        onClick={() => generate.mutate({ clientId, stage: "more_emails", feedback: buildRequest() })}
+        className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 text-xs"
+      >
+        {generate.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+        {genLabel}
+      </Button>
+    </div>
+  );
+}
+
 /** One on-demand engine: compose a request, run it, review the output doc. */
 export function EngineCard({
   engine,
