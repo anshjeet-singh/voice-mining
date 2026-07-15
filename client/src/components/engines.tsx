@@ -748,13 +748,11 @@ export function EmailEngineCard({
   clientId,
   invalidate,
   avatars = [],
-  funnelType,
 }: {
   job: StageJob;
   clientId: number;
   invalidate: () => void;
   avatars?: Array<{ name: string; hint?: string }>;
-  funnelType: "webinar" | "call";
 }) {
   const chip = (active: boolean) =>
     `px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
@@ -762,10 +760,9 @@ export function EmailEngineCard({
         ? "bg-primary/20 text-primary border border-primary/40"
         : "bg-card/60 text-muted-foreground border border-border/40 hover:text-foreground"
     }`;
-  const funnelKey = funnelType === "webinar" ? "webinar" : "call";
-  const TYPES: Array<{ key: string; label: string; seq?: "webinar" | "call" | "vsl"; campaign?: string }> = [
-    { key: funnelKey, label: funnelType === "webinar" ? "Webinar" : "Call", seq: funnelKey },
+  const TYPES: Array<{ key: string; label: string; seq?: "webinar" | "vsl"; campaign?: string }> = [
     { key: "vsl", label: "VSL", seq: "vsl" },
+    { key: "webinar", label: "Webinar", seq: "webinar" },
     { key: "broadcast", label: "Broadcast", campaign: "a one-off BROADCAST / promo email" },
     { key: "nurture", label: "Nurture", campaign: "a community NURTURE email" },
     { key: "cash", label: "Cash", campaign: "a CASH INJECTION / flash-offer email" },
@@ -988,23 +985,22 @@ export function EngineCard({
   };
 
   const chip = (active: boolean) =>
-    `px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+    `px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
       active
-        ? "bg-primary/20 text-primary border-primary/50"
-        : "bg-card/60 text-muted-foreground border-border/40 hover:text-foreground hover:border-border"
+        ? "bg-primary/20 text-primary border border-primary/40"
+        : "bg-card/60 text-muted-foreground border border-border/40 hover:text-foreground"
     }`;
 
   const selectorRow = (label: string, node: React.ReactNode) => (
     <div className="mb-2.5">
-      <p className="text-[11px] font-medium text-muted-foreground mb-1.5">{label}</p>
+      <p className="text-[11px] text-muted-foreground mb-1">{label}</p>
       <div className="flex flex-wrap gap-1.5">{node}</div>
     </div>
   );
 
   return (
-    <div className="rounded-lg border border-border/40 bg-card/20 p-4">
-      <p className="text-xs font-semibold text-foreground">{engine.label}</p>
-      <p className="text-[11px] text-muted-foreground mb-2.5">{engine.blurb}</p>
+    <div>
+      {engine.blurb && <p className="text-[11px] text-muted-foreground mb-2.5">{engine.blurb}</p>}
 
       {busy ? (
         <div className="flex items-center gap-2">
@@ -1047,13 +1043,13 @@ export function EngineCard({
               avatars.map((av) => (
                 <button
                   key={av.name}
+                  title={av.hint}
                   onClick={() =>
                     setAudience((prev) => (prev.includes(av.name) ? prev.filter((x) => x !== av.name) : [...prev, av.name]))
                   }
-                  className={`text-left ${chip(audience.includes(av.name))}`}
+                  className={chip(audience.includes(av.name))}
                 >
-                  <span className="block font-semibold leading-tight">{av.name}</span>
-                  {av.hint && <span className="block text-[10px] opacity-70 leading-tight font-normal">{av.hint}</span>}
+                  {av.name}
                 </button>
               ))
             )}

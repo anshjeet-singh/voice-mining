@@ -913,7 +913,10 @@ function FoundationRefine({
         <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
           <Sparkles className="w-3.5 h-3.5 text-primary" />
         </div>
-        <p className="text-sm font-semibold text-foreground">Cashflow Coaches AI</p>
+        <div>
+          <p className="text-sm font-semibold text-foreground">Cashflow Coaches AI</p>
+          <p className="text-[10.5px] text-muted-foreground leading-tight">Rebuilds a whole set via your Mac worker, and can teach a permanent rule. To change one document, use the ✨ AI on that document's card instead (instant, no worker).</p>
+        </div>
       </div>
       {busy ? (
         <div className="flex items-center gap-2 py-2">
@@ -1373,13 +1376,7 @@ export default function ClientStudio() {
                 hint="Pick a type. VSL or Webinar/Call reveals its sequences to pick; the rest write one-off emails. Audience and offer apply to all. Everything lands as a card below"
                 frame="border-emerald-500/25 bg-emerald-500/[0.05]"
               >
-                <EmailEngineCard
-                  job={jobs.more_emails ?? null}
-                  clientId={clientId}
-                  invalidate={invalidate}
-                  avatars={avatars}
-                  funnelType={data.client.funnelType === "webinar" ? "webinar" : "call"}
-                />
+                <EmailEngineCard job={jobs.more_emails ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
               </StudioBlock>
               <StudioBlock
                 title="Email pipeline"
