@@ -7,7 +7,7 @@ import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { ArrowUpToLine, Check, ChevronDown, ChevronUp, Copy, FileText, ImagePlus, Loader2, Plus, RefreshCw, X } from "lucide-react";
+import { ArrowUpToLine, Check, ChevronDown, ChevronUp, Copy, FileText, ImagePlus, Loader2, Plus, RefreshCw, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { MarkdownDoc } from "@/components/MarkdownDoc";
@@ -808,14 +808,20 @@ export function EngineCard({
         </div>
       ) : (
         <>
-          {selectorRow(
-            "Count",
-            engine.counts.map((c) => (
-              <button key={c} onClick={() => setCount(c)} className={chip(count === c)}>
-                {c}
-              </button>
-            ))
-          )}
+          <div className="flex items-center gap-3 mb-2.5">
+            <span className="text-[11px] text-muted-foreground w-10">Count</span>
+            <input
+              type="range"
+              min={1}
+              max={Math.max(15, ...engine.counts)}
+              value={count}
+              onChange={(e) => setCount(Number(e.target.value))}
+              className="flex-1 h-1.5 accent-primary cursor-pointer"
+            />
+            <span className="w-8 text-center text-xs font-semibold text-foreground bg-card/60 rounded px-1.5 py-0.5 tabular-nums">
+              {count}
+            </span>
+          </div>
 
           {engine.purposes &&
             selectorRow(
@@ -1205,9 +1211,20 @@ export function DocBoard({
   const [expanded, setExpanded] = useState<number | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [aiId, setAiId] = useState<number | null>(null);
+  const [aiMsg, setAiMsg] = useState("");
   const [composing, setComposing] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftBody, setDraftBody] = useState("");
+  const aiEdit = trpc.clients.aiEditDocument.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setAiId(null);
+      setAiMsg("");
+      toast.success("Updated");
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const setStatus = trpc.clients.setDocumentStatus.useMutation({
     onSuccess: () => invalidate(),
@@ -1341,11 +1358,23 @@ export function DocBoard({
                           </button>
                         )}
                         <span className="flex-1" />
+                        <button
+                          onClick={() => {
+                            setAiId(doc.id);
+                            setEditing(null);
+                            setExpanded(doc.id);
+                          }}
+                          className="h-5 px-1.5 rounded text-[10px] font-medium text-primary hover:text-primary/80 flex items-center gap-1"
+                        >
+                          <Sparkles className="w-2.5 h-2.5" />
+                          AI
+                        </button>
                         <CopyButton text={doc.content} className="px-1.5" />
                         <button
                           onClick={() => {
                             setEditing(doc.id);
                             setEditContent(doc.content);
+                            setAiId(null);
                             setExpanded(doc.id);
                           }}
                           className="h-5 px-1.5 rounded text-[10px] text-muted-foreground hover:text-foreground"
@@ -1365,7 +1394,42 @@ export function DocBoard({
                       </div>
                       {expanded === doc.id && (
                         <div className="px-2.5 pb-2.5">
-                          {editing === doc.id ? (
+                          {aiId === doc.id ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                                <span className="text-xs font-semibold text-foreground">Tell the AI what to change in this document</span>
+                              </div>
+                              <Textarea
+                                value={aiMsg}
+                                onChange={(e) => setAiMsg(e.target.value)}
+                                placeholder="e.g. Regenerate this sequence to match the newer, better version: aggressive cadence, case-study heavy, [paste any specifics]."
+                                className="min-h-24 text-xs"
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  disabled={aiEdit.isPending || !aiMsg.trim()}
+                                  onClick={() => aiEdit.mutate({ id: doc.id, feedback: aiMsg.trim() })}
+                                  className="bg-primary text-primary-foreground hover:bg-primary/90 h-6 text-[11px]"
+                                >
+                                  {aiEdit.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                                  {aiEdit.isPending ? "Rewriting this doc..." : "Rewrite this doc"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setAiId(null);
+                                    setAiMsg("");
+                                  }}
+                                  className="h-6 text-[11px]"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : editing === doc.id ? (
                             <div className="space-y-2">
                               <Textarea
                                 value={editContent}

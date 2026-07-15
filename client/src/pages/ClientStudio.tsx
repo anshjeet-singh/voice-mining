@@ -1398,10 +1398,11 @@ export default function ClientStudio() {
                 <DocBoard
                   docs={[
                     ...docsFor("emails_extra"),
-                    // The build's sequence set was approved at the stage gate: it starts in the Approved column
+                    // The build's sequence set starts in Approved (null status), but once the
+                    // operator moves a card its real status is respected (so ← back to Drafts works).
                     ...EMAIL_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => ({
                       ...d,
-                      status: !d.status || d.status === "draft" ? "approved" : d.status,
+                      status: d.status ? d.status : "approved",
                     })),
                   ]}
                   invalidate={invalidate}

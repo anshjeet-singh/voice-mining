@@ -455,7 +455,7 @@ export const appRouter = router({
               content: `OPERATOR FEEDBACK (apply this to the document):\n${input.feedback}\n\nCURRENT DOCUMENT:\n${doc.content}`,
             },
           ],
-          maxTokens: 8192,
+          maxTokens: 16384,
         });
         let out = (result.choices[0]?.message?.content ?? "").trim();
         const fence = out.match(/^```(?:markdown|md)?\s*([\s\S]*?)\s*```$/);
