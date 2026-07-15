@@ -150,7 +150,14 @@ export const jobs = mysqlTable("jobs", {
     .default("queued")
     .notNull(),
   // No .default() — TiDB rejects literal DEFAULT on JSON columns.
-  payload: json("payload").$type<{ feedback?: string }>(),
+  // doc_create/doc_edit jobs carry the single-doc AI fields alongside feedback.
+  payload: json("payload").$type<{
+    feedback?: string;
+    docType?: string;
+    title?: string;
+    instructions?: string;
+    docId?: number;
+  }>(),
   error: text("error"),
   /** Live status line while running ("building ad 8 of 15"), cleared on finish. */
   progress: varchar("progress", { length: 500 }),

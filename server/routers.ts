@@ -1,5 +1,4 @@
 import { COOKIE_NAME } from "@shared/const";
-import { invokeLLM } from "./_core/llm";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -139,49 +138,6 @@ async function requireClient(clientId: number, userId: number) {
   return client;
 }
 
-// Foundation docs, most-grounding first, that the on-demand AI reads to ground
-// every document it writes in this client's real strategy.
-const CONTEXT_PRIORITY = [
-  "icp_snapshot",
-  "offers",
-  "brand_positioning",
-  "skool_free_community",
-  "skool_paid_community",
-  "course_outline",
-  "funnel_structure",
-  "skool_lead_magnets",
-];
-
-/**
- * Build a compact context block from the client's approved foundation docs
- * (ICP, offers, brand voice, community structure) so the server-side AI writes
- * grounded, on-brand documents instead of generic filler.
- */
-async function buildClientContext(clientId: number, budget = 48000): Promise<string> {
-  const client = await getClientById(clientId);
-  const docs = await getClientDocuments(clientId);
-  const foundation = docs
-    .filter((d) => d.kind === "foundation" && d.content && d.content.trim().length > 40)
-    .sort((a, b) => {
-      const ia = CONTEXT_PRIORITY.indexOf(a.docType);
-      const ib = CONTEXT_PRIORITY.indexOf(b.docType);
-      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-    });
-  let out = client ? `CLIENT: ${client.name} — niche: ${client.niche} — funnel: ${client.funnelType}\n` : "";
-  for (const d of foundation) {
-    const block = `\n\n===== ${d.title} =====\n${d.content.trim()}`;
-    if (out.length + block.length > budget) {
-      out += block.slice(0, Math.max(0, budget - out.length));
-      break;
-    }
-    out += block;
-  }
-  return out.trim() || "(No approved foundation documents yet — use strong direct-response best practice for this niche.)";
-}
-
-const CREATE_DOC_SYSTEM =
-  "You are an elite direct-response copywriter and course builder producing ONE finished deliverable for a done-for-you marketing agency. Build EXACTLY what the operator asks for, in full, at agency quality. Rules: (1) Ground everything in the client's real ICP, offers, voice and community from the CONTEXT — never invent an offer or price that contradicts it. (2) Deliver the WHOLE thing, not an outline or a sample: if they ask for a 14-email sequence, write all 14 emails in full with subject lines and a clear send-day/time label on each; if they ask for a worksheet or lesson, build it out completely. (3) Aggressive, high-energy, benefit-led copy; real proof or a literal [PROOF: ...] placeholder where a specific result is needed. (4) Scannable markdown: headings, bold, short paragraphs, bullets. (5) NEVER use em dashes; write ranges with 'to'. (6) Keep any [PLACEHOLDER] tokens literal. Output ONLY the finished document in markdown, with no preamble, no commentary and no surrounding code fences.";
-
 export const appRouter = router({
   system: systemRouter,
 
@@ -238,7 +194,10 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const client = await requireClient(input.id, ctx.user.id);
-        const allJobTypes = [...STAGE_ORDER, ...ON_DEMAND_TYPES];
+        // doc_create/doc_edit are the on-demand single-doc AI jobs; including them
+        // here makes an in-flight one keep the studio auto-refetching until the
+        // worker drops the finished doc onto its board.
+        const allJobTypes = [...STAGE_ORDER, ...ON_DEMAND_TYPES, "doc_create", "doc_edit"];
         const [documents, searches, ...stageJobs] = await Promise.all([
           getClientDocuments(input.id),
           getSearchesByClient(input.id),
@@ -476,9 +435,10 @@ export const appRouter = router({
       }),
 
     /**
-     * Focused AI edit of ONE document. Rewrites just this doc with the operator's
-     * feedback via the server LLM (fast, cheap, reliable) and saves it — never
-     * touches the heavy worker pipeline or any other document.
+     * Focused AI edit of ONE document. Queues a lightweight single-doc job for
+     * the Mac worker (headless Claude Code on the Max plan) to rewrite just this
+     * doc with the operator's instruction. High quality, no API cost, no geo
+     * limits. Never touches any other document. Result lands back on this card.
      */
     aiEditDocument: protectedProcedure
       .input(z.object({ id: z.number(), feedback: z.string().min(1).max(10000) }))
@@ -486,35 +446,22 @@ export const appRouter = router({
         const doc = await getClientDocumentById(input.id);
         if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
         await requireClient(doc.clientId, ctx.user.id);
-        const context = await buildClientContext(doc.clientId);
-        const result = await invokeLLM({
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are an elite direct-response copywriter revising ONE marketing document for a done-for-you agency. Apply the operator's instruction and return the FULL document, materially improved. If the instruction asks to regenerate, rewrite, redo, refresh or 'make it better' without other specifics, produce a genuinely NEW and stronger version from scratch — change the angles, hooks and examples; do NOT echo the current text back. Ground everything in the client's real ICP, offers, voice and community from the CONTEXT. Keep the deliverable complete (if it is a multi-part sequence, keep every part in full). Preserve every [PLACEHOLDER] token exactly. Keep the copy vibrant, high-energy and benefit-driven. NEVER use em dashes; write ranges with 'to'. Output ONLY the complete document in markdown, with no preamble, no commentary and no surrounding code fences.",
-            },
-            {
-              role: "user",
-              content: `CLIENT CONTEXT (ground the rewrite in this):\n${context}\n\n=======================\n\nOPERATOR INSTRUCTION:\n${input.feedback}\n\nCURRENT DOCUMENT:\n${doc.content}`,
-            },
-          ],
-          maxTokens: 32000,
+        const jobId = await createJob({
+          clientId: doc.clientId,
+          userId: ctx.user.id,
+          type: "doc_edit",
+          status: "queued",
+          payload: { docId: doc.id, docType: doc.docType, title: doc.title, feedback: input.feedback.trim() },
         });
-        let out = (result.choices[0]?.message?.content ?? "").trim();
-        const fence = out.match(/^```(?:markdown|md)?\s*([\s\S]*?)\s*```$/);
-        if (fence) out = fence[1].trim();
-        if (out.length < 50) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The AI returned an empty rewrite. Try again." });
-        }
-        await updateClientDocument(input.id, out);
-        return { ok: true };
+        return { jobId };
       }),
 
     /**
-     * Create ONE finished document from scratch, server-side, grounded in the
-     * client's foundation docs. Lands as a draft card on the chosen engine board.
-     * Fast and reliable — never touches the heavy worker pipeline.
+     * Create ONE finished document from scratch. Queues a focused single-doc job
+     * for the Mac worker (headless Claude Code on the Max plan), which reads the
+     * agency skills, frameworks and this client's approved foundation docs and
+     * writes the deliverable, then drops it as a draft card on the chosen board.
+     * Top quality, no API cost, no geo limits.
      */
     aiCreateDocument: protectedProcedure
       .input(
@@ -527,35 +474,14 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         await requireClient(input.clientId, ctx.user.id);
-        const context = await buildClientContext(input.clientId);
-        const result = await invokeLLM({
-          messages: [
-            { role: "system", content: CREATE_DOC_SYSTEM },
-            {
-              role: "user",
-              content: `CLIENT CONTEXT (their real ICP, offers, voice and community — ground the whole document in this):\n${context}\n\n=======================\n\nDOCUMENT TO CREATE\nTitle: ${input.title}\n\nWhat the operator wants:\n${input.instructions}`,
-            },
-          ],
-          maxTokens: 32000,
-        });
-        let out = (result.choices[0]?.message?.content ?? "").trim();
-        const fence = out.match(/^```(?:markdown|md)?\s*([\s\S]*?)\s*```$/);
-        if (fence) out = fence[1].trim();
-        if (out.length < 120) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "The AI returned almost nothing. Add a little more detail to the instructions and try again.",
-          });
-        }
-        const id = await createClientDocument({
+        const jobId = await createJob({
           clientId: input.clientId,
-          kind: "deliverable",
-          docType: input.docType,
-          title: input.title.trim(),
-          content: out,
-          status: "draft",
+          userId: ctx.user.id,
+          type: "doc_create",
+          status: "queued",
+          payload: { docType: input.docType, title: input.title.trim(), instructions: input.instructions.trim() },
         });
-        return { id };
+        return { jobId };
       }),
 
     deleteDocument: protectedProcedure

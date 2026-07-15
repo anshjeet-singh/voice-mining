@@ -1424,7 +1424,7 @@ export function DocBoard({
       invalidate();
       setAiId(null);
       setAiMsg("");
-      toast.success("Updated");
+      toast.success("Queued on your Mac worker. This card updates shortly");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -1617,7 +1617,7 @@ export function DocBoard({
                                   className="bg-primary text-primary-foreground hover:bg-primary/90 h-6 text-[11px]"
                                 >
                                   {aiEdit.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-                                  {aiEdit.isPending ? "Rewriting this doc..." : "Rewrite this doc"}
+                                  {aiEdit.isPending ? "Queueing..." : "Rewrite this doc"}
                                 </Button>
                                 <Button
                                   size="sm"

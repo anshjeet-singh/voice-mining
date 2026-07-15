@@ -882,12 +882,14 @@ function FoundationRefine({ clientId, invalidate }: { clientId: number; invalida
   const [docType, setDocType] = useState<string>("emails_extra");
   const [title, setTitle] = useState("");
   const [instructions, setInstructions] = useState("");
+  const [queuedIn, setQueuedIn] = useState<string | null>(null);
   const create = trpc.clients.aiCreateDocument.useMutation({
     onSuccess: () => {
       invalidate();
+      setQueuedIn(CREATE_SECTIONS.find((s) => s.key === docType)?.label ?? "the pipeline");
       setTitle("");
       setInstructions("");
-      toast.success(`Created. It's a draft in the ${CREATE_SECTIONS.find((s) => s.key === docType)?.label} pipeline`);
+      toast.success("Queued on your Mac worker");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -907,14 +909,22 @@ function FoundationRefine({ clientId, invalidate }: { clientId: number; invalida
         <div>
           <p className="text-sm font-semibold text-foreground">Cashflow Coaches AI</p>
           <p className="text-[10.5px] text-muted-foreground leading-tight">
-            Write any document from scratch, instantly. Grounded in this client's ICP, offers and voice. It lands as a draft card in the section you pick. To change a document that already exists, use the ✨ AI on its card.
+            Write any document from scratch. Your Mac worker builds it at full quality from the agency skills and this client's ICP, offers and voice, then drops it as a draft card in the section you pick (about a minute). To change a document that already exists, use the ✨ AI on its card.
           </p>
         </div>
       </div>
+      {queuedIn && (
+        <div className="mb-2.5 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/[0.06] px-3 py-2">
+          <Loader2 className="w-3.5 h-3.5 text-primary animate-spin flex-shrink-0" />
+          <p className="text-[11px] text-foreground">
+            Building on your Mac worker. It'll appear in the <span className="font-semibold">{queuedIn}</span> pipeline shortly. You can queue another below.
+          </p>
+        </div>
+      )}
       {create.isPending ? (
         <div className="flex items-center gap-2 py-3">
           <Loader2 className="w-3.5 h-3.5 text-primary animate-spin flex-shrink-0" />
-          <p className="text-[11px] text-muted-foreground">Writing "{title.trim() || "your document"}"...</p>
+          <p className="text-[11px] text-muted-foreground">Queueing...</p>
         </div>
       ) : (
         <>

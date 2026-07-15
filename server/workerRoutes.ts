@@ -21,8 +21,10 @@ import {
   getClientAssetById,
   getClientById,
   getClientAssetsMeta,
+  getClientDocumentById,
   getClientDocuments,
   getLatestJobForClient,
+  updateClientDocument,
   getRefImageById,
   getRefImagesWithData,
   getReportById,
@@ -46,6 +48,66 @@ export function isWorkerAuthorized(authHeader: string | undefined, secret: strin
 
 /** Legacy export kept for the worker-auth test contract. */
 export const FOUNDATION_DOC_TITLES: Record<string, string> = stageContract("foundation", "call");
+
+// On-demand single-doc AI jobs (doc_create / doc_edit) borrow the skills and
+// frameworks of the engine whose board the document lives on, so the worker
+// writes it to the same quality bar as a full batch from that engine.
+const DOC_PARENT_STAGE: Record<string, string> = {
+  emails_extra: "more_emails",
+  skool_extra: "more_skool",
+  ad_scripts_extra: "more_scripts",
+  lander_extra: "more_landers",
+  content_ig_extra: "more_content_ig",
+  content_yt_extra: "more_content_yt",
+};
+
+/**
+ * Build a synthetic single-output stage spec for a doc_create / doc_edit job.
+ * Reuses the parent engine's skills + frameworks but narrows the run to ONE
+ * document. For an edit, embeds the current document into job.payload.feedback
+ * (which buildDocPrompt surfaces as the REVISION FEEDBACK section) and mutates
+ * the passed-in job so the shared claim payload picks it up.
+ */
+async function buildCustomDocSpec(
+  job: { id: number; type: string; payload: any },
+  funnelType: FunnelType
+) {
+  const p = (job.payload ?? {}) as {
+    docType?: string;
+    title?: string;
+    instructions?: string;
+    feedback?: string;
+    docId?: number;
+  };
+  const isCreate = job.type === "doc_create";
+  const targetDocType = String(p.docType || (isCreate ? "emails_extra" : "document"));
+  const parent = DOC_PARENT_STAGE[targetDocType] ?? "more_emails";
+  const base = stagePromptSpec(parent, funnelType);
+  if (!base) return null;
+  const title = String(p.title || "Document").slice(0, 300);
+
+  let description: string;
+  if (isCreate) {
+    description = `Build this document IN FULL, exactly as the operator asks, at the agency's top quality bar for this engine. THE OPERATOR'S REQUEST:\n\n${String(
+      p.instructions || ""
+    )}\n\nProduce ONE complete, final, client-ready document. It is a SINGLE deliverable: do NOT split it into multiple cards and do NOT emit any <!-- SPLIT --> marker.`;
+  } else {
+    const current = await getClientDocumentById(Number(p.docId));
+    description = `REVISE the existing document supplied in the REVISION FEEDBACK section below. Return the COMPLETE revised document, not a diff or a summary. If the instruction asks to regenerate, redo, refresh or "make it better" without other specifics, produce a genuinely NEW and stronger version (fresh angles, hooks and examples); never echo the current text back. Keep it a SINGLE document with no <!-- SPLIT --> marker.`;
+    job.payload = {
+      ...p,
+      feedback: `OPERATOR INSTRUCTION: ${String(p.feedback || "")}\n\n===== CURRENT DOCUMENT (revise THIS one) =====\n${
+        current?.content ?? ""
+      }`,
+    };
+  }
+
+  return {
+    ...base,
+    label: isCreate ? `Create document: ${title}` : `Revise document: ${title}`,
+    outputs: [{ docType: isCreate ? targetDocType : "document", filename: "document.md", title, description }],
+  };
+}
 
 const insightLines = (list: InsightList | null | undefined, cap: number) =>
   normalizeInsights(list)
@@ -250,7 +312,10 @@ export function registerWorkerRoutes(app: Express) {
         });
       }
 
-      const spec = stagePromptSpec(job.type, client.funnelType as FunnelType);
+      const spec =
+        job.type === "doc_create" || job.type === "doc_edit"
+          ? await buildCustomDocSpec(job, client.funnelType as FunnelType)
+          : stagePromptSpec(job.type, client.funnelType as FunnelType);
       if (!spec) {
         await setJobStatus(job.id, "failed", `Unknown job type: ${job.type}`);
         return res.json({ job: null });
@@ -341,6 +406,44 @@ export function registerWorkerRoutes(app: Express) {
       if (!job) return res.status(404).json({ error: "job not found" });
       const client = await getClientById(job.clientId);
       if (!client) return res.status(404).json({ error: "client not found" });
+
+      // On-demand single-doc AI jobs: write the ONE document straight to its
+      // card (create -> new draft, edit -> overwrite in place). No stage contract.
+      if (job.type === "doc_create" || job.type === "doc_edit") {
+        const p = (job.payload ?? {}) as { docType?: string; title?: string; docId?: number };
+        const key = job.type === "doc_create" ? String(p.docType) : "document";
+        let content = (docs[key] ?? Object.values(docs)[0] ?? "").trim();
+        content = content.replace(/<!--\s*SPLIT\s*-->/g, "").trim();
+        if (content.length < 50) {
+          await setJobStatus(jobId, "failed", "Worker returned an empty document");
+          return res.status(400).json({ error: "empty document" });
+        }
+        if (job.type === "doc_create") {
+          await createClientDocument({
+            clientId: job.clientId,
+            kind: "deliverable",
+            docType: String(p.docType),
+            title: String(p.title || "Document").slice(0, 300),
+            content,
+            status: "draft",
+          });
+        } else {
+          await updateClientDocument(Number(p.docId), content);
+        }
+        for (const lesson of clientLessons ?? []) {
+          if (lesson.trim().length > 5) {
+            await createClientDocument({
+              clientId: job.clientId,
+              kind: "lesson",
+              docType: "note",
+              title: "Client lesson",
+              content: lesson.trim(),
+            });
+          }
+        }
+        await setJobStatus(jobId, "approved");
+        return res.json({ ok: true });
+      }
 
       // Contract comes from the server-side stage registry, never the worker
       const contract = stageContract(job.type, client.funnelType as FunnelType);
