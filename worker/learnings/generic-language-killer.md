@@ -49,3 +49,10 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-14 · job 420004 · client: Blake Matthews -->
 - On a warm, opted-in high-ticket nurture in a regulated niche, two rules that normally conflict have to coexist and the polish pass must hold both: (1) keep the compliance tag ("real result, not typical, research use only") inline next to every income figure because peptides plus earnings is a double compliance gate, but (2) enforce it as ONE clean tag per figure, never the same qualifier hammered three or four times in one email, because protest-too-much repetition reads as insecurity to a burned buyer. The carve-out is "keep the legal line, kill the repetition," not "keep the hedge" or "cut the hedge."
+
+<!-- 2026-07-15 · job 420005 · client: Blake Matthews -->
+- none
+
+## framework: cc-email-swipe-style
+
+- The casing rule triggers only on ICP age (40+/50+ switches to sentence case). Age misses the real driver: a hype-averse, high-income professional buyer (e.g. a $200k-$300k-a-year closer) reads lowercase-casual "ur/tmrw" copy as a gimmick and should get straight sentence case even when under 40. Add register/sophistication as a second trigger alongside age, so the casing call is made on who the buyer is, not just how old they are.
