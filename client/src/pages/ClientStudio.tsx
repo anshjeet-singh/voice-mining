@@ -10,7 +10,9 @@ import {
   ENGINES,
   EmailEngineCard,
   EngineCard,
+  LinksContext,
   RefImagePanel,
+  detectReusableTokens,
   type ClientAssetMeta,
   type ClientDoc,
   type RefImageMeta,
@@ -963,6 +965,90 @@ function FoundationRefine({ clientId, invalidate }: { clientId: number; invalida
   );
 }
 
+/**
+ * Links & placeholders: set each reusable link or standing name ONCE, and the
+ * studio substitutes it into every [TOKEN] whenever you copy an email or page.
+ * Tokens are auto-detected from the client's own documents.
+ */
+function ClientLinksPanel({
+  clientId,
+  documents,
+  invalidate,
+}: {
+  clientId: number;
+  documents: ClientDoc[];
+  invalidate: () => void;
+}) {
+  const saved = useMemo(() => {
+    const doc = documents.find((d) => d.docType === "client_links");
+    if (!doc) return {} as Record<string, string>;
+    try {
+      return JSON.parse(doc.content) as Record<string, string>;
+    } catch {
+      return {} as Record<string, string>;
+    }
+  }, [documents]);
+  const tokens = useMemo(() => {
+    const detected = detectReusableTokens(
+      documents.filter((d) => d.docType !== "client_links").map((d) => d.content)
+    );
+    return Array.from(new Set([...detected, ...Object.keys(saved)])).sort();
+  }, [documents, saved]);
+  const [vals, setVals] = useState<Record<string, string>>(saved);
+  useEffect(() => setVals(saved), [saved]);
+  const [open, setOpen] = useState(false);
+  const save = trpc.clients.setClientLinks.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success("Saved. These fill in automatically when you copy");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  if (!tokens.length) return null;
+  const filled = tokens.filter((t) => (vals[t] ?? "").trim()).length;
+  return (
+    <div className="rounded-xl border border-border/50 bg-card/30 p-5">
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center justify-between w-full text-left">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Links &amp; placeholders</h3>
+          <p className="text-xs text-muted-foreground">
+            Set each link once. Every email and page fills it in when you copy. {filled}/{tokens.length} set.
+          </p>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="mt-3 space-y-2">
+          {tokens.map((t) => (
+            <div key={t} className="flex items-center gap-2">
+              <span
+                className="w-40 flex-shrink-0 text-[11px] font-mono text-muted-foreground truncate"
+                title={t}
+              >
+                {t}
+              </span>
+              <input
+                value={vals[t] ?? ""}
+                onChange={(e) => setVals((v) => ({ ...v, [t]: e.target.value }))}
+                placeholder="Paste the URL or value..."
+                className="flex-1 rounded-lg border border-border/50 bg-background/50 px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
+              />
+            </div>
+          ))}
+          <button
+            disabled={save.isPending}
+            onClick={() => save.mutate({ clientId, links: vals })}
+            className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
+          >
+            {save.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+            Save links
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** The client's own live follower/subscriber counts, with inline handle setup. */
 function ClientSocials({
   clientId,
@@ -1103,6 +1189,16 @@ export default function ClientStudio() {
 
   const jobs = (data?.jobs ?? {}) as Record<string, StageJob>;
   const documents = (data?.documents ?? []) as ClientDoc[];
+  // Saved reusable links/names, substituted into every [TOKEN] on copy.
+  const linkMap = useMemo(() => {
+    const doc = documents.find((d) => d.docType === "client_links");
+    if (!doc) return {} as Record<string, string>;
+    try {
+      return JSON.parse(doc.content) as Record<string, string>;
+    } catch {
+      return {} as Record<string, string>;
+    }
+  }, [documents]);
   const assets = (data?.assets ?? []) as ClientAssetMeta[];
   const refImages = (data?.refImages ?? []) as RefImageMeta[];
   const competitorSources = (data?.competitorSources ?? []) as CompetitorSource[];
@@ -1151,6 +1247,7 @@ export default function ClientStudio() {
     : "No competitor intel yet: mine the desk on Overview and every batch here gets sharper";
 
   return (
+    <LinksContext.Provider value={linkMap}>
     <AppShell>
       <div className="flex min-h-screen">
         {/* ── Studio nav ── */}
@@ -1223,6 +1320,8 @@ export default function ClientStudio() {
 
               {/* AI: update any doc-set (Foundation / Skool / Emails / Ads) from the Overview */}
               <FoundationRefine clientId={clientId} invalidate={invalidate} />
+
+              <ClientLinksPanel clientId={clientId} documents={documents} invalidate={invalidate} />
 
               {/* The client's own live socials */}
               <ClientSocials clientId={clientId} client={data.client} invalidate={invalidate} />
@@ -1411,5 +1510,6 @@ export default function ClientStudio() {
         </div>
       </div>
     </AppShell>
+    </LinksContext.Provider>
   );
 }

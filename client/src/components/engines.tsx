@@ -3,7 +3,7 @@
  * gallery, and their types. Used by the pipeline page (ClientDetail) and
  * the Client Studio dashboard.
  */
-import { useMemo, useRef, useState } from "react";
+import { createContext, useContext, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
@@ -16,6 +16,40 @@ export type StageId =
   | "foundation" | "skool" | "funnel" | "emails" | "ads"
   | "more_statics" | "more_scripts" | "more_content_ig" | "more_content_yt"
   | "more_emails" | "more_skool" | "more_landers" | "content_intel";
+
+/**
+ * Per-client reusable link/name substitutions, token -> value (e.g.
+ * "[VSL LINK]" -> "https://..."). Provided by ClientStudio; consumed by the
+ * Copy button so a link set once flows into every copied email and page.
+ */
+export const LinksContext = createContext<Record<string, string>>({});
+
+/** True for a bracketed token that is a REUSABLE asset (a link, url, video,
+ *  or standing name), not a per-piece copy placeholder like [PROOF] or [AVATAR]. */
+export function isReusableToken(token: string): boolean {
+  return /\b(LINK|URL|VIDEO|EMBED|ZOOM|CALENDAR|BOOKING|COMMUNITY|VSL|REGISTRATION|WEBINAR|TERMS|PRIVACY|LOGO|HOST|SKOOL|COMPANY|BRIDGE)\b/.test(token);
+}
+
+/** Find every reusable [TOKEN] used across a set of document contents. */
+export function detectReusableTokens(contents: string[]): string[] {
+  const found = new Set<string>();
+  for (const c of contents) {
+    const matches = c.match(/\[[A-Z][A-Z0-9 ./'&-]{2,44}\]/g) ?? [];
+    for (const tok of matches) {
+      if (isReusableToken(tok)) found.add(tok);
+    }
+  }
+  return Array.from(found).sort();
+}
+
+/** Replace every saved [TOKEN] in the text with its value. */
+function applyLinks(md: string, links: Record<string, string>): string {
+  let out = md;
+  for (const [token, value] of Object.entries(links)) {
+    if (value) out = out.split(token).join(value);
+  }
+  return out;
+}
 
 /**
  * The offer ladder every DFY client runs. Fixed three tiers, each with its own
@@ -154,11 +188,12 @@ export interface ClientDoc {
 /** Copy-to-clipboard button. Strips the machine-facing html block from docs. */
 export function CopyButton({ text, label = "Copy", className = "" }: { text: string; label?: string; className?: string }) {
   const [copied, setCopied] = useState(false);
+  const links = useContext(LinksContext);
   return (
     <button
       onClick={(e) => {
         e.stopPropagation();
-        void copyRich(text);
+        void copyRich(text, links);
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
@@ -1368,8 +1403,8 @@ function mdToHtml(md: string): string {
  * plain field falls back to the markdown. This is what makes the Copy button
  * behave like a manual mouse-selection copy instead of dumping raw markdown.
  */
-async function copyRich(md: string): Promise<void> {
-  const clean = md.replace(/```html[\s\S]*?```/gi, "").trim();
+async function copyRich(md: string, links: Record<string, string> = {}): Promise<void> {
+  const clean = applyLinks(md.replace(/```html[\s\S]*?```/gi, "").trim(), links);
   const html = mdToHtml(clean);
   try {
     if (navigator.clipboard && typeof window !== "undefined" && "ClipboardItem" in window) {

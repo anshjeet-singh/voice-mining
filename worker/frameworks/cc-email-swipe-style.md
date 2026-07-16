@@ -47,7 +47,9 @@ Trent "Nickname" Kus
 
 ## Body rhythm rules
 
-- 1 to 2 line paragraphs. Never a wall. The email should read like texts from a sharp friend.
+- ONE SENTENCE PER LINE. Every sentence sits on its own line (a hard line break after it). Group 2 to 4 related sentences with single line breaks into a block, then leave a BLANK line before the next block. Never let two sentences share a line, and never ship a dense multi-sentence paragraph. Example of RIGHT: `This isn't a pitch.` / new line / `Most funding companies get paid up front.` / new line / `I only get paid when you get funded.` / new line / `So there's nothing to brace for.` Each on its own line.
+- SECTION MARKERS ARE HEADINGS. Any numbered step or labeled section marker ("1. Add it to your calendar", "2. Watch this before we talk", "The Problem:", "What We Did:", "The Result:") is written as a markdown `## ` heading (H2) on its own line, NOT as a bold paragraph. Headings give the email real sections and breathing room in ConvertKit. A three-step email therefore has three `## ` headings, each followed by a 2 to 4 line block.
+- 2 to 4 short lines per block. Never a wall. The email should read like texts from a sharp friend.
 - Heavy formatting on the words that carry the sale: bold the pains, the numbers, the mechanism names, and the commands. Italicize the reframes and quoted speech. Underline the one sentence per email you'd say louder. Aim for a formatting touch every 2 to 3 lines: the swipe file underuses this, we go further, without bolding whole paragraphs.
 - Arrow bullets for mechanisms and contrasts, check-mark bullets for benefit stacks and what-you-get lists, numbered lists for steps.
 - Labeled beats for story emails: "The Problem:" then "What We Did:" then "The Result:". Each label bolded, each section 2 to 4 short lines.

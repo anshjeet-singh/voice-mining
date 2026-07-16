@@ -332,7 +332,7 @@ export function registerWorkerRoutes(app: Express) {
         job.type === "foundation"
           ? []
           : docs
-              .filter((d) => d.kind === "foundation" || d.kind === "deliverable")
+              .filter((d) => (d.kind === "foundation" || d.kind === "deliverable") && d.docType !== "client_links")
               .map((d) => ({ title: d.title, docType: d.docType, content: d.content }));
       let research = await renderResearchForClient(job.clientId);
       // Ads stage: attach live Foreplay winners for the niche as pattern

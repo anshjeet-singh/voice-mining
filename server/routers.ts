@@ -59,6 +59,7 @@ import {
   updateReport,
   updateVaultItem,
   upsertAnalysisResult,
+  upsertClientDocumentByType,
   getTrendSnapshots,
   getLatestTrendSnapshot,
   getDistinctTrendKeywords,
@@ -482,6 +483,31 @@ export const appRouter = router({
           payload: { docType: input.docType, title: input.title.trim(), instructions: input.instructions.trim() },
         });
         return { jobId };
+      }),
+
+    /**
+     * Save the client's reusable links and standing names (VSL link, community
+     * link, booking link, company name, ...) as a single JSON foundation doc.
+     * The studio substitutes these into every [TOKEN] on copy, so a link set
+     * once flows into every email and page without hand-editing each one.
+     */
+    setClientLinks: protectedProcedure
+      .input(z.object({ clientId: z.number(), links: z.record(z.string(), z.string()) }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const clean = Object.fromEntries(
+          Object.entries(input.links)
+            .map(([k, v]) => [k.trim(), (v ?? "").trim()])
+            .filter(([k, v]) => k && v)
+        );
+        await upsertClientDocumentByType(
+          input.clientId,
+          "foundation",
+          "client_links",
+          "Client Links",
+          JSON.stringify(clean, null, 2)
+        );
+        return { ok: true };
       }),
 
     deleteDocument: protectedProcedure
