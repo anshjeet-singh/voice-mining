@@ -120,3 +120,7 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-13 · job 360007 · client: Blake Matthews -->
 - On the search / SERP branded-result format (format 10), let the branded answer result's own title carry the full promise on a single line, then hand straight to a short CTA. Do not stack a separate bold summary kicker above the CTA (e.g. "The answer was always obvious." / "The operators already solved this."): when the answer title already states the promise, that kicker restates it and reads as clutter. Auto-fit the answer title down to one line rather than letting it wrap.
+
+<!-- 2026-07-16 · job 510004 · client: Veda Ray -->
+- scripts/notes_v2.py still ships the Python 3.11 SyntaxError in rich_line (the `f'{" font-weight=\"700\"" ...}'` backslash-in-f-string, line ~131), so every run on a 3.11 interpreter has to ship a patched local copy before Notes ads can build. This was flagged 2026-07-13 and is still unfixed. Precompute the weight attribute into a plain variable before the f-string in the shipped file so `import notes_v2` works on 3.11 without a shim.
+- The Notes marker CTA can render its hand-drawn underline underneath the bottom toolbar chrome when the content block runs tall, which reads as a CTA with no underline (or a missing CTA). The QA loop should check the CTA baseline plus its underline sits clearly above CONTENT_BOTTOM (1175), not only that the content fits the safe zone. Add it as a per-ad Notes clearance check.
