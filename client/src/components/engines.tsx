@@ -158,7 +158,7 @@ export function CopyButton({ text, label = "Copy", className = "" }: { text: str
     <button
       onClick={(e) => {
         e.stopPropagation();
-        navigator.clipboard.writeText(text.replace(/```html[\s\S]*?```/gi, "").trim());
+        void copyRich(text);
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
@@ -1246,17 +1246,34 @@ export function splitSections(md: string): Array<{ title: string; text: string; 
   return out.map((s) => ({ ...s, text: s.text.trim() })).filter((s) => s.text);
 }
 
-/** Minimal markdown -> HTML for clean print/PDF output. */
+/** Markdown -> HTML for clean copy / print / preview output. Handles links,
+ *  a small inline-HTML allowlist (emails use <u> for underline), and groups
+ *  consecutive lines into one paragraph (soft <br> breaks) so pasted email
+ *  copy is tight, not one giant-gap block per line. */
 function mdToHtml(md: string): string {
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const inline = (s: string) =>
-    esc(s)
+  const inline = (s: string) => {
+    let t = esc(s)
+      // markdown links [text](url) -> real anchors (CTA links in emails)
+      .replace(/\[([^\]]+)\]\(([^)]*)\)/g, '<a href="$2">$1</a>')
       .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
       .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
       .replace(/`([^`]+)`/g, "<code>$1</code>");
+    // Restore an allowlist of inline HTML the source may already contain
+    // (markdown has no underline syntax, so emails ship literal <u> tags).
+    t = t.replace(/&lt;(\/?)(u|b|i|strong|em|br)\s*\/?&gt;/gi, "<$1$2>");
+    return t;
+  };
   const out: string[] = [];
   let list: "ul" | "ol" | null = null;
   let inTable = false;
+  let para: string[] = [];
+  const flushPara = () => {
+    if (para.length) {
+      out.push(`<p>${para.join("<br>")}</p>`);
+      para = [];
+    }
+  };
   const closeList = () => {
     if (list) {
       out.push(`</${list}>`);
@@ -1272,18 +1289,21 @@ function mdToHtml(md: string): string {
   for (const ln of md.split("\n")) {
     const h = ln.match(/^(#{1,3})\s+(.+)$/);
     if (h) {
+      flushPara();
       closeList();
       closeTable();
       out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`);
       continue;
     }
     if (/^\s*>\s?/.test(ln)) {
+      flushPara();
       closeList();
       closeTable();
       out.push(`<blockquote>${inline(ln.replace(/^\s*>\s?/, ""))}</blockquote>`);
       continue;
     }
-    if (/^\s*---\s*$/.test(ln)) {
+    if (/^\s*(---|\*\*\*|___)\s*$/.test(ln)) {
+      flushPara();
       closeList();
       closeTable();
       out.push("<hr/>");
@@ -1291,6 +1311,7 @@ function mdToHtml(md: string): string {
     }
     const bullet = ln.match(/^\s*[-*]\s+(.+)$/);
     if (bullet) {
+      flushPara();
       closeTable();
       if (list !== "ul") {
         closeList();
@@ -1302,6 +1323,7 @@ function mdToHtml(md: string): string {
     }
     const num = ln.match(/^\s*\d+\.\s+(.+)$/);
     if (num) {
+      flushPara();
       closeTable();
       if (list !== "ol") {
         closeList();
@@ -1313,6 +1335,7 @@ function mdToHtml(md: string): string {
     }
     const row = ln.match(/^\s*\|(.+)\|\s*$/);
     if (row) {
+      flushPara();
       closeList();
       if (/^[\s|:-]+$/.test(row[1])) continue;
       if (!inTable) {
@@ -1322,13 +1345,46 @@ function mdToHtml(md: string): string {
       out.push("<tr>" + row[1].split("|").map((c) => `<td>${inline(c.trim())}</td>`).join("") + "</tr>");
       continue;
     }
+    if (!ln.trim()) {
+      flushPara();
+      closeList();
+      closeTable();
+      continue;
+    }
+    // Normal text: accumulate consecutive lines into ONE paragraph.
     closeList();
     closeTable();
-    if (ln.trim()) out.push(`<p>${inline(ln)}</p>`);
+    para.push(inline(ln));
   }
+  flushPara();
   closeList();
   closeTable();
   return out.join("\n");
+}
+
+/**
+ * Copy markdown to the clipboard as BOTH rich HTML and plain text. Pasting into
+ * a rich editor (ConvertKit, Gmail, Docs) renders the formatting; pasting into a
+ * plain field falls back to the markdown. This is what makes the Copy button
+ * behave like a manual mouse-selection copy instead of dumping raw markdown.
+ */
+async function copyRich(md: string): Promise<void> {
+  const clean = md.replace(/```html[\s\S]*?```/gi, "").trim();
+  const html = mdToHtml(clean);
+  try {
+    if (navigator.clipboard && typeof window !== "undefined" && "ClipboardItem" in window) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([clean], { type: "text/plain" }),
+        }),
+      ]);
+      return;
+    }
+  } catch {
+    /* fall through to plain-text copy */
+  }
+  await navigator.clipboard.writeText(clean);
 }
 
 /** Open a clean print window for a section so the operator can Save as PDF. */
