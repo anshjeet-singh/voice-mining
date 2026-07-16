@@ -98,3 +98,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-16 · job 510001 · client: Veda Ray -->
 - The Brand & Positioning "14 sections" are still listed as bare titles with no per-section content contract, so each parallel Foundation run reconstructs what goes in each section from scratch. Embed a one-line spec per section (e.g. Problem & Solution Mechanism = both mechanism halves plus the "secret is in the ___" completion line; Awareness Levels & Big Domino = a 4-column segment/message-focus/offer-tier/% routing table tensed to the funnel branch, plus the single Big Domino belief; USP, Empathy Matrix, and Verbatim Swipe Bank are tables). This confirms a standing, still-unaddressed learning.
+
+<!-- 2026-07-16 · job 510002 · client: Veda Ray -->
+- When Step 2 (Skool community) runs as separate parallel jobs (free, paid, lead magnets each their own run), the run-scoped task ("produce ONLY the Free Community") conflicts with the generic Stage-2 instruction to "build BOTH communities AND the lead magnets." State that in a parallel/single-deliverable run, the run scope wins: produce only the scoped file and treat the sibling assets (paid About page, lead magnet pages) as out of scope, so a free-community run does not reproduce the paid value-stack About page or the three lead magnets that another run owns.
