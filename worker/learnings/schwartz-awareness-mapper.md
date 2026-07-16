@@ -14,3 +14,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-15 · job 420009 · client: Trent Kus -->
 - The skill outputs one awareness stage, but the mother pipeline needs a stage PER sub-avatar plus a cross-cutting overlay that can sit at a different (more distrustful) awareness than its underlying demographic segment. State that the map is produced per sub-avatar and that a psychographic overlay (e.g. a burned skeptic) is mapped separately from the demographic segments it spans.
+
+<!-- 2026-07-16 · job 510001 · client: Veda Ray -->
+- When the buying unit is a couple with a decision-maker and a skeptical veto-holder (mother/father here, but also spouse pairs in health and finance), the awareness map must model the veto-holder as a cross-cutting overlay sitting one rung MORE distrustful than the primary buyer at the same factual awareness. Mapping only the buyer's awareness leaves the funnel with no home for the objection-handling track (FAQ/breakout videos) aimed at the person who can kill the sale. State that a two-person buying unit gets a separate, lower-awareness overlay row.
