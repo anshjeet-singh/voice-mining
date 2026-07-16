@@ -56,3 +56,6 @@ Accumulated craft lessons applied on every run.
 ## framework: cc-email-swipe-style
 
 - The casing rule triggers only on ICP age (40+/50+ switches to sentence case). Age misses the real driver: a hype-averse, high-income professional buyer (e.g. a $200k-$300k-a-year closer) reads lowercase-casual "ur/tmrw" copy as a gimmick and should get straight sentence case even when under 40. Add register/sophistication as a second trigger alongside age, so the casing call is made on who the buyer is, not just how old they are.
+
+<!-- 2026-07-16 · job 510003 · client: Veda Ray -->
+- none
