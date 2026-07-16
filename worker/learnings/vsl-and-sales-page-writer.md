@@ -34,3 +34,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-14 · job 360010 · client: Blake Matthews -->
 - The "always state the price in the VSL" rule (pixel-conditioning) applies to a direct-buy VSL, not to a book-a-call VSL whose only ask is booking. For a book-a-call VSL, substitute the pricing MODEL / risk-reversal structure (e.g. performance milestone, pay-on-results) as the trust lever, and hold the number for the call. Make this conditional explicit so the two rules stop appearing to contradict.
+
+<!-- 2026-07-16 · job 510002 · client: Veda Ray -->
+- The paid Skool About-page VSL is a direct-buy VSL (the ask is join at the stated monthly price), even when the wider client funnel is a call funnel. State the price and the daily-cost anchor in this VSL and justify it against the value stack and named guarantee, rather than applying the book-a-call "hold the number" rule. The funnel type of the parent funnel does not govern the paid community's own join VSL; the community's own ask does.
