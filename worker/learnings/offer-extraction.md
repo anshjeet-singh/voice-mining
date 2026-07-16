@@ -14,3 +14,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-15 · job 420009 · client: Trent Kus -->
 - The skill's Output template ("Offer Angles: 1. 2. 3. / Dominant Offer: / Why This, Why Now:") is a candidate/option-list working format. When this skill feeds a client-facing Offers deliverable through the orchestrator, that scratch output must never surface verbatim: pick the dominant offer and ship final copy, since the orchestrator's document rules forbid option lists, candidates, and "why I chose this" commentary in a client-facing doc.
+
+<!-- 2026-07-16 · job 510001 · client: Veda Ray -->
+- When a rung ships as a value stack, the writer must arithmetic-check that the printed "Total Value" equals the actual sum of the itemized dollar anchors before shipping. A mis-summed total (easy to introduce when line items get edited) is a direct credibility defect on the exact number the offer is anchored on. State that the stack total is a computed sum to be verified, not a hand-typed anchor.
