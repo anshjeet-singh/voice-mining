@@ -12,3 +12,7 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-17 · job 540001 · client: Blake Matthews -->
 - When mining a niche where the business-teaching content and the high-reach content live on different platforms and different hook styles, report the reach paradox as the finding: if the highest-reach hook style (often story-frame transformation) is owned by consumers and absent from the business-teaching lane, that gap is the client's opening to port the high-reach shape into the under-served lane. Do not just catalog winners; flag which winning shape nobody in the client's own lane is using.
+
+<!-- 2026-07-17 · job 570001 · client: Trent Kus -->
+- When sourcing competitor outliers for a Competitor Content Intel deliverable, mine each account by blending its top performers (rank by real view count) with its newest posts, not one or the other. Top-by-views on its own surfaces stale off-niche wins (an old lyric or lifestyle clip that has nothing to do with the offer); newest on its own misses the account's proven concepts. Blend the two per account and flag any off-niche piece rather than treating raw views as a niche win.
+- The deliverable is model-the-shape, never model-the-claim: carry over the hook archetype, format, and structure, and swap every competitor number, legal-code citation, offer, price, and guarantee for the client's own mechanism and screenshot-gated proof. State this explicitly in each re-skin so a downstream writer never imports a competitor's non-compliant claim by accident.
