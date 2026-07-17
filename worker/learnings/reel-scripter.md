@@ -9,3 +9,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-11 · job 270009 · client: Trent Kus -->
 - When a reel batch is scaled past the number of named proof wins the client actually has (here, 4 screenshot-gated wins but 5 reels requested), the extra reels must stand on the founder story or the named mechanism, never on a re-used or aggregated win. Doubling a proof screenshot across two reels breaks the one-win-per-asset discipline and reads as thin proof to a skeptical buyer. Add "if reels exceed available wins, cover the gap with story or mechanism, not a repeated screenshot" to the BANK-mode rules.
+
+<!-- 2026-07-17 · job 540001 · client: Blake Matthews -->
+- When mining a niche where the business-teaching content and the high-reach content live on different platforms and different hook styles, report the reach paradox as the finding: if the highest-reach hook style (often story-frame transformation) is owned by consumers and absent from the business-teaching lane, that gap is the client's opening to port the high-reach shape into the under-served lane. Do not just catalog winners; flag which winning shape nobody in the client's own lane is using.
