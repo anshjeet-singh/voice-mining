@@ -37,3 +37,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-16 · job 510002 · client: Veda Ray -->
 - The paid Skool About-page VSL is a direct-buy VSL (the ask is join at the stated monthly price), even when the wider client funnel is a call funnel. State the price and the daily-cost anchor in this VSL and justify it against the value stack and named guarantee, rather than applying the book-a-call "hold the number" rule. The funnel type of the parent funnel does not govern the paid community's own join VSL; the community's own ask does.
+
+<!-- 2026-07-19 · job 600001 · client: Trent Kus -->
+- When the offer has any real up-front component, the shipped #1 headline's "without" clause must be pay-MODEL-accurate ("without paying my real fee until the money lands"), never "without paying a dime in fees" or any "no fees at all" phrasing. This is a systemic accuracy and financial-services-review rule, not one client's taste: a false zero-cost "without" clause is inaccurate and burns trust with a burned buyer. The headline machine should generate the bank already compliant on the "without" clause, rather than shipping an inaccurate #1 and relying on a later compliance pass to catch it.
