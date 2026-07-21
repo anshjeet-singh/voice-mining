@@ -4,6 +4,7 @@
 
      ┌─ WHERE TO EDIT EVERYTHING ─────────────────────────────────────────┐
      │  Floating social proof (imgs + lines) → SCRIPT ▸ PEOPLE + LINES     │
+     │  Client-win image belt (screenshots)  → SCRIPT ▸ WINS               │
      │  Any avatar photo                     → add  data-img="URL"  on .av │
      │  Before/After slider images           → SECTION 4 ▸ style="...url"  │
      │  Hero headline / VSL                  → SECTION 1                    │
@@ -11,6 +12,7 @@
      │  Case-study videos + copy             → SECTION 5 ▸ .cv / .cx        │
      │  Reviews                              → SECTION 6                    │
      │  FAQ / Guarantee number               → SECTION 7 / 8               │
+     │  Exit-intent popup copy               → EXIT POPUP (before script)   │
      └────────────────────────────────────────────────────────────────────┘
      AVATARS: <div class="av" data-img="">XX</div> — blank = initials, URL = photo.
 ═══════════════════════════════════════════════════════════════════════ -->
@@ -166,6 +168,41 @@
     #lp-root .rcard .who .rl{font-size:12px;color:var(--mut)}
     @keyframes lprb{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 
+    /* ---------- CLIENT-WIN IMAGE BELT (single row · client-win screenshots) ---------- */
+    #lp-root .winkick{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8fa2cc}
+    #lp-root .winbelt{margin-top:2px;overflow:hidden;
+      -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+    #lp-root .winbelt .row{display:flex;gap:18px;width:max-content;animation:lpwin 48s linear infinite}
+    #lp-root .winbelt:hover .row{animation-play-state:paused}
+    #lp-root .wtile{height:220px;flex:0 0 auto;border-radius:16px;overflow:hidden;border:1px solid var(--line);
+      background:var(--card);box-shadow:0 18px 44px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center}
+    #lp-root .wtile img{height:100%;width:auto;display:block;object-fit:contain}
+    #lp-root .wtile.ph{width:340px;background:linear-gradient(135deg,#12203f,#0a0c15)}
+    #lp-root .wtile.ph .phlbl{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#8fa2cc}
+    @keyframes lpwin{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+    /* ---------- EXIT-INTENT POPUP (desktop only) ---------- */
+    #lp-root .exit{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:22px;
+      background:rgba(3,4,9,.74);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;transition:opacity .28s ease}
+    #lp-root .exit.show{display:flex;opacity:1}
+    #lp-root .exit__card{position:relative;max-width:660px;width:100%;background:linear-gradient(180deg,#10131f,#0a0c15);
+      border:1px solid var(--line);border-radius:26px;padding:56px 56px 46px;text-align:center;
+      box-shadow:0 0 0 1px rgba(255,255,255,.05),0 0 64px rgba(63,111,255,.34),0 40px 90px rgba(0,0,0,.6);
+      transform:translateY(14px) scale(.98);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+    #lp-root .exit.show .exit__card{transform:none}
+    #lp-root .exit__glow{position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+      background:radial-gradient(440px 210px at 50% -12%,rgba(63,111,255,.3),transparent 70%)}
+    #lp-root .exit__badge{position:relative;display:inline-flex;align-items:center;gap:8px;margin-bottom:18px;padding:9px 18px;border-radius:999px;
+      background:rgba(255,187,61,.09);border:1px solid rgba(255,187,61,.32);color:#ffcf7a;font-size:12px;font-weight:800;letter-spacing:.12em}
+    #lp-root .exit__h{position:relative;font-size:clamp(29px,5vw,43px);font-weight:800;letter-spacing:-.025em;line-height:1.1}
+    #lp-root .exit__p{position:relative;color:var(--mut);font-size:16.5px;line-height:1.64;margin:18px auto 30px;max-width:48ch}
+    #lp-root .exit__cta{position:relative;width:100%}
+    #lp-root .exit__no{position:relative;display:inline-block;margin-top:18px;background:none;border:0;cursor:pointer;
+      color:#6b7590;font-size:13px;text-decoration:underline;text-underline-offset:3px;font-family:inherit}
+    #lp-root .exit__no:hover{color:#9aa4bb}
+    #lp-root .exit__x{position:absolute;top:15px;right:18px;background:none;border:0;color:#6b7590;font-size:24px;line-height:1;cursor:pointer}
+    #lp-root .exit__x:hover{color:#fff}
+
     /* ---------- SECTION 7 · FAQ ---------- */
     #lp-root .faq{max-width:780px;margin:42px auto 0;display:flex;flex-direction:column;gap:12px}
     #lp-root .faq details{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
@@ -221,6 +258,10 @@
       #lp-root .sec{padding:56px 0}
       #lp-root .guar{padding:104px 0;min-height:auto}
       #lp-root .btn{font-size:16px;padding:17px 36px}
+      /* win belt + exit popup on small screens */
+      #lp-root .wtile{height:150px}
+      #lp-root .wtile.ph{width:240px}
+      #lp-root .exit__card{padding:40px 26px 32px}
     }
   </style>
 
@@ -368,6 +409,14 @@
     </div>
   </section>
 
+  <!-- ══════════ CLIENT-WIN IMAGE BELT (last proof before the guarantee) ══════════
+       EDIT YOUR SCREENSHOTS in the SCRIPT ▸ WINS array (paste hosted image URLs).
+       Empty entries render as labeled placeholder tiles until you add real images. -->
+  <section style="padding:20px 0 54px">
+    <div class="wrap center" style="margin-bottom:20px"><div class="winkick">Real approvals from real members</div></div>
+    <div class="winbelt"><div class="row lp-winrow"></div></div>
+  </section>
+
   <!-- ══════════ SECTION 8 · GUARANTEE ENDING ══════════ -->
   <section class="guar center">
     <div class="bignum">$100K+</div>
@@ -387,6 +436,20 @@
     <p class="dis">This site is not a part of the Facebook / Meta website or Meta Platforms Inc., nor is it endorsed by Meta in any way. FACEBOOK and INSTAGRAM are trademarks of Meta Platforms, Inc. This site is not a part of YouTube or Google LLC, nor endorsed by them in any way.</p>
     <p class="cp">© 2026 [COMPANY NAME]. All rights reserved. &nbsp;·&nbsp; <a href="[PRIVACY POLICY URL]">Privacy Policy</a> &nbsp;·&nbsp; <a href="[TERMS URL]">Terms</a></p>
   </footer>
+
+  <!-- ══════════ EXIT-INTENT POPUP (desktop only · fires once per session) ══════════
+       Copy is plain text below — edit freely. Button scrolls to the #booking calendar. -->
+  <div class="exit" id="lp-exit" role="dialog" aria-modal="true" aria-labelledby="lp-exit-h">
+    <div class="exit__card">
+      <div class="exit__glow" aria-hidden="true"></div>
+      <button class="exit__x" type="button" data-exit-close aria-label="Close">&times;</button>
+      <div class="exit__badge">&#9888;&#65039; HOLD UP THERE, HOTSHOT</div>
+      <h2 class="exit__h" id="lp-exit-h">You're really gonna leave <span class="fancy" style="color:#fff">$1,000</span> on the table?</h2>
+      <p class="exit__p">Easy now... let's not do something we'll both regret. Your call is a free funding strategy session (the real deal, zero pitch) where we map out exactly how to get you approved for $100K+, built around your exact situation. People pay a grand for this... you get it for the low, low price of nothing. But only if you grab your spot before you rage-quit this tab.</p>
+      <a class="btn glow exit__cta" href="#booking" data-exit-book>Fine... Claim My $1,000 Session &rarr;</a>
+      <div><button class="exit__no" type="button" data-exit-close>No thanks, I hate making more money</button></div>
+    </div>
+  </div>
 
   <script>
   (function(){
@@ -443,6 +506,46 @@
     document.querySelectorAll('#lp-root .video .play').forEach(function(p){
       p.addEventListener('click',function(){ p.style.opacity='0'; setTimeout(function(){ p.style.display='none'; },160); });
     });
+
+    /* ════ CLIENT-WIN IMAGE BELT ════════════════════════════════════════
+       Paste hosted screenshot URLs (GHL media library or any CDN) into WINS.
+       Leave items as '' and they render as labeled placeholder tiles. */
+    var WINS = [
+      '', '', '', '', '', '', '', ''
+    ];
+    var winrow=document.querySelector('#lp-root .lp-winrow');
+    if(winrow){
+      WINS.forEach(function(u,i){
+        var t=document.createElement('div');
+        if(u){ t.className='wtile'; var im=document.createElement('img'); im.src=u; im.loading='lazy'; im.alt='Member win '+(i+1); t.appendChild(im); }
+        else { t.className='wtile ph'; t.innerHTML='<span class="phlbl">Win '+('0'+(i+1)).slice(-2)+'</span>'; }
+        winrow.appendChild(t);
+      });
+      winrow.innerHTML+=winrow.innerHTML; /* duplicate for a seamless loop */
+    }
+
+    /* ════ EXIT-INTENT POPUP (desktop only · once per session) ══════════ */
+    (function(){
+      var modal=document.getElementById('lp-exit'); if(!modal) return;
+      /* desktop only: skip touch / coarse-pointer / small screens */
+      if(window.matchMedia('(hover:none),(pointer:coarse)').matches) return;
+      if(window.matchMedia('(max-width:820px)').matches) return;
+      var KEY='lp_exit_shown', shown=false;
+      try{ if(sessionStorage.getItem(KEY)) shown=true; }catch(e){}
+      function close(){ modal.classList.remove('show'); document.body.style.overflow=''; }
+      function open(){ if(shown) return; shown=true; try{ sessionStorage.setItem(KEY,'1'); }catch(e){}
+        modal.classList.add('show'); document.body.style.overflow='hidden'; }
+      /* fire when the cursor leaves the top of the viewport toward the tab bar */
+      document.addEventListener('mouseout',function(e){
+        if(e.clientY<=0 && !e.relatedTarget){ open(); }
+      });
+      modal.addEventListener('click',function(e){ if(e.target===modal) close(); });
+      modal.querySelectorAll('[data-exit-close]').forEach(function(b){ b.addEventListener('click',close); });
+      var book=modal.querySelector('[data-exit-book]');
+      if(book){ book.addEventListener('click',function(ev){ ev.preventDefault(); close();
+        var t=document.getElementById('booking'); if(t){ t.scrollIntoView({behavior:'smooth',block:'start'}); } }); }
+      document.addEventListener('keydown',function(e){ if(e.key==='Escape'||e.keyCode===27) close(); });
+    })();
   })();
   </script>
 </div>

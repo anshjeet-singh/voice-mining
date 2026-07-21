@@ -1,0 +1,403 @@
+<meta charset="utf-8">
+<!-- ═══════════════════════════════════════════════════════════════════════
+     WEBINAR FUNNEL · PAGE 2, BRIDGE / $27 ONE-TIME OFFER
+     Paste into a GoHighLevel "Custom Code / HTML" element (full-width).
+
+     ┌─ WIRE-UP ──────────────────────────────────────────────────────────┐
+     │  CHECKOUT: drop your GHL order-form EMBED into the .checkout-slot   │
+     │  (right column). Add  data-checkout  to the <iframe> → opt-in       │
+     │  email/name/phone auto-prefill (ONE clean contact, email de-dupe).  │
+     │  GHL handles payment + the post-purchase redirect to the PURCHASED  │
+     │  thank-you page.                                                    │
+     │  IMAGES: add product mockups →  data-img="URL"  on each .mock.      │
+     │  SCRIPT ▸ CFG.declineUrl = your REGISTERED thank-you URL.           │
+     │  SCRIPT ▸ CFG.offerMins  = fresh countdown per visit (default 12).  │
+     └────────────────────────────────────────────────────────────────────┘
+═══════════════════════════════════════════════════════════════════════ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600;1,700&display=swap" rel="stylesheet">
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ⚙️  EDIT EVERYTHING HERE, change the values between the quotes.
+     This is the ONLY block you need to touch. Nothing else below requires edits.
+═══════════════════════════════════════════════════════════════════════ -->
+<script>
+window.WCFG = {
+  /* ── OFFER TIMER ── minutes the fresh countdown starts at (restarts each visit) */
+  offerMins: 12,
+
+  /* ── SITE DOMAIN ── set this ONE thing and the whole funnel wires itself:
+       opt-in = /training · bridge = /training-offer
+       purchase thanks = /purchase-thanks · register thanks = /register-thanks
+       Leave the decline link below blank to auto-build, or fill it to override. */
+  siteDomain: '',                            /* e.g. 'https://yourbrand.com' */
+
+  /* ── LINKS ── */
+  declineUrl: '',                            /* auto = siteDomain + /register-thanks · fill to override */
+
+  /* ── CHECKOUT ── paste your GHL order-form <iframe ...></iframe> embed here */
+  checkoutEmbed: '',
+
+  /* ── IMAGES (paste image URLs) ── */
+  heroMockup: '',                  /* the product mockup in the hero */
+  bonusImg1: '',                   /* Bank Intel Database mockup */
+  bonusImg2: '',                   /* AI Strategist mockup */
+  bonusImg3: '',                   /* No-Doc Filter mockup */
+
+  /* ── FOOTER ── */
+  companyName: '[COMPANY NAME]',
+  privacyUrl: '#',
+  termsUrl: '#'
+};
+</script>
+
+<div id="wb-root">
+  <style>
+    #wb-root *{margin:0;padding:0;box-sizing:border-box}
+    #wb-root{
+      --bg:#05060b; --bg2:#0a0c15; --card:#0f1220; --line:rgba(255,255,255,.09);
+      --txt:#f5f7fc; --mut:#9aa4bb; --accent:#3f6fff; --accent2:#7d97ff; --good:#4ade80; --warn:#ffcf7a; --bad:#ff6b6b;
+      --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      --fancy:'Playfair Display',Georgia,"Times New Roman",serif;
+      background:var(--bg); color:var(--txt); font-family:var(--font);
+      -webkit-font-smoothing:antialiased; line-height:1.5; overflow-x:hidden;
+      width:100vw; position:relative; left:50%; right:50%; margin-left:-50vw; margin-right:-50vw;
+    }
+    #wb-root .wrap{max-width:900px;margin:0 auto;padding:0 20px;position:relative;z-index:2}
+    #wb-root .wrap.wide{max-width:1120px}
+    #wb-root .center{text-align:center}
+    #wb-root h1,#wb-root h2,#wb-root h3{font-weight:800;letter-spacing:-.025em;line-height:1.1}
+    #wb-root .fancy{font-family:var(--fancy);font-style:italic;font-weight:600;letter-spacing:0}
+    #wb-root .accent{color:var(--accent2)}
+    #wb-root .hl{display:inline-block;line-height:.92;padding:.04em .28em;background:linear-gradient(115deg,rgba(63,111,255,.5),rgba(125,151,255,.14));color:#fff;border-radius:12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),0 10px 32px rgba(63,111,255,.18)}
+
+    /* buttons (bigger + animated) */
+    #wb-root .btn{display:inline-flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;background:#fff;color:#0a0c15;font-weight:900;font-size:25px;padding:20px 40px;border-radius:16px;border:0;cursor:pointer;text-decoration:none;font-family:inherit;line-height:1.15;text-align:center;
+      box-shadow:0 0 0 1px rgba(255,255,255,.14),0 0 44px rgba(63,111,255,.5),0 14px 40px rgba(0,0,0,.45)}
+    #wb-root .btn small{font-size:15px;font-weight:700;color:#3a4363}
+    #wb-root .btn.row{flex-direction:row;gap:11px}
+    #wb-root .btn.glow{animation:wbglow 3s ease-in-out infinite, wbbob 2.8s ease-in-out infinite;transform-origin:center}
+    @keyframes wbglow{0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,.1),0 0 34px rgba(63,111,255,.34),0 14px 40px rgba(0,0,0,.45)}50%{box-shadow:0 0 0 1px rgba(255,255,255,.18),0 0 64px rgba(63,111,255,.66),0 16px 46px rgba(63,111,255,.36)}}
+    @keyframes wbbob{0%,100%{transform:rotate(-.9deg)}50%{transform:rotate(.9deg)}}
+    #wb-root .btn.glow:hover{animation-play-state:paused;filter:brightness(1.02)}
+    #wb-root .btn .arw{display:inline-block;animation:wbarw 1.3s ease-in-out infinite}
+    @keyframes wbarw{0%,100%{transform:translateX(0)}50%{transform:translateX(7px)}}
+    #wb-root .btn--wide{width:100%;max-width:600px}
+    #wb-root .decline{text-align:center;margin:18px 0 4px}
+    #wb-root .decline a{color:#eef2fb;font-size:17px;font-weight:600;text-decoration:underline;text-underline-offset:4px}
+    #wb-root .decline a:hover{color:#fff}
+    #wb-root .av{border-radius:50%;background:linear-gradient(135deg,#3f6fff,#7d5bff);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex:0 0 auto}
+    #wb-root .mock{border-radius:16px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(135deg,#16233f,#0a0c15);background-size:cover;background-position:center;aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;color:#6f80a6;font-size:12px;text-align:center;padding:12px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+
+    /* top timer banner (label + countdown inline, like the opt-in) */
+    #wb-root .topbar{position:sticky;top:0;z-index:20;background:radial-gradient(600px 160px at 50% -60%,rgba(255,90,90,.25),transparent 70%),linear-gradient(90deg,#3a1414,#2a1030);border-bottom:1px solid rgba(255,90,90,.32);padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;text-align:center}
+    #wb-root .topbar .tb-l{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#ffc9c9}
+    #wb-root .topbar .tb-t{font-size:23px;font-weight:900;font-variant-numeric:tabular-nums;color:#fff;letter-spacing:.02em}
+
+    /* hero */
+    #wb-root .hero{position:relative;padding:44px 0 34px;background:radial-gradient(1100px 480px at 50% -14%,rgba(47,107,255,.2),transparent 62%),linear-gradient(180deg,var(--bg),var(--bg2))}
+    #wb-root .ey{display:inline-flex;align-items:center;gap:9px;margin-bottom:22px;padding:12px 24px;border-radius:999px;background:rgba(255,187,61,.1);border:1px solid rgba(255,187,61,.34);color:var(--warn);font-size:15px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+    #wb-root .hero h1{font-size:clamp(30px,5.6vw,58px);margin:0 auto;line-height:1.05}
+    #wb-root .hero h1 .l2{display:block;font-size:.82em;margin-top:6px}
+    #wb-root .hero .sub{margin:18px auto 0;max-width:44ch;font-size:clamp(16px,2.6vw,21px);color:#dfe5f4;font-weight:600;font-style:italic}
+    #wb-root .hero .mock{max-width:640px;margin:30px auto 0}
+
+
+    /* section */
+    #wb-root .sec{padding:48px 0}
+    #wb-root .sec h2{font-size:clamp(25px,4vw,40px);text-align:center}
+    #wb-root .sec .lead{color:var(--mut);text-align:center;font-size:15px;margin-top:10px}
+
+    /* bonus blocks (image + copy, alternating) */
+    #wb-root .bblk{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px;margin-top:20px;display:grid;grid-template-columns:300px 1fr;gap:28px;align-items:center}
+    #wb-root .bblk.flip{grid-template-columns:1fr 300px}
+    #wb-root .bblk.flip .bmedia{order:2}
+    #wb-root .bblk .bmedia .mock{aspect-ratio:4/3;margin:0}
+    #wb-root .bblk .tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#0a0c15;background:linear-gradient(90deg,#7d97ff,#3f6fff);padding:6px 13px;border-radius:999px;margin-bottom:14px}
+    #wb-root .bblk h3{font-size:clamp(19px,2.6vw,24px);line-height:1.2;margin-bottom:12px}
+    #wb-root .bblk p{color:#cfd6e8;font-size:15px;line-height:1.7;margin-bottom:12px}
+    #wb-root .bblk p:last-child{margin-bottom:0}
+    #wb-root .bblk p b{color:#fff}
+    #wb-root .bblk .pk{color:var(--accent2);font-style:italic;font-weight:600}
+
+    /* not-paying anchor */
+    #wb-root .notpay{max-width:660px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:34px 30px;text-align:left}
+    #wb-root .notpay h3{text-align:center;font-size:clamp(24px,3.4vw,32px);line-height:1.14;margin-bottom:26px}
+    #wb-root .notpay h3 .l1{display:block}
+    #wb-root .notpay h3 .l2{display:block;color:var(--mut);font-size:.66em;font-weight:700;margin-top:10px}
+    #wb-root .notpay .nl{list-style:none;display:flex;flex-direction:column;gap:15px}
+    #wb-root .notpay .nl li{display:flex;align-items:center;gap:13px;font-size:15px;color:#eef2fb;line-height:1.45}
+    #wb-root .notpay .nl li .x{width:24px;height:24px;border-radius:50%;background:rgba(255,107,107,.16);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+    #wb-root .notpay .pay{margin-top:28px;padding:20px 24px;border-radius:16px;background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.26);display:flex;align-items:center;justify-content:center;gap:16px}
+    #wb-root .notpay .pay .ck2{width:40px;height:40px;border-radius:50%;background:var(--good);color:#0a0c15;font-size:21px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+    #wb-root .notpay .pay .lbl{font-size:14px;color:#bff3cf;font-weight:700}
+    #wb-root .notpay .pay .big{font-size:clamp(30px,6vw,44px);font-weight:900;color:#fff;line-height:1;margin-top:2px}
+    #wb-root .notpay .pay .big small{font-size:16px;font-weight:700;color:var(--mut)}
+    #wb-root .cost{max-width:600px;margin:24px auto 0;text-align:center;color:#cfd6e8;font-size:16px;line-height:1.7}
+    #wb-root .cost b{color:#fff}
+    #wb-root .rating{display:flex;flex-direction:column;align-items:center;gap:8px;margin:30px auto 0;padding:20px 26px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid var(--line);max-width:540px}
+    #wb-root .rating .st{color:#ffb63d;letter-spacing:2px;font-size:19px}
+    #wb-root .rating .rt{font-size:13px;color:#dfe5f4;font-weight:700;letter-spacing:.04em}
+
+    /* ACCESS + CHECKOUT (2 columns) */
+    #wb-root .access{display:grid;grid-template-columns:1fr 1.05fr;gap:22px;align-items:start;margin-top:20px}
+    #wb-root .stack{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:30px;text-align:left}
+    #wb-root .stack h3{font-size:clamp(20px,2.6vw,26px);margin-bottom:20px}
+    #wb-root .si{display:flex;align-items:center;gap:14px;padding:9px 0}
+    #wb-root .si .ck{width:42px;height:42px;border-radius:12px;background:rgba(63,111,255,.12);border:1px solid rgba(63,111,255,.24);font-size:21px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+    #wb-root .si .st2{flex:1}
+    #wb-root .si .st2 .h{font-size:15.5px;font-weight:700;color:#fff}
+    #wb-root .si .st2 .d{font-size:13px;color:var(--mut);line-height:1.5;margin-top:2px}
+    #wb-root .si .v{font-size:13px;font-weight:800;color:var(--accent2);white-space:nowrap;margin-top:2px}
+    #wb-root .stack .tot{margin-top:18px;padding-top:18px;border-top:1px dashed var(--line);text-align:center}
+    #wb-root .stack .tot .tv{font-size:14px;color:var(--mut)}
+    #wb-root .stack .tot .pr{font-size:clamp(30px,6vw,46px);font-weight:900;color:#fff;margin-top:4px}
+    #wb-root .stack .tot .pr s{color:#5c6683;font-size:.5em;font-weight:700;margin-right:10px;vertical-align:middle}
+    #wb-root .stack .gin{margin-top:18px;display:flex;gap:12px;align-items:center;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.24);border-radius:14px;padding:14px 16px}
+    #wb-root .stack .gin .gic{font-size:24px}
+    #wb-root .stack .gin .gt .gh{font-size:14px;font-weight:800;color:#bff3cf}
+    #wb-root .stack .gin .gt .gd{font-size:12.5px;color:#9fd8b3;line-height:1.5;margin-top:2px}
+    #wb-root .checkout-slot{min-height:560px;background:var(--card);border:1px dashed var(--line);border-radius:20px;display:flex;align-items:center;justify-content:center;color:var(--mut);text-align:center;padding:26px;overflow:hidden}
+    #wb-root .checkout-slot iframe{width:100%;min-height:560px;border:0;border-radius:16px;display:block}
+
+    /* faq */
+    #wb-root .faq{max-width:660px;margin:26px auto 0;display:flex;flex-direction:column;gap:12px;text-align:left}
+    #wb-root .faq details{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+    #wb-root .faq summary{list-style:none;cursor:pointer;padding:18px 20px;font-size:15.5px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:16px}
+    #wb-root .faq summary::-webkit-details-marker{display:none}
+    #wb-root .faq summary .ic{width:20px;height:20px;flex:0 0 auto;position:relative}
+    #wb-root .faq summary .ic::before,#wb-root .faq summary .ic::after{content:"";position:absolute;background:var(--accent2);border-radius:2px;transition:transform .2s ease}
+    #wb-root .faq summary .ic::before{top:9px;left:2px;right:2px;height:2px}
+    #wb-root .faq summary .ic::after{left:9px;top:2px;bottom:2px;width:2px}
+    #wb-root .faq details[open] summary .ic::after{transform:scaleY(0)}
+    #wb-root .faq .ans{padding:0 20px 18px;color:var(--mut);font-size:14.5px;line-height:1.7}
+
+    #wb-root .foot{padding:40px 20px;text-align:center;border-top:1px solid var(--line);background:var(--bg)}
+    #wb-root .foot .dis{max-width:820px;margin:0 auto;color:var(--mut);font-size:12px;line-height:1.7}
+    #wb-root .foot .cp{margin-top:14px;color:var(--mut);font-size:12.5px}
+    #wb-root .foot a{color:#c7d0ea;text-decoration:none}
+
+    /* exit popup + toasts */
+    #wb-root .exit{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(3,4,9,.74);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;transition:opacity .28s ease}
+    #wb-root .exit.show{display:flex;opacity:1}
+    #wb-root .exit__card{position:relative;max-width:600px;width:100%;background:linear-gradient(180deg,#10131f,#0a0c15);border:1px solid var(--line);border-radius:26px;padding:50px 44px 36px;text-align:center;box-shadow:0 0 0 1px rgba(255,255,255,.05),0 0 64px rgba(63,111,255,.34),0 40px 90px rgba(0,0,0,.6)}
+    #wb-root .exit__badge{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;padding:9px 18px;border-radius:999px;background:rgba(255,187,61,.09);border:1px solid rgba(255,187,61,.32);color:var(--warn);font-size:12px;font-weight:800;letter-spacing:.12em}
+    #wb-root .exit__h{font-size:clamp(25px,4.6vw,36px);font-weight:800;letter-spacing:-.025em;line-height:1.12}
+    #wb-root .exit__p{color:var(--mut);font-size:16px;line-height:1.6;margin:16px auto 24px;max-width:44ch}
+    #wb-root .exit__no{margin-top:16px;background:none;border:0;cursor:pointer;color:#e6eaf6;font-size:16px;font-weight:600;text-decoration:underline;text-underline-offset:4px;font-family:inherit}
+    #wb-root .exit__no:hover{color:#fff}
+    #wb-root .exit__x{position:absolute;top:15px;right:18px;background:none;border:0;color:#6b7590;font-size:24px;line-height:1;cursor:pointer}
+    #wb-root .toasts{position:fixed;left:16px;bottom:16px;z-index:9998;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+    #wb-root .toast{display:flex;align-items:center;gap:12px;background:rgba(15,18,32,.94);border:1px solid var(--line);border-radius:14px;padding:12px 16px 12px 12px;box-shadow:0 18px 44px rgba(0,0,0,.5);opacity:0;transform:translateY(12px);transition:opacity .4s ease,transform .4s ease;max-width:300px}
+    #wb-root .toast.show{opacity:1;transform:none}
+    #wb-root .toast .av{width:36px;height:36px;font-size:12px}
+    #wb-root .toast .tt .n{font-size:13px;font-weight:700;color:#fff}
+    #wb-root .toast .tt .m{font-size:11.5px;color:var(--mut)}
+    #wb-root .toast .tt .m b{color:var(--good)}
+
+    @media(max-width:820px){
+      #wb-root .access{grid-template-columns:1fr}
+      #wb-root .bblk,#wb-root .bblk.flip{grid-template-columns:1fr;gap:18px}
+      #wb-root .bblk .bmedia{order:-1}
+      #wb-root .bblk.flip .bmedia{order:-1}
+    }
+    @media(max-width:720px){
+      #wb-root .sec{padding:36px 0}
+      #wb-root .bblk{padding:20px}#wb-root .notpay,#wb-root .stack{padding:22px}
+      #wb-root .btn{font-size:22px;padding:18px 26px}
+      #wb-root .exit__card{padding:34px 22px 28px}
+      #wb-root .toasts{left:10px;right:10px;bottom:10px}#wb-root .toast{max-width:none}
+    }
+  </style>
+
+  <!-- TOP TIMER BANNER (label + countdown inline) -->
+  <div class="topbar">
+    <span class="tb-l">⚠️ Don't Close This Page · Offer Expires In</span>
+    <span class="tb-t" data-exp>12:00</span>
+  </div>
+
+  <!-- HERO -->
+  <section class="hero center">
+    <div class="wrap">
+      <span class="ey">🔥 Special One-Time Offer</span>
+      <h1>Congratulations, You're In.<span class="l2">Now Grab the <span class="fancy">Exact Bank Cheat Sheet.</span></span></h1>
+      <p class="sub">Know exactly which banks to apply to, before the training even starts. No guessing, no wasted hard inquiries.</p>
+      <div class="mock" data-cfg-img="heroMockup">Product mockup</div>
+      <div style="margin-top:26px"><button class="btn glow btn--wide" type="button" data-scroll>YES, I WANT THIS! <small>Add the Bank Cheat Sheet for only $27</small></button></div>
+      <div class="decline"><a href="#" data-decline>No thanks, I'll just guess which banks to apply to</a></div>
+    </div>
+  </section>
+
+  <!-- WHY UPGRADE -->
+  <section class="sec">
+    <div class="wrap">
+      <h2>Why You Should Add This <span class="fancy accent">(Yes… it's just $27)</span></h2>
+
+      <div class="bblk">
+        <div class="bmedia"><div class="mock" data-cfg-img="bonusImg1">Bank Intel Database mockup</div></div>
+        <div class="btext">
+          <span class="tag">Bonus #1 · The Core</span>
+          <h3>The Exact Bank Intel Database</h3>
+          <p>The sheet my private clients use <b>before they apply for a single card</b>. Every major business-credit bank, sorted by which bureau they pull and which to avoid.</p>
+          <p>If you already have 3 inquiries on Experian, you don't want another Experian-pull bank. Most people apply blind and torch their file with hard inquiries.</p>
+          <p class="pk">One right application beats ten blind ones.</p>
+        </div>
+      </div>
+
+      <div class="bblk flip">
+        <div class="bmedia"><div class="mock" data-cfg-img="bonusImg2">AI strategist mockup</div></div>
+        <div class="btext">
+          <span class="tag">Bonus #2</span>
+          <h3>The AI Funding Strategist (24/7)</h3>
+          <p>Your personal funding consultant, on call any time. Ask which banks to apply to for your score, how to sequence applications, and what to do when you hit a wall.</p>
+          <p>Like a <b>$5,000 consultant in your pocket</b>, without the $5,000.</p>
+        </div>
+      </div>
+
+      <div class="bblk">
+        <div class="bmedia"><div class="mock" data-cfg-img="bonusImg3">No-doc filter mockup</div></div>
+        <div class="btext">
+          <span class="tag">Bonus #3</span>
+          <h3>The "No-Doc" Bank Filter</h3>
+          <p>The most valuable filter: which banks require <b>zero documentation</b>. No tax returns. No statements. No revenue proof. Just your credit.</p>
+          <p>We've flagged every one for you. This is the map to the "zero-document" approach we teach on the training.</p>
+        </div>
+      </div>
+
+      <div style="margin-top:26px" class="center"><button class="btn glow btn--wide" type="button" data-scroll>YES, I WANT THIS! <small>Add the Bank Cheat Sheet for only $27</small></button></div>
+      <div class="decline"><a href="#" data-decline>No thanks, I'll just guess which banks to apply to</a></div>
+    </div>
+  </section>
+
+  <!-- NOT PAYING -->
+  <section class="sec">
+    <div class="wrap">
+      <div class="notpay">
+        <h3><span class="l1">Less Than a Coffee.</span><span class="l2">Here's What You're <span class="accent">NOT</span> Paying:</span></h3>
+        <ul class="nl">
+          <li><span class="x">✕</span><span>$500–$1,000 for a funding broker's lender list (outdated in two weeks)</span></li>
+          <li><span class="x">✕</span><span>$200+ for credit monitoring to figure out which bureau to protect</span></li>
+          <li><span class="x">✕</span><span>$3,000–$5,000 for a course that doesn't even include the bank intel</span></li>
+          <li><span class="x">✕</span><span>Hours of Googling "which banks approve" and trusting Reddit from 2019</span></li>
+        </ul>
+        <div class="pay"><span class="ck2">✓</span><div><div class="lbl">Today you pay just</div><div class="big">$27 <small>one time</small></div></div></div>
+      </div>
+      <p class="cost">One right application, to the right bank, pulling the right bureau, with no docs required, gets you funded. <b>One wrong application costs you a hard inquiry, a score drop, and months of recovery.</b></p>
+      <div class="rating"><span class="st">★★★★★</span><span class="rt">AVG. 5.0 / 5.0 · 2,100+ OWNERS FUNDED · $130K AVG</span></div>
+    </div>
+  </section>
+
+  <!-- ACCESS + CHECKOUT (2 columns) -->
+  <section class="sec">
+    <div class="wrap wide">
+      <h2 style="text-align:center">Here's Everything You'll <span class="fancy accent">Access</span></h2>
+      <div class="access">
+        <div class="stack">
+          <h3>Your $27 Bundle</h3>
+          <div class="si"><span class="ck">📊</span><div class="st2"><div class="h">Master Bank Intel Sheet</div><div class="d">Every major bank sorted by bureau pull, with the ones to avoid flagged.</div></div><div class="v">$297</div></div>
+          <div class="si"><span class="ck">🗺️</span><div class="st2"><div class="h">50+ State Breakdowns</div><div class="d">Every bank & credit union in your state: bureau, docs, geo-lock.</div></div><div class="v">$497</div></div>
+          <div class="si"><span class="ck">🚫</span><div class="st2"><div class="h">"No-Doc" Bank Filter</div><div class="d">Every bank needing zero tax returns, statements or revenue proof.</div></div><div class="v">$297</div></div>
+          <div class="si"><span class="ck">🤖</span><div class="st2"><div class="h">AI Funding Strategist</div><div class="d">Your 24/7 funding consultant, trained on the exact system.</div></div><div class="v">$997</div></div>
+          <div class="tot"><div class="tv">Total value: $2,088+</div><div class="pr"><s>$2,088</s>$27</div></div>
+          <div class="gin"><div class="gic">🛡️</div><div class="gt"><div class="gh">$27, Fully Refundable</div><div class="gd">If it's not worth 10x the price, email support and we'll refund you.</div></div></div>
+          <div class="decline" style="margin-top:20px"><a href="#" data-decline>No thanks, I'll just guess which banks to apply to</a></div>
+        </div>
+        <div id="checkout">
+          <!-- [GHL CHECKOUT] paste your GHL order-form EMBED IFRAME here.
+               Add  data-checkout  to auto-prefill the opt-in email/name/phone. -->
+          <div class="checkout-slot" data-cfg-embed="checkoutEmbed">💳 &nbsp;Set checkoutEmbed at the top (your GHL $27 order form)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="sec">
+    <div class="wrap">
+      <h2>Frequently Asked <span class="fancy">Questions</span></h2>
+      <div class="faq">
+        <details><summary>Do I need this if I'm already attending the training?<span class="ic"></span></summary><div class="ans">The training teaches the SYSTEM. This tells you exactly WHERE to apply so you execute the second the training ends, instead of guessing.</div></details>
+        <details><summary>Is this a one-time payment?<span class="ic"></span></summary><div class="ans">Yes. $27 one time. No subscriptions, no hidden fees. Instant access.</div></details>
+        <details><summary>How current is the data?<span class="ic"></span></summary><div class="ans">Edit this answer.</div></details>
+        <details><summary>Can I get a refund?<span class="ic"></span></summary><div class="ans">It's $27. But if you genuinely feel it wasn't worth it, email support and we'll take care of you.</div></details>
+      </div>
+      <div style="margin-top:26px" class="center"><button class="btn glow btn--wide" type="button" data-scroll>YES, I WANT THIS! <small>Add the Bank Cheat Sheet for only $27</small></button></div>
+      <div class="decline"><a href="#" data-decline>No thanks, take me to my training</a></div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p class="dis">Results are not typical and are not a promise of what you will achieve. This product is for educational purposes only and does not constitute financial, legal or credit-repair advice. By purchasing you agree to our Terms and Privacy Policy. This site is not a part of the Facebook / Meta website or Meta Platforms Inc., nor endorsed by Meta in any way.</p>
+    <p class="cp">© 2026 <span data-cfg-text="companyName">[COMPANY NAME]</span>. All rights reserved. &nbsp;·&nbsp; <a href="#" data-cfg="privacyUrl">Privacy Policy</a> &nbsp;·&nbsp; <a href="#" data-cfg="termsUrl">Terms</a></p>
+  </footer>
+
+  <div class="exit" id="wb-exit" role="dialog" aria-modal="true">
+    <div class="exit__card">
+      <button class="exit__x" type="button" data-exit-close aria-label="Close">&times;</button>
+      <div class="exit__badge">&#9888;&#65039; THIS $27 PRICE DISAPPEARS WHEN YOU LEAVE</div>
+      <h2 class="exit__h">Walk in blind, <span class="fancy accent">walk out denied.</span></h2>
+      <p class="exit__p">This is the only place the Bank Cheat Sheet is $27. Leave and it's gone, and you're back to guessing which banks to apply to and eating the hard inquiries. Grab the exact list now, fully refundable.</p>
+      <button class="btn glow row btn--wide" type="button" data-exit-checkout>Okay, Add It for $27 <span class="arw">→</span></button>
+      <div><button class="exit__no" type="button" data-exit-decline>No thanks, take me to my training</button></div>
+    </div>
+  </div>
+
+  <div class="toasts" data-toasts aria-hidden="true"></div>
+
+  <script>
+  (function(){
+    var C = window.WCFG || {};
+    function urlFrom(domain,path){ if(!domain) return ''; var d=String(domain).trim().replace(/\/+$/,''); if(!/^https?:\/\//i.test(d)) d='https://'+d; return d+'/'+path; }
+    var CFG = { declineUrl: C.declineUrl || urlFrom(C.siteDomain,'register-thanks') || '[REGISTERED THANK-YOU URL]', offerMins: (C.offerMins!=null?C.offerMins:12) };
+    function $(s,c){return (c||document).querySelector(s);}
+    function $all(s,c){return [].slice.call((c||document).querySelectorAll(s));}
+
+    /* apply top-config: links, text, images, checkout embed */
+    $all('#wb-root [data-cfg]').forEach(function(a){ var k=a.getAttribute('data-cfg'); if(C[k]) a.setAttribute('href',C[k]); });
+    $all('#wb-root [data-cfg-text]').forEach(function(el){ var k=el.getAttribute('data-cfg-text'); if(C[k]) el.textContent=C[k]; });
+    $all('#wb-root [data-cfg-img]').forEach(function(el){ var k=el.getAttribute('data-cfg-img'),v=C[k]; if(v){ el.style.backgroundImage="url('"+v+"')"; el.textContent=''; } });
+    $all('#wb-root [data-cfg-embed]').forEach(function(el){ var k=el.getAttribute('data-cfg-embed'),v=C[k]; if(v){ el.innerHTML=v; el.style.padding='0'; el.style.border='0'; el.style.background='transparent'; } });
+
+    /* carry opt-in params forward (de-dupe: prefill checkout + decline) */
+    var qs=location.search||'';
+    function withParams(url){ if(!qs) return url; return url + (url.indexOf('?')>=0?'&':'?') + qs.replace(/^\?/,''); }
+    var cof=$('#checkout iframe'); if(cof){ var src=cof.getAttribute('src')||''; if(src) cof.setAttribute('src', withParams(src)); }
+    var declineHref=withParams(CFG.declineUrl);
+
+    /* fresh offer countdown (restarts each visit) */
+    (function(){ var el=$('[data-exp]'); if(!el) return; var end=Date.now()+CFG.offerMins*60000;
+      function pad(n){return (n<10?'0':'')+n;}
+      function tick(){ var s=Math.max(0,Math.floor((end-Date.now())/1000)); el.textContent=pad(Math.floor(s/60))+':'+pad(s%60); }
+      tick(); setInterval(tick,1000);
+    })();
+
+    $all('[data-decline]').forEach(function(a){ a.addEventListener('click',function(e){ e.preventDefault(); window.location.href=declineHref; }); });
+    $all('[data-scroll]').forEach(function(b){ b.addEventListener('click',function(e){ e.preventDefault(); var t=$('#checkout'); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); }); });
+
+    /* live purchase toasts */
+    var BUY=[{n:'Marcus T.',w:'Texas'},{n:'Latoya B.',w:'Georgia'},{n:'Devin R.',w:'Florida'},{n:'Cole M.',w:'Ohio'},{n:'Jasmine W.',w:'Illinois'},{n:'Andre P.',w:'Nevada'},{n:'Ryan K.',w:'N. Carolina'},{n:'Erin C.',w:'Colorado'}];
+    (function(){ var host=$('[data-toasts]'); if(!host) return; var i=Math.floor(Math.random()*BUY.length);
+      function fire(){ var r=BUY[i++%BUY.length], mins=Math.floor(Math.random()*7)+1; var el=document.createElement('div'); el.className='toast';
+        el.innerHTML='<div class="av">'+r.n.charAt(0)+r.n.split(' ')[1].charAt(0)+'</div><div class="tt"><div class="n">'+r.n+' from '+r.w+'</div><div class="m"><b>grabbed the $27 kit</b> · '+mins+' min ago</div></div>';
+        host.appendChild(el); requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add('show');});});
+        setTimeout(function(){el.classList.remove('show');setTimeout(function(){el.remove();},450);},5000); setTimeout(fire,7000+Math.random()*7000);
+      } setTimeout(fire,4000);
+    })();
+
+    /* exit-intent popup */
+    (function(){ var modal=$('#wb-exit'); if(!modal) return;
+      if(window.matchMedia('(hover:none),(pointer:coarse)').matches) return;
+      var KEY='wb_exit_shown', shown=false; try{ if(sessionStorage.getItem(KEY)) shown=true; }catch(e){}
+      function close(){ modal.classList.remove('show'); document.body.style.overflow=''; }
+      function open(){ if(shown) return; shown=true; try{sessionStorage.setItem(KEY,'1');}catch(e){} modal.classList.add('show'); document.body.style.overflow='hidden'; }
+      document.addEventListener('mouseout',function(e){ if(e.clientY<=0 && !e.relatedTarget) open(); });
+      $all('[data-exit-close]',modal).forEach(function(b){ b.addEventListener('click',close); });
+      var cb=$('[data-exit-checkout]',modal); if(cb) cb.addEventListener('click',function(){ close(); var t=$('#checkout'); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); });
+      var db=$('[data-exit-decline]',modal); if(db) db.addEventListener('click',function(){ window.location.href=declineHref; });
+      modal.addEventListener('click',function(e){ if(e.target===modal) close(); });
+      document.addEventListener('keydown',function(e){ if(e.key==='Escape' && modal.classList.contains('show')) close(); });
+    })();
+  })();
+  </script>
+</div>

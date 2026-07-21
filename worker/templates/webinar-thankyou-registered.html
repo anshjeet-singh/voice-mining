@@ -1,0 +1,346 @@
+<meta charset="utf-8">
+<!-- ═══════════════════════════════════════════════════════════════════════
+     WEBINAR FUNNEL · PAGE 4, THANK-YOU (REGISTERED, did not buy the $27 kit)
+     The bridge "no thanks" / exit-decline routes here.
+     Paste into a GoHighLevel "Custom Code / HTML" element (full-width).
+
+     EDIT: welcome video → #tyr-video · calendar links → STEP 1 buttons ·
+     re-offer link → STEP 3 ([BRIDGE PAGE URL]) · Skool → community button ·
+     webinar time (auto ET/CT/MT/PT) → SCRIPT ▸ CFG.webinar
+═══════════════════════════════════════════════════════════════════════ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600;1,700&display=swap" rel="stylesheet">
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ⚙️  EDIT EVERYTHING HERE, change the values between the quotes.
+     This is the ONLY block you need to touch. Nothing else below requires edits.
+═══════════════════════════════════════════════════════════════════════ -->
+<script>
+window.WCFG = {
+  /* ── WEBINAR DAY & TIME (drives the "when" times) ──
+       webinarDay:  0=Sun · 1=Mon · 2=Tue · 3=Wed · 4=Thu · 5=Fri · 6=Sat  */
+  webinarDay: 3,
+  webinarHour: 17,                 /* 24-hour clock: 17 = 5 PM */
+  webinarMinute: 0,
+  webinarTz: 'America/New_York',   /* IANA timezone */
+
+  /* ── WELCOME VIDEO ── paste a full <iframe ...></iframe> embed, OR just the video URL */
+  welcomeVideo: '',
+
+  /* ── ADD-TO-CALENDAR LINKS (your GHL "add to calendar" custom values) ── */
+  googleCalUrl: '',
+  appleCalUrl: '',
+  outlookCalUrl: '',
+
+  /* ── LINKS ── */
+  skoolUrl: '',                    /* your free Skool community link */
+
+  /* ── FOOTER ── */
+  companyName: '[COMPANY NAME]',
+  privacyUrl: '#',
+  termsUrl: '#'
+};
+</script>
+
+<div id="tyr-root">
+  <style>
+    #tyr-root *{margin:0;padding:0;box-sizing:border-box}
+    #tyr-root{
+      --bg:#05060b; --bg2:#0a0c15; --card:#0f1220; --line:rgba(255,255,255,.09);
+      --txt:#f5f7fc; --mut:#9aa4bb; --accent:#3f6fff; --accent2:#7d97ff; --good:#4ade80; --warn:#ffcf7a;
+      --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      --fancy:'Playfair Display',Georgia,"Times New Roman",serif;
+      background:var(--bg); color:var(--txt); font-family:var(--font);
+      -webkit-font-smoothing:antialiased; line-height:1.5; overflow-x:hidden;
+      width:100vw; position:relative; left:50%; right:50%; margin-left:-50vw; margin-right:-50vw;
+    }
+    #tyr-root .wrap{max-width:820px;margin:0 auto;padding:0 20px;position:relative;z-index:2}
+    #tyr-root .center{text-align:center}
+    #tyr-root h1,#tyr-root h2,#tyr-root h3{font-weight:800;letter-spacing:-.025em;line-height:1.08}
+    #tyr-root .fancy{font-family:var(--fancy);font-style:italic;font-weight:600;letter-spacing:0}
+    #tyr-root .hl{display:inline-block;line-height:.92;padding:.04em .28em;background:linear-gradient(115deg,rgba(63,111,255,.5),rgba(125,151,255,.14));color:#fff;border-radius:12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),0 10px 32px rgba(63,111,255,.18)}
+    #tyr-root .accent{color:var(--accent2)}
+
+    #tyr-root .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#0a0c15;font-weight:800;font-size:22px;padding:18px 36px;border-radius:999px;border:0;cursor:pointer;text-decoration:none;font-family:inherit;box-shadow:0 0 0 1px rgba(255,255,255,.14),0 0 40px rgba(63,111,255,.46),0 12px 34px rgba(0,0,0,.45)}
+    #tyr-root .btn.glow{animation:tyrglow 3.2s ease-in-out infinite, tyrbob 2.8s ease-in-out infinite;transform-origin:center}
+    @keyframes tyrglow{0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,.14),0 0 40px rgba(63,111,255,.46),0 12px 34px rgba(0,0,0,.45)}50%{box-shadow:0 0 0 1px rgba(255,255,255,.2),0 0 62px rgba(63,111,255,.66),0 14px 40px rgba(63,111,255,.36)}}
+    @keyframes tyrbob{0%,100%{transform:rotate(-.9deg)}50%{transform:rotate(.9deg)}}
+    #tyr-root .btn.glow:hover{animation-play-state:paused}
+    #tyr-root .btn .arw{display:inline-block;animation:tyrarw 1.3s ease-in-out infinite}
+    @keyframes tyrarw{0%,100%{transform:translateX(0)}50%{transform:translateX(7px)}}
+    #tyr-root .av{border-radius:50%;background:linear-gradient(135deg,#3f6fff,#7d5bff);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex:0 0 auto}
+
+    #tyr-root .hero{position:relative;padding:52px 0 44px;background:radial-gradient(1100px 480px at 50% -14%,rgba(47,107,255,.2),transparent 62%),linear-gradient(180deg,var(--bg),var(--bg2))}
+    #tyr-root .ey{display:inline-flex;align-items:center;gap:9px;margin-bottom:20px;padding:11px 22px;border-radius:999px;background:rgba(63,111,255,.1);border:1px solid rgba(63,111,255,.3);color:#bcccff;font-size:13.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    #tyr-root .hero h1{font-size:clamp(30px,5.2vw,54px)}
+    #tyr-root .hero .firstline{margin:20px auto 0;font-size:clamp(17px,2.8vw,22px);font-weight:750;color:#dfe5f4}
+
+    @property --tyrang{syntax:'<angle>';inherits:false;initial-value:0deg}
+    #tyr-root .glowvid{position:relative;border-radius:22px;padding:2px;max-width:800px;margin:30px auto 0;background:#0a0c15;isolation:isolate}
+    #tyr-root .glowvid::before,#tyr-root .glowvid::after{content:"";position:absolute;inset:0;border-radius:inherit;z-index:0;background:conic-gradient(from var(--tyrang),transparent 0deg 22deg,#3f6fff 40deg,#bcd4ff 50deg,#3f6fff 60deg,transparent 78deg 202deg,#3f6fff 220deg,#bcd4ff 230deg,#3f6fff 240deg,transparent 258deg 360deg);animation:tyrspin 15s linear infinite}
+    #tyr-root .glowvid::after{filter:blur(15px);opacity:.7}
+    @keyframes tyrspin{to{--tyrang:360deg}}
+    #tyr-root .player{position:relative;z-index:1;aspect-ratio:16/9;border-radius:20px;overflow:hidden;background:linear-gradient(135deg,#12203f,#0a0c15);background-size:cover;background-position:center;box-shadow:0 34px 90px rgba(0,0,0,.6);transform:translateZ(0);-webkit-transform:translateZ(0)}
+    #tyr-root .player iframe,#tyr-root .player video{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover}
+    #tyr-root .player .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(47,107,255,.12)}
+    #tyr-root .player .play span{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.94);display:flex;align-items:center;justify-content:center;color:#0a0c15;font-size:24px;padding-left:4px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+
+    #tyr-root .whenband{padding:44px 0 8px;text-align:center}
+    #tyr-root .whenband h2{font-size:clamp(26px,4.4vw,40px)}
+    #tyr-root .whenband .wt{margin-top:16px;font-size:clamp(19px,3vw,26px);font-weight:800;letter-spacing:-.01em;color:#fff;line-height:1.3}
+    #tyr-root .whenband .wt .zones{display:block;font-size:.62em;font-weight:700;color:#bcccff;margin-top:8px;letter-spacing:0}
+    #tyr-root .step .sx .substep{margin-top:14px;font-size:13.5px;color:#dfe5f4;line-height:1.6;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+
+    #tyr-root .sec{padding:44px 0}
+    #tyr-root .sec h2{font-size:clamp(26px,4.4vw,40px);text-align:center}
+    #tyr-root .steps{max-width:720px;margin:36px auto 0;display:flex;flex-direction:column;gap:22px}
+    #tyr-root .step{display:grid;grid-template-columns:52px 1fr;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px 26px;align-items:start}
+    #tyr-root .step.hot{background:rgba(255,187,61,.06);border-color:rgba(255,187,61,.3)}
+    #tyr-root .step .num{width:42px;height:42px;border-radius:50%;background:var(--accent);color:#fff;font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center}
+    #tyr-root .step.hot .num{background:var(--warn);color:#0a0c15}
+    #tyr-root .step .sx h3{font-size:18px;margin-bottom:6px}
+    #tyr-root .step .sx p{color:#dfe5f4;font-size:15px;line-height:1.6}
+    #tyr-root .step .sx p b{color:#fff}
+    #tyr-root .cals{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    #tyr-root .cal{display:inline-flex;align-items:center;gap:9px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:12px;padding:11px 16px;font-size:14px;font-weight:700;color:#fff;text-decoration:none;transition:background .15s,border-color .15s}
+    #tyr-root .cal:hover{background:rgba(63,111,255,.14);border-color:rgba(63,111,255,.4)}
+    #tyr-root .cal svg{display:block;flex:0 0 auto}
+    #tyr-root .step .sx .cue{margin-top:12px;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#bcccff;background:rgba(63,111,255,.12);border:1px solid rgba(63,111,255,.26);padding:9px 14px;border-radius:10px}
+    #tyr-root .step .sx .was{font-size:13px;color:var(--warn);font-weight:700;margin-top:10px}
+    #tyr-root .step .sx .doc-btn{margin-top:14px}
+    #tyr-root .emailnote{max-width:720px;margin:18px auto 0;text-align:center;color:#cfd6e8;font-size:14px;line-height:1.6}
+
+    #tyr-root .unlock{max-width:820px;margin:40px auto 0;background:radial-gradient(700px 260px at 50% -10%,rgba(63,111,255,.22),transparent 70%),var(--card);border:1px solid rgba(63,111,255,.32);border-radius:24px;padding:44px 34px;text-align:center;box-shadow:0 0 60px rgba(63,111,255,.18)}
+    #tyr-root .unlock .up{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--good);background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);padding:9px 16px;border-radius:999px;margin-bottom:18px}
+    #tyr-root .unlock h3{font-size:clamp(26px,4vw,40px);line-height:1.1;margin-bottom:26px}
+    #tyr-root .unlock .usub{color:#dfe5f4;font-size:16px;line-height:1.6;margin:14px auto 22px;max-width:46ch}
+    #tyr-root .unlock .ubl{list-style:none;display:flex;flex-direction:column;gap:14px;max-width:440px;margin:0 auto 28px;text-align:left}
+    #tyr-root .unlock .ubl li{display:flex;align-items:center;gap:12px;font-size:15.5px;font-weight:600;color:#eef2fb}
+    #tyr-root .unlock .ubl li .ck{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+    #tyr-root .unlock .worth{margin-top:16px;font-size:13px;color:var(--mut)}
+    #tyr-root .unlock .worth b{color:#fff}
+
+    #tyr-root .belts{margin-top:8px;display:flex;flex-direction:column;gap:16px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+    #tyr-root .rbelt{overflow:hidden}
+    #tyr-root .rbelt .row{display:flex;gap:16px;width:max-content}
+    #tyr-root .rbelt.r1 .row{animation:tyrrb 46s linear infinite}
+    #tyr-root .rbelt.r2 .row{animation:tyrrb 46s linear infinite reverse}
+    #tyr-root .belts:hover .row{animation-play-state:paused}
+    #tyr-root .rcard{width:330px;min-height:170px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;flex:0 0 auto;display:flex;flex-direction:column;justify-content:space-between}
+    #tyr-root .rcard .q{font-size:14px;line-height:1.6;color:#e6eaf6}
+    #tyr-root .rcard .who{display:flex;align-items:center;gap:10px;margin-top:14px}
+    #tyr-root .rcard .who .av{width:34px;height:34px;font-size:12px}
+    #tyr-root .rcard .who .nm{font-size:12.5px;font-weight:700}
+    #tyr-root .rcard .who .rl{font-size:11px;color:var(--mut)}
+    @keyframes tyrrb{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+    #tyr-root .foot{padding:40px 20px;text-align:center;border-top:1px solid var(--line);background:var(--bg)}
+    #tyr-root .foot .dis{max-width:820px;margin:0 auto;color:var(--mut);font-size:12px;line-height:1.7}
+    #tyr-root .foot .cp{margin-top:14px;color:var(--mut);font-size:12.5px}
+    #tyr-root .foot a{color:#c7d0ea;text-decoration:none}
+
+    /* exit reminder popup */
+    #tyr-root .exit{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(3,4,9,.74);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;transition:opacity .28s ease}
+    #tyr-root .exit.show{display:flex;opacity:1}
+    #tyr-root .exit__card{position:relative;max-width:560px;width:100%;background:linear-gradient(180deg,#10131f,#0a0c15);border:1px solid var(--line);border-radius:26px;padding:48px 40px 36px;text-align:center;box-shadow:0 0 0 1px rgba(255,255,255,.05),0 0 64px rgba(63,111,255,.34),0 40px 90px rgba(0,0,0,.6)}
+    #tyr-root .exit__badge{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;padding:9px 18px;border-radius:999px;background:rgba(255,187,61,.09);border:1px solid rgba(255,187,61,.32);color:var(--warn);font-size:12px;font-weight:800;letter-spacing:.12em}
+    #tyr-root .exit__h{font-size:clamp(24px,4.4vw,34px);font-weight:800;letter-spacing:-.025em;line-height:1.14}
+    #tyr-root .exit__p{color:var(--mut);font-size:15.5px;line-height:1.6;margin:14px auto 24px;max-width:40ch}
+    #tyr-root .exit__x{position:absolute;top:15px;right:18px;background:none;border:0;color:#6b7590;font-size:24px;line-height:1;cursor:pointer}
+    #tyr-root .qstep{display:none}
+    #tyr-root .qstep.on{display:block;animation:tyrqin .3s ease}
+    @keyframes tyrqin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    #tyr-root .qbtns{display:flex;flex-direction:column;gap:12px;align-items:center;margin-top:6px}
+    #tyr-root .qbtns .btn{width:100%;max-width:420px}
+    #tyr-root .qno{background:none;border:0;cursor:pointer;color:#8a93ad;font-size:15px;font-weight:600;text-decoration:underline;text-underline-offset:4px;font-family:inherit}
+    #tyr-root .qno:hover{color:#cfd6e8}
+
+    @media(max-width:720px){
+      #tyr-root .sec{padding:36px 0}
+      #tyr-root .step{grid-template-columns:1fr;gap:10px}
+      #tyr-root .step .num{width:38px;height:38px;font-size:16px}
+      #tyr-root .unlock{padding:34px 22px}
+      #tyr-root .rcard{width:250px;min-height:0;padding:18px}
+      #tyr-root .btn{width:100%;max-width:420px}
+    }
+  </style>
+
+  <section class="hero center">
+    <div class="wrap">
+      <span class="ey">✅ You're Registered</span>
+      <h1>Before You Leave, <span class="fancy hl">Follow These Steps.</span></h1>
+      <div class="firstline">👇 &nbsp;Watch this 60-second welcome first &nbsp;👇</div>
+      <!-- [WELCOME VIDEO] replace the .play line with your iframe -->
+      <div class="glowvid">
+        <div class="player" id="tyr-video" data-cfg-video="welcomeVideo">
+          <div class="play"><span>▶</span></div>
+          <!-- <iframe src="[WELCOME VIDEO EMBED]" allow="autoplay; fullscreen"></iframe> -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="whenband">
+    <div class="wrap">
+      <h2>🗓️ Here's When It's <span class="fancy">Happening</span></h2>
+      <div class="wt" data-when>Loading your local time…</div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <h2>Now Do These <span class="fancy">2 Things</span>.</h2>
+      <div class="steps">
+
+        <div class="step" id="step-cal">
+          <div class="num">1</div>
+          <div class="sx">
+            <h3>Add It to Your Calendar</h3>
+            <p>Save the training so you don't miss it. One tap adds the date, time and access link.</p>
+            <div class="cals">
+              <a class="cal" href="#" data-cfg="googleCalUrl" target="_blank" rel="noopener">
+                <svg width="22" height="22" viewBox="0 0 48 48"><rect x="10" y="10" width="28" height="28" rx="4" fill="#fff"/><path fill="#4285F4" d="M32 10h4a2 2 0 0 1 2 2v4h-6z"/><path fill="#EA4335" d="M12 10h4v6h-6v-4a2 2 0 0 1 2-2z"/><path fill="#34A853" d="M32 38v-6h6v4a2 2 0 0 1-2 2z"/><path fill="#FBBC04" d="M10 32h6v6h-4a2 2 0 0 1-2-2z"/><text x="24" y="31" font-size="14" text-anchor="middle" fill="#1a73e8" font-family="Arial,Helvetica,sans-serif" font-weight="700">31</text></svg>Google
+              </a>
+              <a class="cal" href="#" data-cfg="appleCalUrl" target="_blank" rel="noopener">
+                <svg width="20" height="20" viewBox="0 0 40 40"><rect x="5" y="6" width="30" height="30" rx="7" fill="#fff"/><rect x="5" y="6" width="30" height="9" rx="7" fill="#FF3B30"/><text x="20" y="31" font-size="17" text-anchor="middle" fill="#1d1d1f" font-family="Arial,Helvetica,sans-serif" font-weight="700">17</text></svg>Apple
+              </a>
+              <a class="cal" href="#" data-cfg="outlookCalUrl" target="_blank" rel="noopener">
+                <svg width="22" height="20" viewBox="0 0 40 36"><path fill="#0F78D4" d="M15 6h22a2 2 0 0 1 2 2v20a2 2 0 0 1-2 2H15z"/><path fill="#28A8EA" d="M15 8l12 8 12-8v3l-12 8-12-8z"/><rect x="0" y="8.5" width="19" height="19" rx="3" fill="#0A5AA0"/><ellipse cx="9.5" cy="18" rx="5" ry="6" fill="none" stroke="#fff" stroke-width="2.6"/></svg>Outlook
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="step-sms">
+          <div class="num">2</div>
+          <div class="sx">
+            <h3>Reply YES to Your Text</h3>
+            <p>We just texted your confirmation. Reply <b>"YES"</b> so we can send your reminders and access link before we go live.</p>
+            <div class="cue">📲 Confirmation sent to your phone</div>
+            <p class="substep">📩 We've also emailed everything to you, so check your inbox (and spam / promotions) in case anything doesn't open here.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="unlock" id="step-community">
+        <span class="up">🎉 You Just Unlocked Your Free Bonus</span>
+        <h3>Join the <span class="accent">Funding Insiders</span> Community</h3>
+        <ul class="ubl">
+          <li><span class="ck">✓</span>The full $250K+ funding roadmap + 50+ courses</li>
+          <li><span class="ck">✓</span>AI funding tools, lender lists & dispute templates</li>
+          <li><span class="ck">✓</span>A live network of members getting funded right now</li>
+        </ul>
+        <a class="btn glow" href="#" data-cfg="skoolUrl" target="_blank" rel="noopener">Join the Community <span class="arw">→</span></a>
+        <div class="worth">Access <b>$1,000 worth of value</b>, for free</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" style="padding-top:0;padding-bottom:72px">
+    <div class="belts">
+      <div class="rbelt r1"><div class="row">
+        <div class="rcard"><div class="q">"Two months in: real approvals, not promises. Wish I'd started sooner."</div><div class="who"><div class="av">CD</div><div><div class="nm">Celine D.</div><div class="rl">Member</div></div></div></div>
+        <div class="rcard"><div class="q">"They walked my file in through a real banker. Approved the same week."</div><div class="who"><div class="av">MB</div><div><div class="nm">Morgan B.</div><div class="rl">Member</div></div></div></div>
+        <div class="rcard"><div class="q">"$100K+ in 0% capital, cleared inside the window exactly like they laid out."</div><div class="who"><div class="av">KW</div><div><div class="nm">Kayla W.</div><div class="rl">Member</div></div></div></div>
+        <div class="rcard"><div class="q">"From the first step it was clear I was in great hands. Exceptional."</div><div class="who"><div class="av">JS</div><div><div class="nm">Jeff S.</div><div class="rl">Member</div></div></div></div>
+      </div></div>
+      <div class="rbelt r2"><div class="row">
+        <div class="rcard"><div class="q">"Fixed my credit and got me funded when everyone else said no."</div><div class="who"><div class="av">DA</div><div><div class="nm">David A.</div><div class="rl">Member</div></div></div></div>
+        <div class="rcard"><div class="q">"Not just funded, a repeatable system I can run again next quarter."</div><div class="who"><div class="av">BR</div><div><div class="nm">Barry R.</div><div class="rl">Member</div></div></div></div>
+        <div class="rcard"><div class="q">"Honest, fast, and it actually worked. Every step was mapped out."</div><div class="who"><div class="av">TP</div><div><div class="nm">Tom P.</div><div class="rl">Member</div></div></div></div>
+        <div class="rcard"><div class="q">"Extremely responsive team. No chasing, no waiting, just results."</div><div class="who"><div class="av">RS</div><div><div class="nm">Ryan S.</div><div class="rl">Member</div></div></div></div>
+      </div></div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p class="dis">Results are not typical and are not a promise of what you will achieve. This training is for educational purposes only and does not constitute financial, legal or credit-repair advice. This site is not a part of the Facebook / Meta website or Meta Platforms Inc., nor endorsed by Meta in any way.</p>
+    <p class="cp">© 2026 <span data-cfg-text="companyName">[COMPANY NAME]</span>. All rights reserved. &nbsp;·&nbsp; <a href="#" data-cfg="privacyUrl">Privacy Policy</a> &nbsp;·&nbsp; <a href="#" data-cfg="termsUrl">Terms</a></p>
+  </footer>
+
+  <!-- INTERACTIVE EXIT CHECKLIST POPUP -->
+  <div class="exit" id="tyr-exit" role="dialog" aria-modal="true">
+    <div class="exit__card">
+      <button class="exit__x" type="button" data-exit-close aria-label="Close">&times;</button>
+      <div class="exit__badge">&#9888;&#65039; WAIT, BEFORE YOU GO</div>
+      <div class="qstep on" data-q="0">
+        <h2 class="exit__h">Have you <span class="fancy accent">added it to your calendar?</span></h2>
+        <p class="exit__p">Add the training to your calendar so you actually show up. It takes 5 seconds.</p>
+        <div class="qbtns">
+          <button class="btn glow" type="button" data-yes>Yes, it's on my calendar</button>
+          <button class="qno" type="button" data-no="#step-cal">No, not yet</button>
+        </div>
+      </div>
+      <div class="qstep" data-q="1">
+        <h2 class="exit__h">Did you <span class="fancy accent">reply YES to your text?</span></h2>
+        <p class="exit__p">Reply YES to your confirmation SMS so we can send your access link and reminders. Check your messages and spam.</p>
+        <div class="qbtns">
+          <button class="btn glow" type="button" data-yes>Yes, I replied YES</button>
+          <button class="qno" type="button" data-no="#step-sms">No, not yet</button>
+        </div>
+      </div>
+      <div class="qstep" data-q="2">
+        <h2 class="exit__h">Have you <span class="fancy accent">claimed your free bonus?</span></h2>
+        <p class="exit__p">Your free community bonus, $1,000 of value, is waiting. Join now so you don't lose access.</p>
+        <div class="qbtns">
+          <button class="btn glow" type="button" data-yes>Yes, I'm in</button>
+          <button class="qno" type="button" data-community>No, take me there</button>
+        </div>
+      </div>
+      <div class="qstep" data-q="3">
+        <h2 class="exit__h">You're <span class="fancy accent">all set!</span> 🎉</h2>
+        <p class="exit__p">Calendar added, SMS confirmed, bonus claimed. See you on the training.</p>
+        <div class="qbtns"><button class="btn glow" type="button" data-exit-close>Awesome, Let's Go</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var C = window.WCFG || {};
+    var CFG = { webinar: { day: (C.webinarDay!=null?C.webinarDay:3), hour: (C.webinarHour!=null?C.webinarHour:17), minute: (C.webinarMinute!=null?C.webinarMinute:0), tz: (C.webinarTz||'America/New_York') } };
+    function $(s){return document.querySelector(s);}
+    function $all(s){return [].slice.call(document.querySelectorAll(s));}
+    /* apply top-config: links, text, images, video embeds */
+    $all('#tyr-root [data-cfg]').forEach(function(a){ var k=a.getAttribute('data-cfg'); if(C[k]) a.setAttribute('href',C[k]); });
+    $all('#tyr-root [data-cfg-text]').forEach(function(el){ var k=el.getAttribute('data-cfg-text'); if(C[k]) el.textContent=C[k]; });
+    $all('#tyr-root [data-cfg-video]').forEach(function(el){ var k=el.getAttribute('data-cfg-video'),v=C[k]; if(v){ el.innerHTML=(v.replace(/^\s+/,'').charAt(0)==='<')?v:'<iframe src="'+v+'" allow="autoplay; fullscreen" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe>'; } });
+    $all('#tyr-root [data-poster]').forEach(function(el){ var u=el.getAttribute('data-poster'); if(u){ el.style.backgroundImage="url('"+u+"')"; } });
+    /* interactive exit checklist (desktop only, once per session) */
+    (function(){ var modal=document.getElementById('tyr-exit'); if(!modal) return;
+      if(window.matchMedia('(hover:none),(pointer:coarse)').matches) return;
+      var steps=$all('#tyr-exit .qstep'), cur=0;
+      var KEY='tyr_exit_shown', shown=false; try{ if(sessionStorage.getItem(KEY)) shown=true; }catch(e){}
+      function showq(n){ steps.forEach(function(s,i){ s.classList.toggle('on',i===n); }); cur=n; }
+      function close(){ modal.classList.remove('show'); document.body.style.overflow=''; }
+      function open(){ if(shown) return; shown=true; try{sessionStorage.setItem(KEY,'1');}catch(e){} showq(0); modal.classList.add('show'); document.body.style.overflow='hidden'; }
+      function goTo(sel){ close(); var t=document.querySelector(sel); if(t) setTimeout(function(){ t.scrollIntoView({behavior:'smooth',block:'center'}); },200); }
+      document.addEventListener('mouseout',function(e){ if(e.clientY<=0 && !e.relatedTarget) open(); });
+      $all('#tyr-exit [data-yes]').forEach(function(b){ b.addEventListener('click',function(){ if(cur<steps.length-1) showq(cur+1); else close(); }); });
+      $all('#tyr-exit [data-no]').forEach(function(b){ b.addEventListener('click',function(){ goTo(b.getAttribute('data-no')); }); });
+      $all('#tyr-exit [data-community]').forEach(function(b){ b.addEventListener('click',function(){
+        var link=document.querySelector('#tyr-root .unlock a[href]'), href=link?link.getAttribute('href'):'';
+        if(href && /^https?:/i.test(href)){ window.open(href,'_blank'); close(); } else { goTo('#step-community'); }
+      }); });
+      $all('#tyr-exit [data-exit-close]').forEach(function(b){ b.addEventListener('click',close); });
+      modal.addEventListener('click',function(e){ if(e.target===modal) close(); });
+      document.addEventListener('keydown',function(e){ if(e.key==='Escape' && modal.classList.contains('show')) close(); });
+    })();
+    $all('#tyr-root .play').forEach(function(p){ p.addEventListener('click',function(){ p.style.opacity='0'; setTimeout(function(){p.style.display='none';},160); }); });
+    $all('#tyr-root .rbelt .row').forEach(function(r){ r.innerHTML+=r.innerHTML; });
+    /* carry contact params through the re-offer link */
+    var qs=location.search||''; if(qs){ $all('#tyr-root [data-reoffer]').forEach(function(a){ var h=a.getAttribute('href')||''; a.setAttribute('href', h+(h.indexOf('?')>=0?'&':'?')+qs.replace(/^\?/,'')); }); }
+    /* webinar time: weekday + ET/CT/MT/PT */
+    (function(){ var el=$('#tyr-root [data-when]'); if(!el) return;
+      function tzOffMin(date,tz){var d=new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});var p={};d.formatToParts(date).forEach(function(x){p[x.type]=x.value;});return (Date.UTC(p.year,p.month-1,p.day,p.hour,p.minute,p.second)-date.getTime())/60000;}
+      function nextOccurrence(cf){var now=Date.now(),days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];for(var i=0;i<15;i++){var base=new Date(now+i*86400000);var p={};new Intl.DateTimeFormat('en-US',{timeZone:cf.tz,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(base).forEach(function(x){p[x.type]=x.value;});var guess=Date.UTC(+p.year,+p.month-1,+p.day,cf.hour,cf.minute,0);var utc=guess-tzOffMin(new Date(guess),cf.tz)*60000;if(new Date(utc).toLocaleString('en-US',{timeZone:cf.tz,weekday:'long'})===days[cf.day] && utc>now) return utc;}return now+7*86400000;}
+      function t(utc,tz){return new Date(utc).toLocaleTimeString('en-US',{timeZone:tz,hour:'numeric',minute:'2-digit'});}
+      var utc=nextOccurrence(CFG.webinar);
+      var wd=new Date(utc).toLocaleDateString('en-US',{timeZone:CFG.webinar.tz,weekday:'long'});
+      el.innerHTML=wd+' · '+t(utc,'America/New_York')+' ET<span class="zones">'+t(utc,'America/Chicago')+' CT &nbsp;·&nbsp; '+t(utc,'America/Denver')+' MT &nbsp;·&nbsp; '+t(utc,'America/Los_Angeles')+' PT</span>';
+    })();
+  })();
+  </script>
+</div>
