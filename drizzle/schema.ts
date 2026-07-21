@@ -171,6 +171,41 @@ export const clientRecordingItems = mysqlTable("client_recording_items", {
 
 export type ClientRecordingItem = typeof clientRecordingItems.$inferSelect;
 
+/**
+ * The compounding creative-research library. Every winning ad seen via
+ * Foreplay is stored once (deduped on sourceId) and re-sightings bump
+ * timesSeen/runningDays — an ad that keeps appearing across weeks is a
+ * proven spender. Generations retrieve top-ranked rows they have NOT been
+ * served recently, so references compound instead of repeating.
+ */
+export const creativeIntel = mysqlTable("creative_intel", {
+  id: int("id").autoincrement().primaryKey(),
+  source: varchar("source", { length: 20 }).notNull().default("foreplay"),
+  sourceId: varchar("sourceId", { length: 100 }).notNull(),
+  niche: varchar("niche", { length: 300 }).notNull(),
+  advertiser: varchar("advertiser", { length: 200 }),
+  displayFormat: varchar("displayFormat", { length: 30 }),
+  headline: varchar("headline", { length: 500 }),
+  copy: text("copy"),
+  transcript: longtext("transcript"),
+  ctaType: varchar("ctaType", { length: 60 }),
+  imageUrl: varchar("imageUrl", { length: 1000 }),
+  productCategory: varchar("productCategory", { length: 200 }),
+  live: int("live").default(0).notNull(),
+  runningDays: int("runningDays").default(0).notNull(),
+  timesSeen: int("timesSeen").default(1).notNull(),
+  firstSeenAt: timestamp("firstSeenAt").defaultNow().notNull(),
+  lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
+});
+
+/** Which library ads were served to which client, for no-repeat retrieval. */
+export const creativeIntelServes = mysqlTable("creative_intel_serves", {
+  id: int("id").autoincrement().primaryKey(),
+  intelId: int("intelId").notNull(),
+  clientId: int("clientId").notNull(),
+  servedAt: timestamp("servedAt").defaultNow().notNull(),
+});
+
 /** Weekly-ish social stat snapshots so growth is a trendline, not a memory.
  *  Written when stats are fetched (Overview load, weekly report). */
 export const socialStatsSnapshots = mysqlTable("social_stats_snapshots", {

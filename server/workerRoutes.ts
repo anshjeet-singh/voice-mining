@@ -42,7 +42,7 @@ import { composeMineRequest, harvestCompetitorSources } from "./competitorSource
 import { normalizeHooks, normalizeInsights } from "@shared/reportContent";
 import type { InsightList } from "../drizzle/schema";
 import { ON_DEMAND_TYPES, STAGES, stageAllDocTypes, stageContract, stagePromptSpec, type FunnelType } from "./stages";
-import { fetchForeplayWinningAds, fetchForeplayStaticAdInspiration } from "./foreplay";
+import { serveCreativeIntel, refreshLibrary } from "./creativeLibrary";
 
 /** True when the request carries the correct worker bearer token. */
 export function isWorkerAuthorized(authHeader: string | undefined, secret: string): boolean {
@@ -424,17 +424,16 @@ export function registerWorkerRoutes(app: Express) {
       let assetReviews: Array<{ filename: string; status: string; feedback: string | null }> = [];
       let refImages: Array<{ filename: string; mime: string; note: string | null; base64: string }> = [];
       if (job.type === "ads" || job.type === "more_statics" || job.type === "more_scripts") {
-        const foreplay = await fetchForeplayWinningAds(client.niche).catch(() => "");
-        if (foreplay) {
-          research = `${research}\n\n# FOREPLAY WINNING ADS IN THIS NICHE (live, longest-running: proven spenders. Model the angles and proof types, never copy the words)\n\n${foreplay}`;
+        // The compounding creative library: refresh from Foreplay, then serve
+        // ranked winners this client has NOT seen recently (no more repeats).
+        const intel = await serveCreativeIntel(client.niche, job.clientId).catch(() => ({ adsBlob: "", staticsBlob: "", libraryCount: 0 }));
+        if (intel.adsBlob) {
+          research = `${research}\n\n# FOREPLAY WINNING ADS IN THIS NICHE (from our accumulated winners library of ${intel.libraryCount} tracked ads — longest-running live spenders ranked first, rotated so you get references previous batches did not. Model the angles and proof types, never copy the words)\n\n${intel.adsBlob}`;
         }
         // Statics jobs additionally get the winning IMAGE creatives with URLs:
         // live design references the render session views and can clone.
-        if (job.type === "ads" || job.type === "more_statics") {
-          const foreplayStatics = await fetchForeplayStaticAdInspiration(client.niche).catch(() => "");
-          if (foreplayStatics) {
-            research = `${research}\n\n# FOREPLAY WINNING STATIC ADS IN THIS NICHE (live image creatives. VIEW each IMAGE url to study layout and composition; any may serve as a batch reference per the static-render-rules clone doctrine. Never copy their words)\n\n${foreplayStatics}`;
-          }
+        if ((job.type === "ads" || job.type === "more_statics") && intel.staticsBlob) {
+          research = `${research}\n\n# FOREPLAY WINNING STATIC ADS IN THIS NICHE (live image creatives from the winners library. VIEW each IMAGE url to study layout and composition; any may serve as a batch reference per the static-render-rules clone doctrine. Never copy their words)\n\n${intel.staticsBlob}`;
         }
         const allAssets = await getClientAssetsMeta(job.clientId);
         assetReviews = allAssets
@@ -759,6 +758,15 @@ export function registerWorkerRoutes(app: Express) {
     try {
       const STALE_MS = 3 * 24 * 60 * 60 * 1000;
       const queued: number[] = [];
+      // Constant research: every 6h ping also folds fresh Foreplay winners
+      // into the creative library for every client niche (cheap API calls,
+      // no Claude sessions) — the library compounds even between ad batches.
+      const niches = Array.from(new Set((await getAllClients()).map((c) => c.niche.split(",")[0]?.trim()).filter(Boolean)));
+      for (const niche of niches) {
+        refreshLibrary(niche)
+          .then((n) => n && console.log(`[creative-library] "${niche}": folded in ${n} ads`))
+          .catch(() => {});
+      }
       for (const client of await getAllClients()) {
         const docs = await getClientDocuments(client.id);
         const intelDocs = docs.filter((d) => d.docType === "content_intel_extra");

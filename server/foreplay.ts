@@ -5,7 +5,7 @@
  * is a profitably spending ad; its hook shape and offer framing are proven.
  */
 
-interface ForeplayAd {
+export interface ForeplayAd {
   id: string;
   name?: string;
   headline?: string;
@@ -122,24 +122,46 @@ async function fetchDiscoveryAds(key: string, queries: string[]): Promise<Forepl
   return ads;
 }
 
+/** Raw relevance-gated winners for a niche (proven spenders first). */
+export async function fetchForeplayAdsRaw(keyword: string): Promise<ForeplayAd[]> {
+  const key = process.env.FOREPLAY_API_KEY;
+  if (!key) return [];
+  const primary = keyword.split(",")[0]?.trim() ?? keyword;
+  const base = "https://public.api.foreplay.co/api/discovery/ads";
+  return (
+    await fetchDiscoveryAds(key, [
+      `${base}?query=${encodeURIComponent(primary)}&limit=10&order=longest_running`,
+      `${base}?query=${encodeURIComponent(primary)}&limit=8&order=most_relevant`,
+    ])
+  ).filter((a) => isRelevantForeplayAd(a, primary));
+}
+
+/** Raw relevance-gated static (image) winners for a niche. */
+export async function fetchForeplayStaticsRaw(keyword: string): Promise<ForeplayAd[]> {
+  const key = process.env.FOREPLAY_API_KEY;
+  if (!key) return [];
+  const primary = keyword.split(",")[0]?.trim() ?? keyword;
+  const base = "https://public.api.foreplay.co/api/discovery/ads";
+  const ads = await fetchDiscoveryAds(key, [
+    `${base}?query=${encodeURIComponent(primary)}&limit=12&order=longest_running&display_format=image`,
+    `${base}?query=${encodeURIComponent(primary)}&limit=8&order=most_relevant&display_format=image`,
+  ]);
+  return ads.filter(
+    (a) =>
+      ((a.display_format ?? "").toLowerCase() === "image" || (!a.full_transcription && (a.image || a.thumbnail))) &&
+      isRelevantForeplayAd(a, primary)
+  );
+}
+
 /**
  * Fetch winning ads for a niche: longest-running first (proven spenders),
  * topped up with most-relevant. Returns "" when no key or no results,
  * so callers can degrade gracefully.
  */
 export async function fetchForeplayWinningAds(keyword: string): Promise<string> {
-  const key = process.env.FOREPLAY_API_KEY;
-  if (!key) return "";
-  const primary = keyword.split(",")[0]?.trim() ?? keyword;
-  const base = "https://public.api.foreplay.co/api/discovery/ads";
-  const ads = (
-    await fetchDiscoveryAds(key, [
-      `${base}?query=${encodeURIComponent(primary)}&limit=10&order=longest_running`,
-      `${base}?query=${encodeURIComponent(primary)}&limit=8&order=most_relevant`,
-    ])
-  ).filter((a) => isRelevantForeplayAd(a, primary));
+  const ads = await fetchForeplayAdsRaw(keyword);
   if (!ads.length) return "";
-  console.log(`[foreplay] "${primary}": ${ads.length} relevant ads from the library`);
+  console.log(`[foreplay] "${keyword}": ${ads.length} relevant ads from the library`);
   return formatForeplayAds(ads);
 }
 
@@ -150,20 +172,8 @@ export async function fetchForeplayWinningAds(keyword: string): Promise<string> 
  * display_format param. Returns "" when no key or no results.
  */
 export async function fetchForeplayStaticAdInspiration(keyword: string): Promise<string> {
-  const key = process.env.FOREPLAY_API_KEY;
-  if (!key) return "";
-  const primary = keyword.split(",")[0]?.trim() ?? keyword;
-  const base = "https://public.api.foreplay.co/api/discovery/ads";
-  const ads = await fetchDiscoveryAds(key, [
-    `${base}?query=${encodeURIComponent(primary)}&limit=12&order=longest_running&display_format=image`,
-    `${base}?query=${encodeURIComponent(primary)}&limit=8&order=most_relevant&display_format=image`,
-  ]);
-  const statics = ads.filter(
-    (a) =>
-      ((a.display_format ?? "").toLowerCase() === "image" || (!a.full_transcription && (a.image || a.thumbnail))) &&
-      isRelevantForeplayAd(a, primary)
-  );
+  const statics = await fetchForeplayStaticsRaw(keyword);
   if (!statics.length) return "";
-  console.log(`[foreplay] "${primary}": ${statics.length} static ads for design inspiration`);
+  console.log(`[foreplay] "${keyword}": ${statics.length} static ads for design inspiration`);
   return formatForeplayStaticAds(statics);
 }
