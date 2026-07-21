@@ -748,6 +748,47 @@ export const appRouter = router({
         return { created: parts.length };
       }),
 
+    /**
+     * Split the onboarding batch's "10 Video Ad Scripts" document into one
+     * card per script on the Script pipeline (ad_scripts_extra), where they
+     * are recordable and reviewable. Idempotent by title, so regenerated
+     * batches only add genuinely new scripts.
+     */
+    splitAdScripts: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const docs = await getClientDocuments(input.clientId);
+        const scriptsDoc = docs.find((d) => d.docType === "ad_video_scripts");
+        if (!scriptsDoc) return { created: 0 };
+        const existingTitles = new Set(
+          docs.filter((d) => d.docType === "ad_scripts_extra").map((d) => d.title.trim().toLowerCase())
+        );
+        const splitBy = (level: string) => {
+          const re = new RegExp(`^${level}\\s+(.+)$`, "gm");
+          const marks = Array.from(scriptsDoc.content.matchAll(re));
+          return marks.map((m, i) => ({
+            title: m[1].trim().slice(0, 280),
+            content: scriptsDoc.content.slice(m.index!, marks[i + 1]?.index ?? scriptsDoc.content.length).trim(),
+          }));
+        };
+        let parts = splitBy("##");
+        if (parts.length < 3) parts = splitBy("###");
+        if (parts.length < 3) parts = splitBy("#");
+        const fresh = parts.filter((p) => p.content.length > 100 && !existingTitles.has(p.title.trim().toLowerCase()));
+        for (const p of fresh) {
+          await createClientDocument({
+            clientId: input.clientId,
+            kind: "deliverable",
+            docType: "ad_scripts_extra",
+            title: p.title,
+            content: p.content,
+            status: "approved",
+          });
+        }
+        return { created: fresh.length };
+      }),
+
     addEngineDraft: protectedProcedure
       .input(
         z.object({

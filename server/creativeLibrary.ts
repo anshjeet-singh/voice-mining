@@ -161,8 +161,9 @@ export async function markIntelArchived(ids: number[]): Promise<void> {
 }
 
 /** True when the niche's library was refreshed from Foreplay recently —
- *  serving from the library alone then costs zero API calls. */
-async function recentlyRefreshed(niche: string, maxAgeHours = 6): Promise<boolean> {
+ *  serving from the library alone then costs zero API calls. Operator set
+ *  the cadence to 24h: fresher than that is paying twice for the same feed. */
+export async function recentlyRefreshed(niche: string, maxAgeHours = 24): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
   const primary = niche.split(",")[0]?.trim() ?? niche;

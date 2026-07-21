@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { AppShell } from "@/components/AppShell";
@@ -1288,7 +1288,6 @@ function ClientSocials({
 const FOUNDATION_DOC_TYPES = ["icp_snapshot", "offers", "brand_positioning", "course_outline"];
 const SKOOL_DOC_TYPES = ["skool_free_community", "skool_paid_community", "skool_lead_magnets"];
 const EMAIL_DOC_TYPES = ["email_sequence_14day", "email_postbooking", "email_noshow_followup", "email_prewebinar", "email_postwebinar", "sms_set"];
-const ADS_DOC_TYPES = ["ad_scripts", "ad_statics", "ad_campaign_plan"];
 
 export default function ClientStudio() {
   const params = useParams<{ id: string }>();
@@ -1325,6 +1324,21 @@ export default function ClientStudio() {
     const t = setInterval(() => utils.clients.get.invalidate({ id: clientId }), 5000);
     return () => clearInterval(t);
   }, [hasActiveJob, clientId, utils]);
+
+  // The onboarding batch's 10 video ad scripts auto-split into one card per
+  // script on the Script pipeline (idempotent by title server-side).
+  const splitAds = trpc.clients.splitAdScripts.useMutation({
+    onSuccess: ({ created }) => created > 0 && utils.clients.get.invalidate({ id: clientId }),
+  });
+  const splitFiredRef = useRef(false);
+  useEffect(() => {
+    if (splitFiredRef.current) return;
+    if (documents.some((d) => d.docType === "ad_video_scripts")) {
+      splitFiredRef.current = true;
+      splitAds.mutate({ clientId });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documents, clientId]);
 
   const invalidate = () => utils.clients.get.invalidate({ id: clientId });
 
@@ -1531,13 +1545,6 @@ export default function ClientStudio() {
               </StudioBlock>
               <StudioBlock title="Script pipeline" hint="One card per script: approve what gets recorded, mark posted when live" frame="border-violet-500/25 bg-violet-500/[0.05]">
                 <DocBoard docs={[...docsFor("ad_scripts_extra")]} invalidate={invalidate} clientId={clientId} docType="ad_scripts_extra" recordable />
-              </StudioBlock>
-              <StudioBlock title="Campaign documents" hint="The creative batch spec and the campaign plan from the build" frame="border-violet-500/25 bg-violet-500/[0.05]">
-                <div className="space-y-1.5">
-                  {ADS_DOC_TYPES.flatMap((t) => docsFor(t)).map((d) => (
-                    <DocRow key={d.id} doc={d} invalidate={invalidate} />
-                  ))}
-                </div>
               </StudioBlock>
             </>
           )}

@@ -763,11 +763,13 @@ export function registerWorkerRoutes(app: Express) {
     try {
       const STALE_MS = 3 * 24 * 60 * 60 * 1000;
       const queued: number[] = [];
-      // Constant research: every 6h ping also folds fresh Foreplay winners
-      // into the creative library for every client niche (cheap API calls,
-      // no Claude sessions) — the library compounds even between ad batches.
+      // Constant research at the operator's 24h cadence: fold fresh Foreplay
+      // winners into the library for every client niche not refreshed in the
+      // last day (cheap API calls, no Claude sessions).
+      const { recentlyRefreshed } = await import("./creativeLibrary");
       const niches = Array.from(new Set((await getAllClients()).map((c) => c.niche.split(",")[0]?.trim()).filter(Boolean)));
       for (const niche of niches) {
+        if (await recentlyRefreshed(niche, 24).catch(() => true)) continue;
         refreshLibrary(niche)
           .then((n) => n && console.log(`[creative-library] "${niche}": folded in ${n} ads`))
           .catch(() => {});

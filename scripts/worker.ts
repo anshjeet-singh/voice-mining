@@ -602,7 +602,10 @@ async function tick() {
   // Auto-refresh mining heartbeat: a few pings a day; the server decides
   // which clients' competitor intel is stale and queues re-mines itself.
   const AUTO_INTEL_MS = 6 * 60 * 60 * 1000;
+  const SWIPE_SYNC_MS = 24 * 60 * 60 * 1000;
+  const bootAt = Date.now();
   let lastAutoIntel = 0;
+  let lastSwipeSync = 0;
   let lastDigestDate = "";
 
   for (;;) {
@@ -611,6 +614,11 @@ async function tick() {
         lastAutoIntel = Date.now();
         const { queued } = await api<{ queued: number[] }>("auto-intel", {}).catch(() => ({ queued: [] as number[] }));
         if (queued.length) console.log(`auto-intel: queued refresh mines -> jobs ${queued.join(", ")}`);
+      }
+      // Swipe archive runs daily (operator cadence), with a short first-boot
+      // delay so the server's library refresh has finished writing rows.
+      if (Date.now() - lastSwipeSync > SWIPE_SYNC_MS && Date.now() - bootAt > 5 * 60 * 1000) {
+        lastSwipeSync = Date.now();
         await syncSwipeArchive().catch((e) => console.error("[swipe] sync failed:", (e as Error).message.slice(0, 150)));
       }
       if (Date.now() - lastSpoolReplay > 5 * 60 * 1000) {

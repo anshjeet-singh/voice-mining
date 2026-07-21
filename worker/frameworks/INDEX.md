@@ -71,3 +71,4 @@ Pricing sections anywhere:
 
 Proof, case studies, testimonials:
 - hooks-and-proof.md (13 proof gradients), haynes-scaling-systems.md section 3 (Proof Flywheel capture and placement)
+- winning-ad-copy-swipe.md (the operator-supplied crushing community-join ad, annotated: the DEPTH standard for META UPLOAD COPY primary text)
