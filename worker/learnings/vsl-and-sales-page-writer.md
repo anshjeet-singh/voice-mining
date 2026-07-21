@@ -43,3 +43,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-21 · job 720002 · client: Ibby -->
 - For a warm About-page VSL capped at 420 to 480 words, the full 8-beat arc (hook, pain, alternatives, mechanism, authority, stack, proof, close) plus a mandatory upfront fee disclosure and a named no-guarantee guarantee runs long by default. State that the fee disclosure and guarantee each get one compressed sentence inside the stack/close beats, not their own beat, so the disclosure never pushes the script past the word cap.
+
+<!-- 2026-07-21 · job 780003 · client: Ibby -->
+- The learning that "the post-booking Offer Breakdown video is the legitimate place to present the full price STRUCTURE" needs an explicit override clause: a client's own standing rule that no price/percentage appears on ANY video (common for compliance-cautious finance/credit clients) beats the generic post-booking allowance. The resolution is to present the pay model in full (entry price + results-only success fee + disclosed third-party fees + a competitor dollar anchor) while holding the client's own figures for the call. State this so a writer does not paste the exact price into the offer-breakdown script just because the viewer has booked.
