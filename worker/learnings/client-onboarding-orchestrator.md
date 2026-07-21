@@ -114,3 +114,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-21 · job 690001 · client: Blake Matthews -->
 - Verify every requested handle actually resolves before trusting the source list: a handle carried forward from an earlier onboarding doc (Austin Siddiqi's YouTube @austntss) did not resolve to a channel this run, so a named competitor silently dropped off the YouTube scrape. Confirm resolution, note non-resolving handles in the report, and pull from the alternate platform so the source count still clears the at-least-10 floor.
+
+<!-- 2026-07-21 · job 720001 · client: Ibby -->
+- The fixed ICP Snapshot template in Step 1 lists 11 sections (Primary Avatar through Qualification Framework) but has no named slot for the Awareness Stage & Messaging Map, even though schwartz-awareness-mapper is a required child skill for this deliverable and the mapper's output is described as a carried-forward named artefact every downstream skill keys off. Add "Awareness Stage & Messaging Map" as an explicit section in the template list so the routing table (per sub-avatar: awareness stage, message focus, offer tier, % of pool, funnel-branch endpoint) gets a permanent home instead of being improvised each run. This is true for every client, not this one.
