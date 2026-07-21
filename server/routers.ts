@@ -652,6 +652,20 @@ export const appRouter = router({
         return { ok: true };
       }),
 
+    /** The client share page link (/c/:token), minting the token on first use. */
+    getShareLink: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const client = await requireClient(input.clientId, ctx.user.id);
+        let token = (client as { shareToken?: string | null }).shareToken;
+        if (!token) {
+          token = nanoid(14);
+          const { setShareToken } = await import("./db");
+          await setShareToken(input.clientId, token);
+        }
+        return { token };
+      }),
+
     // ── Recording queue: hand scripts to the client, they mark them recorded ──
 
     /** The shareable /record/:token link, minting the token on first use. */
@@ -746,47 +760,6 @@ export const appRouter = router({
           });
         }
         return { created: parts.length };
-      }),
-
-    /**
-     * Split the onboarding batch's "10 Video Ad Scripts" document into one
-     * card per script on the Script pipeline (ad_scripts_extra), where they
-     * are recordable and reviewable. Idempotent by title, so regenerated
-     * batches only add genuinely new scripts.
-     */
-    splitAdScripts: protectedProcedure
-      .input(z.object({ clientId: z.number() }))
-      .mutation(async ({ ctx, input }) => {
-        await requireClient(input.clientId, ctx.user.id);
-        const docs = await getClientDocuments(input.clientId);
-        const scriptsDoc = docs.find((d) => d.docType === "ad_video_scripts");
-        if (!scriptsDoc) return { created: 0 };
-        const existingTitles = new Set(
-          docs.filter((d) => d.docType === "ad_scripts_extra").map((d) => d.title.trim().toLowerCase())
-        );
-        const splitBy = (level: string) => {
-          const re = new RegExp(`^${level}\\s+(.+)$`, "gm");
-          const marks = Array.from(scriptsDoc.content.matchAll(re));
-          return marks.map((m, i) => ({
-            title: m[1].trim().slice(0, 280),
-            content: scriptsDoc.content.slice(m.index!, marks[i + 1]?.index ?? scriptsDoc.content.length).trim(),
-          }));
-        };
-        let parts = splitBy("##");
-        if (parts.length < 3) parts = splitBy("###");
-        if (parts.length < 3) parts = splitBy("#");
-        const fresh = parts.filter((p) => p.content.length > 100 && !existingTitles.has(p.title.trim().toLowerCase()));
-        for (const p of fresh) {
-          await createClientDocument({
-            clientId: input.clientId,
-            kind: "deliverable",
-            docType: "ad_scripts_extra",
-            title: p.title,
-            content: p.content,
-            status: "approved",
-          });
-        }
-        return { created: fresh.length };
       }),
 
     addEngineDraft: protectedProcedure
@@ -1257,6 +1230,34 @@ export const appRouter = router({
 
   // ─── Report Sharing ──────────────────────────────────────────────────────────
 
+  /** Public client share page (/c/:token): the client's window into the
+   *  machine — weekly reports + the competitor desk. Token IS the auth;
+   *  ONLY curated, client-safe content is returned. */
+  clientShare: router({
+    get: publicProcedure
+      .input(z.object({ token: z.string().min(6).max(64) }))
+      .query(async ({ input }) => {
+        const { getClientByShareToken } = await import("./db");
+        const client = await getClientByShareToken(input.token);
+        if (!client) throw new TRPCError({ code: "NOT_FOUND", message: "Page not found" });
+        const docs = await getClientDocuments(client.id);
+        const weekly = docs
+          .filter((d) => d.docType === "weekly_report")
+          .sort((a, b) => b.id - a.id)
+          .slice(0, 4)
+          .map((d) => ({ title: d.title, content: d.content }));
+        const intel = docs
+          .filter((d) => d.docType === "content_intel_extra")
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+        return {
+          clientName: client.name,
+          weeklyReports: weekly,
+          intelContent: intel?.content ?? null,
+          intelUpdatedAt: intel?.updatedAt ?? null,
+        };
+      }),
+  }),
+
   /** Public recording page: the client opens /record/:token, reads their
    *  scripts, and ticks each one off as recorded. Token IS the auth. */
   recording: router({
@@ -1273,8 +1274,22 @@ export const appRouter = router({
             title: i.title,
             content: i.content,
             recordedAt: i.recordedAt,
+            checkedSections: (i.checkedSections as string[] | null) ?? [],
           })),
         };
+      }),
+
+    /** Client ticks one section (one video) inside a multi-part script doc. */
+    toggleSection: publicProcedure
+      .input(z.object({ token: z.string().min(6).max(64), itemId: z.number(), section: z.string().min(1).max(300) }))
+      .mutation(async ({ input }) => {
+        const client = await getClientByRecordingToken(input.token);
+        if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+        const item = await getRecordingItemById(input.itemId);
+        if (!item || item.clientId !== client.id) throw new TRPCError({ code: "NOT_FOUND" });
+        const { toggleRecordingSection } = await import("./db");
+        const checked = await toggleRecordingSection(input.itemId, input.section);
+        return { checked };
       }),
 
     markRecorded: publicProcedure

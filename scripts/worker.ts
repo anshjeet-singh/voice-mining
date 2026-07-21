@@ -476,6 +476,7 @@ type SwipeItem = {
   niche: string;
   advertiser: string | null;
   sourceId: string;
+  displayFormat: string | null;
   imageUrl: string | null;
   transcript: string | null;
   headline: string | null;
@@ -496,12 +497,16 @@ async function syncSwipeArchive(): Promise<void> {
     try {
       const nicheDir = path.join(SWIPE_DIR, slug(item.niche));
       await fs.mkdir(nicheDir, { recursive: true });
-      if (item.imageUrl) {
+      // Images only for GENUINE static creatives — a video ad's thumbnail
+      // screenshot is not a static swipe (operator verdict).
+      if (item.imageUrl && item.displayFormat === "image") {
         const res = await fetch(item.imageUrl, { signal: AbortSignal.timeout(30_000) });
         if (res.ok) {
           const buf = Buffer.from(await res.arrayBuffer());
           const ext = (res.headers.get("content-type") ?? "").includes("png") ? "png" : "jpg";
-          await fs.writeFile(path.join(nicheDir, `${slug(item.advertiser ?? "ad")}_${slug(item.sourceId)}.${ext}`), buf);
+          const staticsDir = path.join(nicheDir, "statics");
+          await fs.mkdir(staticsDir, { recursive: true });
+          await fs.writeFile(path.join(staticsDir, `${slug(item.advertiser ?? "ad")}_${slug(item.sourceId)}.${ext}`), buf);
         }
       }
       if (item.transcript) {

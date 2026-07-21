@@ -81,6 +81,8 @@ export const clients = mysqlTable("clients", {
   linkedReportId: int("linkedReportId"),
   /** Public token for the client's recording queue page (/record/:token). */
   recordingToken: varchar("recordingToken", { length: 64 }),
+  /** Public token for the client share page (/c/:token): desk + reports. */
+  shareToken: varchar("shareToken", { length: 64 }),
   /** Autopilot: stage approval queues the next stage; the last ad verdict
    *  with rejects queues the rebuild. 0/1. */
   autoRun: int("autoRun").default(0).notNull(),
@@ -166,6 +168,8 @@ export const clientRecordingItems = mysqlTable("client_recording_items", {
   clientId: int("clientId").notNull(),
   docId: int("docId").notNull(),
   recordedAt: timestamp("recordedAt"),
+  /** Section titles the client has ticked off inside a multi-part doc. */
+  checkedSections: json("checkedSections").$type<string[]>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

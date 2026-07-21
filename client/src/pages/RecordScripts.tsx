@@ -11,6 +11,17 @@ import { toast } from "sonner";
  * (/record/:token), reads each script word for word, and ticks it off once
  * filmed. No login — the token is the auth. Read-only besides the tick.
  */
+/** Section titles of a multi-part script doc (each section = one video). */
+function docSections(content: string): string[] {
+  const clean = stripHtmlBlock(content);
+  for (const level of ["##", "###"]) {
+    const re = new RegExp(`^${level}\\s+(.+)$`, "gm");
+    const titles = Array.from(clean.matchAll(re)).map((m) => m[1].replace(/\*+/g, "").trim().slice(0, 280));
+    if (titles.length >= 2) return titles;
+  }
+  return [];
+}
+
 export default function RecordScripts() {
   const { token = "" } = useParams<{ token: string }>();
   const utils = trpc.useUtils();
@@ -18,6 +29,10 @@ export default function RecordScripts() {
   const [open, setOpen] = useState<number | null>(null);
 
   const mark = trpc.recording.markRecorded.useMutation({
+    onSuccess: () => utils.recording.get.invalidate({ token }),
+    onError: (err) => toast.error(err.message),
+  });
+  const toggleSection = trpc.recording.toggleSection.useMutation({
     onSuccess: () => utils.recording.get.invalidate({ token }),
     onError: (err) => toast.error(err.message),
   });
@@ -62,7 +77,10 @@ export default function RecordScripts() {
         </p>
 
         <div className="space-y-3">
-          {data.items.map((item, idx) => (
+          {data.items.map((item, idx) => {
+            const sections = docSections(item.content);
+            const checked = item.checkedSections ?? [];
+            return (
             <div
               key={item.id}
               className={`rounded-xl border ${
@@ -88,6 +106,11 @@ export default function RecordScripts() {
                   <p className={`text-sm font-medium leading-snug ${item.recordedAt ? "text-muted-foreground line-through" : "text-foreground"}`}>
                     {idx + 1}. {item.title}
                   </p>
+                  {sections.length > 0 && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {checked.length}/{sections.length} videos recorded
+                    </p>
+                  )}
                 </button>
                 <CopyButton text={item.content} label="Copy" className="flex-shrink-0" />
                 <button
@@ -98,7 +121,34 @@ export default function RecordScripts() {
                 </button>
               </div>
               {open === item.id && (
-                <div className="px-5 pb-5 border-t border-border/40 pt-4">
+                <div className="px-5 pb-5 border-t border-border/40 pt-4 space-y-4">
+                  {sections.length > 0 && (
+                    <div className="rounded-lg border border-border/40 bg-background/40 p-3">
+                      <p className="text-xs font-semibold text-foreground mb-2">Tick each video off as you film it</p>
+                      <div className="space-y-1.5">
+                        {sections.map((s) => {
+                          const done = checked.includes(s);
+                          return (
+                            <button
+                              key={s}
+                              disabled={toggleSection.isPending}
+                              onClick={() => toggleSection.mutate({ token, itemId: item.id, section: s })}
+                              className="w-full flex items-center gap-2.5 text-left"
+                            >
+                              {done ? (
+                                <span className="w-4 h-4 rounded bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                                  <Check className="w-2.5 h-2.5 text-white" />
+                                </span>
+                              ) : (
+                                <span className="w-4 h-4 rounded border border-border flex-shrink-0" />
+                              )}
+                              <span className={`text-xs ${done ? "text-muted-foreground line-through" : "text-foreground"}`}>{s}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   {/* Page-code blocks never render for the client — scripts only. */}
                   {stripHtmlBlock(item.content).trim().length > 40 ? (
                     <MarkdownDoc content={stripHtmlBlock(item.content)} />
@@ -110,7 +160,8 @@ export default function RecordScripts() {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
           {!data.items.length && (
             <p className="text-sm text-muted-foreground text-center py-16">Nothing to record yet. Check back soon.</p>
           )}

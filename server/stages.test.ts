@@ -193,7 +193,7 @@ describe("stage registry", () => {
     expect(desc).toContain("THREE units");
     expect(desc).toContain("# VSL Landing Page");
     expect(desc).toContain("# Post-Booking Page");
-    expect(desc).toContain("# Recording Scripts");
+    expect(desc).toContain("# VSL Funnel Recording Scripts");
     expect(desc).toContain("## VSL Script");
     expect(desc).toContain("## Offer Breakdown Script");
     expect(desc).toContain("## Breakout Videos");
@@ -240,7 +240,7 @@ describe("stage registry", () => {
     expect(desc).toContain("# Bridge Page ($27 Offer)");
     expect(desc).toContain("# Thank-You (Purchased)");
     expect(desc).toContain("# Thank-You (Registered)");
-    expect(desc).toContain("# Recording Scripts");
+    expect(desc).toContain("# Webinar Funnel Recording Scripts");
     // Webinar child skills + domain-only extra instruction
     expect(spec.extraInstructions).toContain("LINK WIRING IS DOMAIN-ONLY");
     expect(spec.extraInstructions).toContain("WEBINAR, four pages");

@@ -16,6 +16,7 @@ import ReportView from "./pages/ReportView";
 import SavedReports from "./pages/SavedReports";
 import SharedReport from "./pages/SharedReport";
 import RecordScripts from "./pages/RecordScripts";
+import ClientShare from "./pages/ClientShare";
 import NicheComparison from "./pages/NicheComparison";
 import TrendTracker from "./pages/TrendTracker";
 
@@ -43,6 +44,7 @@ function Router() {
             <Route path="/report/:id" component={ReportView} />
             <Route path="/share/:token" component={SharedReport} />
             <Route path="/record/:token" component={RecordScripts} />
+            <Route path="/c/:token" component={ClientShare} />
             <Route path="/compare" component={NicheComparison} />
             <Route path="/reports" component={SavedReports} />
             <Route path="/trends" component={TrendTracker} />

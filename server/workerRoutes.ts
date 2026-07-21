@@ -821,6 +821,7 @@ export function registerWorkerRoutes(app: Express) {
           niche: r.niche,
           advertiser: r.advertiser,
           sourceId: r.sourceId,
+          displayFormat: r.displayFormat,
           imageUrl: r.imageUrl,
           transcript: r.transcript,
           headline: r.headline,

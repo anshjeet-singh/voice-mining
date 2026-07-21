@@ -1007,6 +1007,7 @@ export async function listRecordingItems(clientId: number) {
       id: clientRecordingItems.id,
       docId: clientRecordingItems.docId,
       recordedAt: clientRecordingItems.recordedAt,
+      checkedSections: clientRecordingItems.checkedSections,
       createdAt: clientRecordingItems.createdAt,
       title: clientDocuments.title,
       content: clientDocuments.content,
@@ -1022,6 +1023,17 @@ export async function getRecordingItemById(id: number) {
   if (!db) return null;
   const rows = await db.select().from(clientRecordingItems).where(eq(clientRecordingItems.id, id)).limit(1);
   return rows[0] ?? null;
+}
+
+/** Toggle one section title in an item's checklist; returns the new list. */
+export async function toggleRecordingSection(id: number, section: string): Promise<string[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const item = await getRecordingItemById(id);
+  const current: string[] = Array.isArray(item?.checkedSections) ? (item!.checkedSections as string[]) : [];
+  const next = current.includes(section) ? current.filter((s) => s !== section) : [...current, section];
+  await db.update(clientRecordingItems).set({ checkedSections: next }).where(eq(clientRecordingItems.id, id));
+  return next;
 }
 
 export async function setRecordingItemRecorded(id: number, recorded: boolean): Promise<void> {
@@ -1094,4 +1106,19 @@ export async function getRecentJobs(sinceDays: number) {
   if (!db) return [];
   const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
   return db.select().from(jobs).where(gt(jobs.createdAt, since)).orderBy(desc(jobs.id));
+}
+
+// ─── Client share page (/c/:token): desk + reports, read-only ───────────────
+
+export async function setShareToken(clientId: number, token: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clients).set({ shareToken: token }).where(eq(clients.id, clientId));
+}
+
+export async function getClientByShareToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(clients).where(eq(clients.shareToken, token)).limit(1);
+  return rows[0] ?? null;
 }

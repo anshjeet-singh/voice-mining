@@ -974,6 +974,39 @@ function FoundationRefine({ clientId, invalidate }: { clientId: number; invalida
  * Tokens are auto-detected from the client's own documents.
  */
 /**
+ * The client share link: their read-only growth desk (/c/:token) with weekly
+ * reports + what's winning in their market. Send once; it stays current.
+ */
+function ClientSharePanel({ clientId }: { clientId: number }) {
+  const getLink = trpc.clients.getShareLink.useMutation({
+    onSuccess: ({ token }) => {
+      navigator.clipboard.writeText(`${window.location.origin}/c/${token}`);
+      toast.success("Client share link copied — their reports + market desk, always current");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  return (
+    <div className="rounded-xl border border-border/50 bg-card/30 p-5 flex items-center gap-3">
+      <div className="flex-1">
+        <h3 className="text-sm font-semibold text-foreground">Client share page</h3>
+        <p className="text-xs text-muted-foreground">
+          One link with their weekly reports and the competitor desk, read-only, always up to date. Send it once; your
+          biweekly update is just a nudge to open it.
+        </p>
+      </div>
+      <button
+        disabled={getLink.isPending}
+        onClick={() => getLink.mutate({ clientId })}
+        className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
+      >
+        {getLink.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+        Copy client link
+      </button>
+    </div>
+  );
+}
+
+/**
  * Recording to-do: the scripts sent to the client to film, with the magic
  * link the client opens. Replaces the copy-into-Notion handoff entirely.
  */
@@ -1325,20 +1358,6 @@ export default function ClientStudio() {
     return () => clearInterval(t);
   }, [hasActiveJob, clientId, utils]);
 
-  // The onboarding batch's 10 video ad scripts auto-split into one card per
-  // script on the Script pipeline (idempotent by title server-side).
-  const splitAds = trpc.clients.splitAdScripts.useMutation({
-    onSuccess: ({ created }) => created > 0 && utils.clients.get.invalidate({ id: clientId }),
-  });
-  const splitFiredRef = useRef(false);
-  useEffect(() => {
-    if (splitFiredRef.current) return;
-    if (documents.some((d) => d.docType === "ad_video_scripts")) {
-      splitFiredRef.current = true;
-      splitAds.mutate({ clientId });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documents, clientId]);
 
   const invalidate = () => utils.clients.get.invalidate({ id: clientId });
 
@@ -1451,6 +1470,7 @@ export default function ClientStudio() {
               <FoundationRefine clientId={clientId} invalidate={invalidate} />
 
               <ClientLinksPanel clientId={clientId} documents={documents} invalidate={invalidate} />
+              <ClientSharePanel clientId={clientId} />
               <RecordingQueuePanel clientId={clientId} />
 
               {/* The client's own live socials */}
@@ -1544,7 +1564,7 @@ export default function ClientStudio() {
                 <AssetGallery assets={assets} clientId={clientId} stageId="ads" invalidate={invalidate} canRegenerate exportJob={(data.exportJob ?? null) as StageJob} />
               </StudioBlock>
               <StudioBlock title="Script pipeline" hint="One card per script: approve what gets recorded, mark posted when live" frame="border-violet-500/25 bg-violet-500/[0.05]">
-                <DocBoard docs={[...docsFor("ad_scripts_extra")]} invalidate={invalidate} clientId={clientId} docType="ad_scripts_extra" recordable />
+                <DocBoard docs={[...docsFor("ad_video_scripts"), ...docsFor("ad_scripts_extra")]} invalidate={invalidate} clientId={clientId} docType="ad_scripts_extra" recordable />
               </StudioBlock>
             </>
           )}

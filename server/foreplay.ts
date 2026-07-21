@@ -83,10 +83,9 @@ export function isRelevantForeplayAd(ad: ForeplayAd, keyword: string): boolean {
   const stop = new Set(["the", "and", "for", "with", "your", "you", "how", "get", "from"]);
   const terms = keyword.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !stop.has(t));
   if (!terms.length) return true;
-  const hay = [ad.name, ad.headline, ad.description, ad.full_transcription, ad.product_category]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+  // Only the ad's ACTUAL words count — advertiser names and Foreplay's
+  // category tags matched too loosely and let off-market ads through.
+  const hay = [ad.headline, ad.description, ad.full_transcription].filter(Boolean).join(" ").toLowerCase();
   return terms.some((t) => hay.includes(t));
 }
 

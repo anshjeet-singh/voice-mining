@@ -140,17 +140,26 @@ async function retrieve(
   return picked;
 }
 
-/** Rows worth archiving to the Drive swipe folder that haven't been yet. */
+/**
+ * Rows worth archiving to the Drive swipe folder: PROVEN winners only
+ * (20+ days running or currently live) that carry a transcript (the highest-
+ * value asset, operator's call) or are genuine IMAGE creatives. Video ads
+ * without transcripts never archive — their thumbnail screenshots polluted
+ * the static swipe folder.
+ */
 export async function getUnarchivedIntel(limit = 20) {
   const db = await getDb();
   if (!db) return [];
   const rows = await db
     .select()
     .from(creativeIntel)
-    .where(sql`${creativeIntel.archivedAt} IS NULL AND (${creativeIntel.imageUrl} IS NOT NULL OR ${creativeIntel.transcript} IS NOT NULL)`)
+    .where(
+      sql`${creativeIntel.archivedAt} IS NULL AND (${creativeIntel.runningDays} >= 20 OR ${creativeIntel.live} = 1) AND (${creativeIntel.transcript} IS NOT NULL OR (${creativeIntel.displayFormat} = 'image' AND ${creativeIntel.imageUrl} IS NOT NULL))`
+    )
     .orderBy(desc(creativeIntel.lastSeenAt))
     .limit(200);
-  rows.sort((a, b) => scoreIntel(b) - scoreIntel(a));
+  // Transcripts first (the value is in the words), then by proven-spender score
+  rows.sort((a, b) => (b.transcript ? 1 : 0) - (a.transcript ? 1 : 0) || scoreIntel(b) - scoreIntel(a));
   return rows.slice(0, limit);
 }
 
