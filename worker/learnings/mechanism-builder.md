@@ -30,3 +30,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-16 · job 510001 · client: Veda Ray -->
 - The compliance-guard niche list (finance, credit, lending, health, legal, peptide/supplement) should explicitly include the sovereign-citizen / birth-registration / lawful-identity niche. It carries its own distinct guardrails that the generic "legal" tag does not cover: frame everything as the client's lived personal experience and education (never legal/tax advice or expert authority), never imply a guaranteed government or agency outcome (cases vary and can take a year), and never carry the "secret account / redemption / make millions" claim even when it circulates in the market. Bake these into the mechanism/positioning output so a run in this niche cannot ship an unqualified authority or outcome claim.
+
+<!-- 2026-07-21 · job 720001 · client: Ibby -->
+- The skill's Output block (Failed Method / New Mechanism / Mechanism Name / Why It Works) does not encode the two required halves (a problem-root-cause mechanism that removes self-blame, and a solution mechanism) or the "the secret is in the ___" completion test that the frameworks treat as the pass/fail gate. A writer following only this skill ships a solution-only mechanism that reads as a lecture. Add both requirements to the Output and Rules so the completion test is inescapable.
