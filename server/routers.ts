@@ -43,6 +43,13 @@ import {
   getReportBySearchId,
   getReportsByUser,
   getSharedReportByToken,
+  addRecordingItem,
+  listRecordingItems,
+  getClientByRecordingToken,
+  setRecordingToken,
+  getRecordingItemById,
+  setRecordingItemRecorded,
+  deleteRecordingItem,
   getTrendSnapshotCount,
   getVaultCollectionsByUser,
   getVaultItemCount,
@@ -184,8 +191,9 @@ export const appRouter = router({
             onboardingCount: docs.filter((d) => d.kind === "onboarding").length,
             reportCount: searches.filter((s) => s.status === "complete").length,
             foundationStatus: job?.status ?? null,
-            // Studio is the home once the build shipped ad creatives
-            studioReady: docs.some((d) => ["ad_scripts", "ad_statics"].includes(d.docType)),
+            // Studio is the home once the foundation shipped: the competitor
+            // desk and engines then shape the FIRST ad batch, not the second
+            studioReady: docs.some((d) => ["icp_snapshot", "offers", "ad_scripts", "ad_statics"].includes(d.docType)),
           };
         })
       );
@@ -507,6 +515,70 @@ export const appRouter = router({
           "Client Links",
           JSON.stringify(clean, null, 2)
         );
+        return { ok: true };
+      }),
+
+    /**
+     * Free-text "current state" facts: what ACTUALLY exists for this client
+     * today (real lead magnet names, renames, what was recorded vs skipped).
+     * Injected into every worker claim as overriding ground truth, so engines
+     * stop referencing day-one generated names that changed in the real build.
+     */
+    setClientFacts: protectedProcedure
+      .input(z.object({ clientId: z.number(), facts: z.string().max(20000) }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        await upsertClientDocumentByType(
+          input.clientId,
+          "foundation",
+          "client_facts",
+          "Client Facts",
+          input.facts.trim()
+        );
+        return { ok: true };
+      }),
+
+    // ── Recording queue: hand scripts to the client, they mark them recorded ──
+
+    /** The shareable /record/:token link, minting the token on first use. */
+    getRecordingLink: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const client = await requireClient(input.clientId, ctx.user.id);
+        let token = client.recordingToken;
+        if (!token) {
+          token = nanoid(14);
+          await setRecordingToken(input.clientId, token);
+        }
+        return { token };
+      }),
+
+    /** Put one script doc on the client's recording to-do list. */
+    sendToRecording: protectedProcedure
+      .input(z.object({ docId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const doc = await getClientDocumentById(input.docId);
+        if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" });
+        await requireClient(doc.clientId, ctx.user.id);
+        const id = await addRecordingItem(doc.clientId, input.docId);
+        return { id };
+      }),
+
+    recordingQueue: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const items = await listRecordingItems(input.clientId);
+        return items.map(({ content: _c, ...meta }) => meta);
+      }),
+
+    removeRecordingItem: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const item = await getRecordingItemById(input.id);
+        if (!item) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireClient(item.clientId, ctx.user.id);
+        await deleteRecordingItem(input.id);
         return { ok: true };
       }),
 
@@ -1011,6 +1083,38 @@ export const appRouter = router({
   }),
 
   // ─── Report Sharing ──────────────────────────────────────────────────────────
+
+  /** Public recording page: the client opens /record/:token, reads their
+   *  scripts, and ticks each one off as recorded. Token IS the auth. */
+  recording: router({
+    get: publicProcedure
+      .input(z.object({ token: z.string().min(6).max(64) }))
+      .query(async ({ input }) => {
+        const client = await getClientByRecordingToken(input.token);
+        if (!client) throw new TRPCError({ code: "NOT_FOUND", message: "Recording list not found" });
+        const items = await listRecordingItems(client.id);
+        return {
+          clientName: client.name,
+          items: items.map((i) => ({
+            id: i.id,
+            title: i.title,
+            content: i.content,
+            recordedAt: i.recordedAt,
+          })),
+        };
+      }),
+
+    markRecorded: publicProcedure
+      .input(z.object({ token: z.string().min(6).max(64), itemId: z.number(), recorded: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const client = await getClientByRecordingToken(input.token);
+        if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+        const item = await getRecordingItemById(input.itemId);
+        if (!item || item.clientId !== client.id) throw new TRPCError({ code: "NOT_FOUND" });
+        await setRecordingItemRecorded(input.itemId, input.recorded);
+        return { ok: true };
+      }),
+  }),
 
   share: router({
     /** Create (or return the existing active) public share link for a report. */

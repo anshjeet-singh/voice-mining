@@ -332,8 +332,34 @@ export function registerWorkerRoutes(app: Express) {
         job.type === "foundation"
           ? []
           : docs
-              .filter((d) => (d.kind === "foundation" || d.kind === "deliverable") && d.docType !== "client_links")
+              .filter((d) => (d.kind === "foundation" || d.kind === "deliverable") && d.docType !== "client_links" && d.docType !== "client_facts")
               .map((d) => ({ title: d.title, docType: d.docType, content: d.content }));
+
+      // CLIENT FACTS: the operator's canonical links/names + current-state
+      // notes. Every job gets them as ground truth that OVERRIDES older docs
+      // (the free community may have shipped under a different name than the
+      // day-one Skool doc invented; engines must use what exists TODAY).
+      let clientFacts = "";
+      {
+        const linksDoc = docs.find((d) => d.docType === "client_links");
+        const factsDoc = docs.find((d) => d.docType === "client_facts");
+        const bits: string[] = [];
+        if (linksDoc) {
+          try {
+            const links = JSON.parse(linksDoc.content) as Record<string, string>;
+            const lines = Object.entries(links)
+              .filter(([, v]) => v?.trim())
+              .map(([k, v]) => `- ${k} = ${v}`);
+            if (lines.length) bits.push(`Canonical links and names (use these REAL values; keep other [TOKEN]s as placeholders):\n${lines.join("\n")}`);
+          } catch {
+            /* malformed links doc: skip */
+          }
+        }
+        if (factsDoc?.content.trim()) {
+          bits.push(`Current state, straight from the operator (what actually exists today; overrides any conflicting name, asset, or claim in the docs below):\n${factsDoc.content.trim()}`);
+        }
+        clientFacts = bits.join("\n\n");
+      }
       let research = await renderResearchForClient(job.clientId);
       // Ads stage: attach live Foreplay winners for the niche as pattern
       // models (angles and hooks, never words to copy), plus the operator's
@@ -390,6 +416,7 @@ export function registerWorkerRoutes(app: Express) {
           feedback: job.payload?.feedback ?? "",
           assetReviews,
           refImages,
+          clientFacts,
         },
       });
     } catch (err) {

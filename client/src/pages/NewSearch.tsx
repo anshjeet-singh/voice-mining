@@ -148,7 +148,7 @@ export default function NewSearch() {
 
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-foreground tracking-tight mb-2">
-            New Voice Mining Search
+            New Market Research
           </h1>
           {clientId && clientData && (
             <span className="inline-flex items-center px-2 py-0.5 mb-2 rounded-full border border-primary/20 bg-primary/10 text-[11px] font-medium text-primary">

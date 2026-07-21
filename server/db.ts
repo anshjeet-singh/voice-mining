@@ -14,6 +14,7 @@ import {
   analysisResults,
   calendarEntries,
   clientAssets,
+  clientRecordingItems,
   clientRefImages,
   clientDocuments,
   clients,
@@ -899,4 +900,74 @@ export async function setClientDocumentStatus(id: number, status: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(clientDocuments).set({ status }).where(eq(clientDocuments.id, id));
+}
+
+// ─── Recording queue: scripts handed to the client to record ────────────────
+
+export async function setRecordingToken(clientId: number, token: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clients).set({ recordingToken: token }).where(eq(clients.id, clientId));
+}
+
+export async function getClientByRecordingToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(clients).where(eq(clients.recordingToken, token)).limit(1);
+  return rows[0] ?? null;
+}
+
+/** Add a doc to the client's recording queue (idempotent per doc). */
+export async function addRecordingItem(clientId: number, docId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db
+    .select({ id: clientRecordingItems.id })
+    .from(clientRecordingItems)
+    .where(and(eq(clientRecordingItems.clientId, clientId), eq(clientRecordingItems.docId, docId)))
+    .limit(1);
+  if (existing[0]) return existing[0].id;
+  const result = await db.insert(clientRecordingItems).values({ clientId, docId });
+  return result[0].insertId;
+}
+
+/** The queue with each script's title/content joined in, oldest first. */
+export async function listRecordingItems(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: clientRecordingItems.id,
+      docId: clientRecordingItems.docId,
+      recordedAt: clientRecordingItems.recordedAt,
+      createdAt: clientRecordingItems.createdAt,
+      title: clientDocuments.title,
+      content: clientDocuments.content,
+    })
+    .from(clientRecordingItems)
+    .innerJoin(clientDocuments, eq(clientRecordingItems.docId, clientDocuments.id))
+    .where(eq(clientRecordingItems.clientId, clientId))
+    .orderBy(clientRecordingItems.id);
+}
+
+export async function getRecordingItemById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(clientRecordingItems).where(eq(clientRecordingItems.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function setRecordingItemRecorded(id: number, recorded: boolean): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(clientRecordingItems)
+    .set({ recordedAt: recorded ? new Date() : null })
+    .where(eq(clientRecordingItems.id, id));
+}
+
+export async function deleteRecordingItem(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(clientRecordingItems).where(eq(clientRecordingItems.id, id));
 }

@@ -65,7 +65,7 @@ export default function DashboardLayout({
             <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
               <span className="text-primary font-bold text-sm">V</span>
             </div>
-            <span className="font-semibold text-foreground tracking-tight">VoiceMining</span>
+            <span className="font-semibold text-foreground tracking-tight">Cashflow Coaches</span>
           </div>
           <div className="space-y-6">
             <div className="space-y-3">
@@ -98,7 +98,7 @@ export default function DashboardLayout({
                 size="lg"
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 h-12 text-sm font-medium"
               >
-                Continue with VoiceMining
+                Continue with Cashflow Coaches
               </Button>
               <p className="text-xs text-center text-muted-foreground/60">
                 By continuing, you agree to our Terms of Service and Privacy Policy

@@ -1,0 +1,122 @@
+import { useState } from "react";
+import { useParams } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { MarkdownDoc } from "@/components/MarkdownDoc";
+import { Check, ChevronDown, ChevronUp, Circle, Clapperboard, Copy, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
+/**
+ * Public recording queue: the CLIENT opens this from a magic link
+ * (/record/:token), reads each script word for word, and ticks it off once
+ * filmed. No login — the token is the auth. Read-only besides the tick.
+ */
+export default function RecordScripts() {
+  const { token = "" } = useParams<{ token: string }>();
+  const utils = trpc.useUtils();
+  const { data, isLoading, error } = trpc.recording.get.useQuery({ token }, { enabled: !!token });
+  const [open, setOpen] = useState<number | null>(null);
+
+  const mark = trpc.recording.markRecorded.useMutation({
+    onSuccess: () => utils.recording.get.invalidate({ token }),
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-6 h-6 text-primary animate-spin" />
+      </div>
+    );
+  }
+  if (error || !data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6 text-center">
+        <div>
+          <h1 className="text-lg font-semibold text-foreground mb-1">Recording list not found</h1>
+          <p className="text-sm text-muted-foreground">This link may have been replaced. Ask your coach for a fresh one.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const done = data.items.filter((i) => i.recordedAt).length;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="max-w-3xl mx-auto px-5 py-10">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+            <Clapperboard className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold text-foreground tracking-tight">Your recording list</h1>
+            <p className="text-xs text-muted-foreground">
+              {data.clientName} · {done}/{data.items.length} recorded
+            </p>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3 mb-6">
+          Each card is one video, scripted word for word. Open it, film it, tick it off. Read it out loud a couple of
+          times first so it sounds like you.
+        </p>
+
+        <div className="space-y-3">
+          {data.items.map((item, idx) => (
+            <div
+              key={item.id}
+              className={`rounded-xl border ${
+                item.recordedAt ? "border-emerald-500/30 bg-emerald-500/[0.04]" : "border-border/60 bg-card/30"
+              }`}
+            >
+              <div className="flex items-center gap-3 p-4">
+                <button
+                  disabled={mark.isPending}
+                  onClick={() => mark.mutate({ token, itemId: item.id, recorded: !item.recordedAt })}
+                  className="flex-shrink-0"
+                  title={item.recordedAt ? "Mark as not recorded" : "Mark as recorded"}
+                >
+                  {item.recordedAt ? (
+                    <span className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                      <Check className="w-3.5 h-3.5 text-white" />
+                    </span>
+                  ) : (
+                    <Circle className="w-6 h-6 text-muted-foreground/50 hover:text-primary transition-colors" />
+                  )}
+                </button>
+                <button className="flex-1 text-left min-w-0" onClick={() => setOpen(open === item.id ? null : item.id)}>
+                  <p className={`text-sm font-medium leading-snug ${item.recordedAt ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                    {idx + 1}. {item.title}
+                  </p>
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(item.content);
+                    toast.success("Script copied");
+                  }}
+                  className="flex-shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground"
+                  title="Copy the script"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setOpen(open === item.id ? null : item.id)}
+                  className="flex-shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground"
+                >
+                  {open === item.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+              </div>
+              {open === item.id && (
+                <div className="px-5 pb-5 border-t border-border/40 pt-4">
+                  <MarkdownDoc content={item.content} />
+                </div>
+              )}
+            </div>
+          ))}
+          {!data.items.length && (
+            <p className="text-sm text-muted-foreground text-center py-16">Nothing to record yet. Check back soon.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

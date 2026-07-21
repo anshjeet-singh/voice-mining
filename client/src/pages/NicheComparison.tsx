@@ -102,7 +102,7 @@ export default function NicheComparison() {
               Niche Comparison
             </h1>
             <p className="text-sm text-muted-foreground">
-              Compare voice mining results across multiple keywords side by side
+              Compare research results across multiple keywords side by side
             </p>
           </div>
           <Button
@@ -140,7 +140,7 @@ export default function NicheComparison() {
             <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-border/30 bg-card/20">
               <AlertCircle className="w-6 h-6 text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground mb-3">
-                No completed searches yet. Run some voice mining searches first.
+                No completed searches yet. Run some research searches first.
               </p>
               <Button
                 size="sm"

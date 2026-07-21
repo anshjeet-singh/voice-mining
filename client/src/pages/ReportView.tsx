@@ -142,7 +142,7 @@ export default function ReportView() {
     const block = (text: string) =>
       `<div class="block">${esc(text).replace(/\n/g, "<br/>")}</div>`;
 
-    let body = `<div class="header"><h1>${esc(report.name)}</h1><p>Voice Mining Report &mdash; ${new Date(report.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p></div>`;
+    let body = `<div class="header"><h1>${esc(report.name)}</h1><p>Market Research Report &mdash; ${new Date(report.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p></div>`;
 
     if (mi2.executiveSummary) body += section("Executive Summary", block(mi2.executiveSummary));
 
@@ -202,7 +202,7 @@ export default function ReportView() {
       `<div class="card"><h3>${esc(c.name)}</h3>${item("Their angle", c.angle)}${item("Their weakness", c.weakness)}${item("Gap you can own", c.gap)}${item("Pricing", c.pricingSignals)}</div>`
     ).join("") + (intel2.positioningStatement ? block(`Positioning statement: ${intel2.positioningStatement}`) : ""));
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${esc(report.name)} - Voice Mining Report</title><style>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${esc(report.name)} - Market Research Report</title><style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: Georgia, serif; font-size: 11pt; color: #1a1a1a; background: #fff; padding: 40px; max-width: 900px; margin: 0 auto; }
       .header { margin-bottom: 32px; border-bottom: 2px solid #1a1a1a; padding-bottom: 16px; }
@@ -291,7 +291,7 @@ export default function ReportView() {
             <div className="flex items-center gap-2 mb-1">
               <FileText className="w-4 h-4 text-primary" />
               <span className="text-xs text-primary font-medium uppercase tracking-wider">
-                Voice Mining Report
+                Market Research Report
               </span>
             </div>
             <h1 className="text-2xl font-semibold text-foreground tracking-tight">{report.name}</h1>

@@ -38,6 +38,8 @@ export interface ClaimedJob {
   assetReviews?: Array<{ filename: string; status: string; feedback: string | null }>;
   /** Operator-uploaded proof/cutout images to composite into rendered ads. */
   refImages?: Array<{ filename: string; mime: string; note: string | null; base64: string }>;
+  /** Canonical links/names + current-state notes; overrides older docs. */
+  clientFacts?: string;
 }
 
 export interface PromptOptions {
@@ -119,7 +121,11 @@ This is not optional. The deliverable must VISIBLY follow the skill templates an
 - Niche: ${job.client.niche}
 - Funnel type: ${job.client.funnelType}
 - Price point: ${job.client.pricePoint || "not specified"}
-${lessons}${feedback}${verdicts}${refImages}${approved}
+${
+  job.clientFacts?.trim()
+    ? `\n# CLIENT FACTS (GROUND TRUTH set by the operator TODAY — real links, real current names, what actually exists. Where ANY older document below conflicts with a fact here, THE FACT WINS. Never reference an asset by a name this section renames or says was not built.)\n\n${job.clientFacts.trim()}\n`
+    : ""
+}${lessons}${feedback}${verdicts}${refImages}${approved}
 # ONBOARDING MATERIAL
 
 ${onboarding}

@@ -19,6 +19,7 @@ import {
   type StageJob,
 } from "@/components/engines";
 import {
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronUp,
@@ -36,6 +37,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 /** Studio sections with their color identities (literal classes for Tailwind JIT). */
@@ -646,7 +648,7 @@ function parseSourceInput(raw: string): CompetitorSource[] {
 }
 
 const ORIGIN_LABEL: Record<CompetitorSource["origin"], string> = {
-  research: "URL found · voice mining",
+  research: "URL found · research",
   onboarding: "URL found · onboarding",
   added: "added by you",
 };
@@ -970,6 +972,83 @@ function FoundationRefine({ clientId, invalidate }: { clientId: number; invalida
  * studio substitutes it into every [TOKEN] whenever you copy an email or page.
  * Tokens are auto-detected from the client's own documents.
  */
+/**
+ * Recording to-do: the scripts sent to the client to film, with the magic
+ * link the client opens. Replaces the copy-into-Notion handoff entirely.
+ */
+function RecordingQueuePanel({ clientId }: { clientId: number }) {
+  const { data: items, refetch } = trpc.clients.recordingQueue.useQuery({ clientId });
+  const getLink = trpc.clients.getRecordingLink.useMutation({
+    onSuccess: ({ token }) => {
+      const url = `${window.location.origin}/record/${token}`;
+      navigator.clipboard.writeText(url);
+      toast.success("Recording link copied — send it to the client");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const remove = trpc.clients.removeRecordingItem.useMutation({
+    onSuccess: () => refetch(),
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (!items?.length) return null;
+  const done = items.filter((i) => i.recordedAt).length;
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-card/30 p-5">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Recording list</h3>
+          <p className="text-xs text-muted-foreground">
+            Scripts the client films. They tick each one off on their link. {done}/{items.length} recorded.
+          </p>
+        </div>
+        <button
+          disabled={getLink.isPending}
+          onClick={() => getLink.mutate({ clientId })}
+          className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
+        >
+          {getLink.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+          Copy client link
+        </button>
+      </div>
+      <div className="space-y-1.5">
+        {items.map((item) => (
+          <div key={item.id} className="flex items-center gap-2.5 rounded-lg border border-border/40 bg-background/40 px-3 py-2">
+            {item.recordedAt ? (
+              <span className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                <Check className="w-2.5 h-2.5 text-white" />
+              </span>
+            ) : (
+              <span className="w-4 h-4 rounded-full border border-border flex-shrink-0" />
+            )}
+            <span className={`flex-1 text-xs truncate ${item.recordedAt ? "text-muted-foreground line-through" : "text-foreground"}`}>
+              {item.title}
+            </span>
+            <button
+              disabled={remove.isPending}
+              onClick={() => remove.mutate({ id: item.id })}
+              className="text-[10px] text-muted-foreground hover:text-destructive flex-shrink-0"
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Facts every client should have set, shown even before any doc mentions them. */
+const DEFAULT_FACT_TOKENS = [
+  "[FREE COMMUNITY NAME]",
+  "[PAID COMMUNITY NAME]",
+  "[HOST NAME]",
+  "[VSL LINK]",
+  "[COMMUNITY LINK]",
+  "[BOOKING LINK]",
+];
+
 function ClientLinksPanel({
   clientId,
   documents,
@@ -988,20 +1067,29 @@ function ClientLinksPanel({
       return {} as Record<string, string>;
     }
   }, [documents]);
+  const savedFacts = useMemo(
+    () => documents.find((d) => d.docType === "client_facts")?.content ?? "",
+    [documents]
+  );
   const tokens = useMemo(() => {
     const detected = detectReusableTokens(
-      documents.filter((d) => d.docType !== "client_links").map((d) => d.content)
+      documents.filter((d) => d.docType !== "client_links" && d.docType !== "client_facts").map((d) => d.content)
     );
-    return Array.from(new Set([...detected, ...Object.keys(saved)])).sort();
+    return Array.from(new Set([...DEFAULT_FACT_TOKENS, ...detected, ...Object.keys(saved)])).sort();
   }, [documents, saved]);
   const [vals, setVals] = useState<Record<string, string>>(saved);
   useEffect(() => setVals(saved), [saved]);
+  const [facts, setFacts] = useState(savedFacts);
+  useEffect(() => setFacts(savedFacts), [savedFacts]);
   const [open, setOpen] = useState(false);
   const save = trpc.clients.setClientLinks.useMutation({
     onSuccess: () => {
       invalidate();
-      toast.success("Saved. These fill in automatically when you copy");
+      toast.success("Saved. Every engine and copy button uses these now");
     },
+    onError: (err) => toast.error(err.message),
+  });
+  const saveFacts = trpc.clients.setClientFacts.useMutation({
     onError: (err) => toast.error(err.message),
   });
   if (!tokens.length) return null;
@@ -1010,9 +1098,9 @@ function ClientLinksPanel({
     <div className="rounded-xl border border-border/50 bg-card/30 p-5">
       <button onClick={() => setOpen((o) => !o)} className="flex items-center justify-between w-full text-left">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Links &amp; placeholders</h3>
+          <h3 className="text-sm font-semibold text-foreground">Client facts &amp; links</h3>
           <p className="text-xs text-muted-foreground">
-            Set each link once. Every email and page fills it in when you copy. {filled}/{tokens.length} set.
+            The real names and links, set once. Copy buttons fill them in, and every engine writes with what actually exists — not day-one names. {filled}/{tokens.length} set.
           </p>
         </div>
         {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -1035,13 +1123,27 @@ function ClientLinksPanel({
               />
             </div>
           ))}
+          <div className="pt-2">
+            <p className="text-[11px] font-medium text-muted-foreground mb-1.5">
+              Current state (optional): what actually exists today — real lead magnet names, renames, what got recorded vs skipped. Engines treat this as ground truth over older docs.
+            </p>
+            <Textarea
+              value={facts}
+              onChange={(e) => setFacts(e.target.value)}
+              placeholder={"e.g. Lead magnets went live as 'The 0% Stack' and 'Funding Readiness Score' (the third was never built). Weekly Q&A is Tuesdays 6pm EST. VSL recorded, breakouts 1-4 recorded, 5-9 pending."}
+              className="min-h-20 text-[11px]"
+            />
+          </div>
           <button
-            disabled={save.isPending}
-            onClick={() => save.mutate({ clientId, links: vals })}
+            disabled={save.isPending || saveFacts.isPending}
+            onClick={() => {
+              save.mutate({ clientId, links: vals });
+              if (facts.trim() !== savedFacts.trim()) saveFacts.mutate({ clientId, facts });
+            }}
             className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
           >
-            {save.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
-            Save links
+            {(save.isPending || saveFacts.isPending) && <Loader2 className="w-3 h-3 animate-spin" />}
+            Save facts
           </button>
         </div>
       )}
@@ -1077,7 +1179,19 @@ function ClientSocials({
 
   // Handles are captured at onboarding: the Overview only shows the live stats
   // once they exist, no "add" prompt cluttering the page.
-  if (!hasHandles && !editing) return null;
+  // No handles yet: a small add affordance instead of vanishing entirely
+  // (the old `return null` made socials impossible to add from the studio).
+  if (!hasHandles && !editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
+      >
+        <Plus className="w-3 h-3" />
+        Add the client's socials for live follower stats
+      </button>
+    );
+  }
 
   if (editing) {
     return (
@@ -1322,6 +1436,7 @@ export default function ClientStudio() {
               <FoundationRefine clientId={clientId} invalidate={invalidate} />
 
               <ClientLinksPanel clientId={clientId} documents={documents} invalidate={invalidate} />
+              <RecordingQueuePanel clientId={clientId} />
 
               {/* The client's own live socials */}
               <ClientSocials clientId={clientId} client={data.client} invalidate={invalidate} />
@@ -1355,7 +1470,7 @@ export default function ClientStudio() {
               <div id="competitor-desk">
                 <StudioBlock
                   title="Competitor Desk"
-                  hint="Mine the top competitors from your voice mining data: Instagram reels and YouTube videos, transcribed and broken down. Every content batch you generate reads this automatically, and it re-mines itself twice a week"
+                  hint="Mine the top competitors from your research data: Instagram reels and YouTube videos, transcribed and broken down. Every content batch you generate reads this automatically, and it re-mines itself twice a week"
                 >
                   <CompetitorMiner
                     found={competitorSources}
@@ -1387,20 +1502,17 @@ export default function ClientStudio() {
               )}
               <div className="grid lg:grid-cols-2 gap-4">
                 <StudioBlock title="Generate static ads" frame="border-violet-500/25 bg-violet-500/[0.05]">
-                  <EngineCard engine={engineByKind("more_statics")} job={jobs.more_statics ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
+                  <EngineCard engine={engineByKind("more_statics")} job={jobs.more_statics ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} refImages={refImages} />
                 </StudioBlock>
                 <StudioBlock title="Generate video ad scripts" frame="border-violet-500/25 bg-violet-500/[0.05]">
                   <EngineCard engine={engineByKind("more_scripts")} job={jobs.more_scripts ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
                 </StudioBlock>
               </div>
-              <StudioBlock title="Proof images" hint="Client cutouts, approval screenshots, testimonials. The engine composites and annotates these into rendered statics instead of using placeholders" frame="border-violet-500/25 bg-violet-500/[0.05]">
-                <RefImagePanel clientId={clientId} images={refImages} invalidate={invalidate} />
-              </StudioBlock>
               <StudioBlock title="Ad library" hint="Approved ads live here forever; rejections with notes train every future batch. Push the approved set into the client's Google Drive Ads folder in one click" frame="border-violet-500/25 bg-violet-500/[0.05]">
                 <AssetGallery assets={assets} clientId={clientId} stageId="ads" invalidate={invalidate} canRegenerate exportJob={(data.exportJob ?? null) as StageJob} />
               </StudioBlock>
               <StudioBlock title="Script pipeline" hint="One card per script: approve what gets recorded, mark posted when live" frame="border-violet-500/25 bg-violet-500/[0.05]">
-                <DocBoard docs={[...docsFor("ad_scripts_extra")]} invalidate={invalidate} clientId={clientId} docType="ad_scripts_extra" />
+                <DocBoard docs={[...docsFor("ad_scripts_extra")]} invalidate={invalidate} clientId={clientId} docType="ad_scripts_extra" recordable />
               </StudioBlock>
               <StudioBlock title="Campaign documents" hint="The creative batch spec and the campaign plan from the build" frame="border-violet-500/25 bg-violet-500/[0.05]">
                 <div className="space-y-1.5">
@@ -1427,7 +1539,7 @@ export default function ClientStudio() {
                 hint="Every funnel file lands here: the VSL landing code, the post-booking code, and the recording script for the client. Approve, then mark posted once it's live. Write your own too"
                 frame="border-sky-500/25 bg-sky-500/[0.05]"
               >
-                <DocBoard docs={docsFor("lander_extra")} invalidate={invalidate} clientId={clientId} docType="lander_extra" />
+                <DocBoard docs={docsFor("lander_extra")} invalidate={invalidate} clientId={clientId} docType="lander_extra" recordable />
               </StudioBlock>
             </>
           )}

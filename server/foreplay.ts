@@ -74,6 +74,22 @@ export function formatForeplayStaticAds(ads: ForeplayAd[], cap = 10): string {
   return lines.join("\n\n");
 }
 
+/**
+ * Loose relevance gate: keep an ad when its text shares at least one
+ * meaningful keyword with the niche query (Foreplay's discovery search can
+ * drift to generic info-product ads that pollute the pattern models).
+ */
+export function isRelevantForeplayAd(ad: ForeplayAd, keyword: string): boolean {
+  const stop = new Set(["the", "and", "for", "with", "your", "you", "how", "get", "from"]);
+  const terms = keyword.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !stop.has(t));
+  if (!terms.length) return true;
+  const hay = [ad.name, ad.headline, ad.description, ad.full_transcription, ad.product_category]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return terms.some((t) => hay.includes(t));
+}
+
 /** Shared discovery fetch: run queries, dedupe, sort proven spenders first. */
 async function fetchDiscoveryAds(key: string, queries: string[]): Promise<ForeplayAd[]> {
   const seen = new Set<string>();
@@ -116,12 +132,14 @@ export async function fetchForeplayWinningAds(keyword: string): Promise<string> 
   if (!key) return "";
   const primary = keyword.split(",")[0]?.trim() ?? keyword;
   const base = "https://public.api.foreplay.co/api/discovery/ads";
-  const ads = await fetchDiscoveryAds(key, [
-    `${base}?query=${encodeURIComponent(primary)}&limit=10&order=longest_running`,
-    `${base}?query=${encodeURIComponent(primary)}&limit=8&order=most_relevant`,
-  ]);
+  const ads = (
+    await fetchDiscoveryAds(key, [
+      `${base}?query=${encodeURIComponent(primary)}&limit=10&order=longest_running`,
+      `${base}?query=${encodeURIComponent(primary)}&limit=8&order=most_relevant`,
+    ])
+  ).filter((a) => isRelevantForeplayAd(a, primary));
   if (!ads.length) return "";
-  console.log(`[foreplay] "${primary}": ${ads.length} ads from the library`);
+  console.log(`[foreplay] "${primary}": ${ads.length} relevant ads from the library`);
   return formatForeplayAds(ads);
 }
 
@@ -141,7 +159,9 @@ export async function fetchForeplayStaticAdInspiration(keyword: string): Promise
     `${base}?query=${encodeURIComponent(primary)}&limit=8&order=most_relevant&display_format=image`,
   ]);
   const statics = ads.filter(
-    (a) => (a.display_format ?? "").toLowerCase() === "image" || (!a.full_transcription && (a.image || a.thumbnail))
+    (a) =>
+      ((a.display_format ?? "").toLowerCase() === "image" || (!a.full_transcription && (a.image || a.thumbnail))) &&
+      isRelevantForeplayAd(a, primary)
   );
   if (!statics.length) return "";
   console.log(`[foreplay] "${primary}": ${statics.length} static ads for design inspiration`);

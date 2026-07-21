@@ -240,7 +240,7 @@ export default function TrendTracker() {
         {!effectiveKeyword && !loadingKeywords && (
           <EmptyState
             title="No searches yet"
-            description="Run a Voice Mining search first. Your keywords will show up here."
+            description="Run a market research search first. Your keywords will show up here."
           />
         )}
 

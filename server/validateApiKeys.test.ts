@@ -1,6 +1,8 @@
 /**
  * API Key Validation Tests
  * Validates that all real scraping API keys are configured and working.
+ * These hit LIVE external APIs, so they only run with RUN_LIVE_TESTS=1 —
+ * the default `pnpm test` stays deterministic and offline-safe.
  */
 import { describe, it, expect } from "vitest";
 
@@ -9,7 +11,7 @@ const TWITTER_BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN;
 const NEWS_API_KEY = process.env.NEWS_API_KEY;
 const SERP_API_KEY = process.env.SERP_API_KEY;
 
-describe("API Key Validation", () => {
+describe.skipIf(!process.env.RUN_LIVE_TESTS)("API Key Validation", () => {
   it("YOUTUBE_API_KEY is set", () => {
     expect(YOUTUBE_API_KEY).toBeTruthy();
     expect(YOUTUBE_API_KEY!.length).toBeGreaterThan(10);

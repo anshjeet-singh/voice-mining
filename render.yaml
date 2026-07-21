@@ -11,7 +11,7 @@ services:
     # which fails on Render's read-only /usr/bin.
     buildCommand: corepack pnpm@10.4.1 install && corepack pnpm@10.4.1 build
     startCommand: node dist/index.js
-    healthCheckPath: /
+    healthCheckPath: /api/healthz
     envVars:
       - key: NODE_ENV
         value: production

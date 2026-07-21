@@ -48,7 +48,7 @@ export function AppShell({ children }: AppShellProps) {
             <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-primary" />
             </div>
-            <span className="font-semibold text-foreground tracking-tight">VoiceMining</span>
+            <span className="font-semibold text-foreground tracking-tight">Cashflow Coaches</span>
           </div>
           <div className="space-y-4">
             <p className="text-xs font-semibold text-primary uppercase tracking-widest">What you get</p>
@@ -79,7 +79,7 @@ export function AppShell({ children }: AppShellProps) {
                 size="lg"
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 h-12 text-sm font-medium"
               >
-                Continue with VoiceMining
+                Continue with Cashflow Coaches
               </Button>
               <p className="text-xs text-center text-muted-foreground/60">
                 By continuing, you agree to our Terms of Service and Privacy Policy
@@ -113,7 +113,7 @@ export function AppShell({ children }: AppShellProps) {
           <div className="w-7 h-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
           </div>
-          <span className="font-semibold text-base text-foreground tracking-tight">VoiceMining</span>
+          <span className="font-semibold text-base text-foreground tracking-tight">Cashflow Coaches</span>
         </button>
 
         {/* New Search CTA */}

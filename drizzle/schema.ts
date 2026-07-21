@@ -78,6 +78,8 @@ export const clients = mysqlTable("clients", {
   youtubeHandle: varchar("youtubeHandle", { length: 200 }),
   /** An existing report linked at onboarding instead of running fresh research. */
   linkedReportId: int("linkedReportId"),
+  /** Public token for the client's recording queue page (/record/:token). */
+  recordingToken: varchar("recordingToken", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -132,6 +134,19 @@ export const clientRefImages = mysqlTable("client_ref_images", {
   note: varchar("note", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+/** The recording queue: script documents the operator sent to the client to
+ *  record. The client sees them on the public /record/:token page and marks
+ *  each one recorded — replaces the Notion to-do handoff. */
+export const clientRecordingItems = mysqlTable("client_recording_items", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  docId: int("docId").notNull(),
+  recordedAt: timestamp("recordedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ClientRecordingItem = typeof clientRecordingItems.$inferSelect;
 
 export type ClientAsset = typeof clientAssets.$inferSelect;
 export type InsertClientAsset = typeof clientAssets.$inferInsert;

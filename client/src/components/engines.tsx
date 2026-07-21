@@ -530,15 +530,22 @@ function AssetGallery({
   );
 }
 
-/** Style categories from the reference-ads catalog (Ad Creative System). */
+/**
+ * Style categories: the reference-ads catalog (Ad Creative System) plus the
+ * phone-native formats the static-ad-builder skill renders from its own spec
+ * (calendar, reminders, email-inbox — proven with Trent, no catalog image
+ * needed). Formats the operator has graded as weak renders (napkin, poster,
+ * tombstone, photo-chips) are QUARANTINED: never in a default mix, explicit
+ * selection only, and the render rules hold them to a photoreal bar.
+ */
 export const AD_STYLE_CATEGORIES = [
   "notes-light", "notes-dark", "imessage", "chat-bubbles", "discord-win", "tweet",
-  "reddit-thread", "chatgpt-ui", "claude-ui", "question-sticker", "photo-caption-chips",
-  "search-bar", "occupation-callout", "big-text-highlight", "offer-poster", "whiteboard",
-  "napkin-handwriting", "two-panel-cartoon", "old-vs-new-split", "ui-vs-ui-split",
+  "reddit-thread", "chatgpt-ui", "claude-ui", "calendar", "reminders", "email-inbox",
+  "question-sticker", "search-bar", "occupation-callout", "big-text-highlight",
+  "whiteboard", "two-panel-cartoon", "old-vs-new-split", "ui-vs-ui-split",
   "comparison-table", "chart-comparison", "three-step-infographic", "flywheel-diagram",
-  "tombstone-shock", "lead-magnet-mock", "dr-workshop", "dr-results-checklist",
-  "dr-proof-screenshot",
+  "lead-magnet-mock", "dr-workshop", "dr-results-checklist", "dr-proof-screenshot",
+  "photo-caption-chips", "offer-poster", "napkin-handwriting", "tombstone-shock",
 ] as const;
 
 /** The on-demand engines: what each generates and how the request is composed. */
@@ -1052,6 +1059,7 @@ export function EngineCard({
   clientId,
   invalidate,
   avatars = [],
+  refImages,
 }: {
   engine: (typeof ENGINES)[number];
   job: StageJob;
@@ -1059,6 +1067,8 @@ export function EngineCard({
   invalidate: () => void;
   /** Sub-avatars parsed from the approved ICP doc: name + who-they-are hint. */
   avatars?: Array<{ name: string; hint?: string }>;
+  /** When set, the proof-image uploader renders inside Add additional info (statics engine). */
+  refImages?: RefImageMeta[];
 }) {
   const [count, setCount] = useState(engine.defaultCount);
   const [styles, setStyles] = useState<string[]>([]);
@@ -1188,7 +1198,7 @@ export function EngineCard({
               >
                 {showMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 Add additional info
-                {!showMore && (styles.length > 0 || notes.trim() || addons.length > 0) && (
+                {!showMore && (styles.length > 0 || notes.trim() || addons.length > 0 || (refImages?.length ?? 0) > 0) && (
                   <span className="text-primary">· set</span>
                 )}
               </button>
@@ -1214,6 +1224,15 @@ export function EngineCard({
                           </button>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {refImages && (
+                    <div className="mb-2.5">
+                      <p className="text-[11px] font-medium text-muted-foreground mb-1.5">
+                        Proof images (optional): client cutouts, approval screenshots, testimonials — composited into the renders instead of placeholders
+                      </p>
+                      <RefImagePanel clientId={clientId} images={refImages} invalidate={invalidate} />
                     </div>
                   )}
 
@@ -1524,6 +1543,140 @@ function printPdf(title: string, md: string) {
   setTimeout(() => w.print(), 350);
 }
 
+/** One editable slot detected in a funnel-page code block. */
+interface TemplateField {
+  key: string;
+  kind: "wcfg" | "token";
+  value: string;
+  /** The template's own inline comment for this key, as the field hint. */
+  hint?: string;
+  /** Original literal was an unquoted number. */
+  numeric?: boolean;
+}
+
+/** Pull the editable slots out of a page's code: WCFG keys + [TOKEN]s. */
+export function parseTemplateFields(html: string): TemplateField[] {
+  const fields: TemplateField[] = [];
+  const seen = new Set<string>();
+  const wcfg = html.match(/window\.WCFG\s*=\s*\{([\s\S]*?)\n\};/);
+  if (wcfg) {
+    const re = /(\w+)\s*:\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|(-?\d+))\s*,?[ \t]*(?:\/\*\s*([\s\S]*?)\s*\*\/)?/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(wcfg[1]))) {
+      const [, key, sq, dq, num, comment] = m;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      fields.push({
+        key,
+        kind: "wcfg",
+        value: num ?? sq ?? dq ?? "",
+        numeric: num !== undefined,
+        hint: comment?.replace(/\s+/g, " ").slice(0, 120),
+      });
+    }
+  }
+  for (const tok of Array.from(new Set(html.match(/\[[A-Z][A-Z0-9 ./'&-]{2,44}\]/g) ?? []))) {
+    fields.push({ key: tok, kind: "token", value: "" });
+  }
+  return fields;
+}
+
+/** Apply the operator's fills: WCFG values swapped in place, tokens replaced. */
+export function applyTemplateFields(html: string, fields: TemplateField[], vals: Record<string, string>): string {
+  let out = html;
+  const wcfg = out.match(/window\.WCFG\s*=\s*\{[\s\S]*?\n\};/);
+  if (wcfg) {
+    let block = wcfg[0];
+    for (const f of fields) {
+      if (f.kind !== "wcfg") continue;
+      const v = vals[f.key];
+      if (v === undefined || v === f.value) continue;
+      const literal = f.numeric && /^-?\d+$/.test(v.trim()) ? v.trim() : `'${v.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+      block = block.replace(new RegExp(`(\\b${f.key}\\s*:\\s*)(?:'(?:[^'\\\\]|\\\\.)*'|"(?:[^"\\\\]|\\\\.)*"|-?\\d+)`), `$1${literal}`);
+    }
+    out = out.replace(wcfg[0], block);
+  }
+  for (const f of fields) {
+    if (f.kind !== "token") continue;
+    const v = (vals[f.key] ?? "").trim();
+    if (v) out = out.split(f.key).join(v);
+  }
+  return out;
+}
+
+/**
+ * Fill-the-template panel: every editable slot in the page code (the WCFG
+ * config block, bracket tokens) as a plain form. The operator pastes video
+ * links and images HERE and copies GHL-ready code — never edits code by hand.
+ */
+function TemplateFiller({
+  html,
+  filename,
+}: {
+  html: string;
+  filename: string;
+}) {
+  const links = useContext(LinksContext);
+  const fields = useMemo(() => parseTemplateFields(html), [html]);
+  // Saved client links prefill matching [TOKEN] fields automatically.
+  const [vals, setVals] = useState<Record<string, string>>(() => {
+    const v: Record<string, string> = {};
+    for (const f of fields) v[f.key] = f.kind === "token" ? (links[f.key] ?? "") : f.value;
+    return v;
+  });
+  const [open, setOpen] = useState(false);
+  const filled = useMemo(() => applyTemplateFields(html, fields, vals), [html, fields, vals]);
+  const filledCount = fields.filter((f) => (vals[f.key] ?? "").trim() && (vals[f.key] ?? "") !== (f.kind === "wcfg" ? "" : f.key)).length;
+
+  if (!fields.length) return <HtmlPreview html={html} filename={filename} />;
+  return (
+    <div className="space-y-2">
+      <HtmlPreview html={filled} filename={filename} />
+      <div className="rounded-lg border border-border/50 bg-background/40 p-3">
+        <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 w-full text-left">
+          {open ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+          <span className="text-xs font-semibold text-foreground">Fill the template</span>
+          <span className="text-[10px] text-muted-foreground">
+            · paste videos, images, and links here, then copy GHL-ready code · {filledCount}/{fields.length} set
+          </span>
+        </button>
+        {open && (
+          <div className="mt-3 space-y-2">
+            {fields.map((f) => (
+              <div key={f.key} className="flex items-start gap-2">
+                <span className="w-40 flex-shrink-0 text-[11px] font-mono text-muted-foreground truncate pt-1.5" title={f.hint || f.key}>
+                  {f.key}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <input
+                    value={vals[f.key] ?? ""}
+                    onChange={(e) => setVals((v) => ({ ...v, [f.key]: e.target.value }))}
+                    placeholder={f.hint || (f.kind === "token" ? "Paste the URL or value..." : "")}
+                    className="w-full rounded-lg border border-border/50 bg-background/50 px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50"
+                  />
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(filled);
+                  toast.success("Filled code copied — paste it into a GHL custom-code block");
+                }}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 text-xs"
+              >
+                <Copy className="w-3 h-3 mr-1.5" />
+                Copy GHL-ready code
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Shared read view for ANY document: renders the HTML preview if present, then
  * the doc section by section, with a per-section Copy and PDF button that appear
@@ -1534,7 +1687,7 @@ export function DocSections({ content, title }: { content: string; title: string
   const sections = useMemo(() => splitSections(stripHtmlBlock(content)), [content]);
   return (
     <div className="space-y-3">
-      {html && <HtmlPreview html={html} filename={title} />}
+      {html && <TemplateFiller html={html} filename={title} />}
       <div className="max-h-96 overflow-y-auto rounded-lg bg-card/40 p-3 space-y-4">
         {sections.map((s, i) => {
           const body = s.text.replace(/^#{1,3}\s+.+\n?/, "").trim();
@@ -1576,6 +1729,7 @@ export function DocBoard({
   clientId,
   docType,
   accent = "primary",
+  recordable = false,
 }: {
   docs: ClientDoc[];
   invalidate: () => void;
@@ -1583,6 +1737,8 @@ export function DocBoard({
   clientId?: number;
   docType?: string;
   accent?: string;
+  /** Cards get a "To recording" action: one click puts the script on the client's recording list. */
+  recordable?: boolean;
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
@@ -1604,6 +1760,13 @@ export function DocBoard({
 
   const setStatus = trpc.clients.setDocumentStatus.useMutation({
     onSuccess: () => invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
+  const sendToRecording = trpc.clients.sendToRecording.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success("On the client's recording list");
+    },
     onError: (err) => toast.error(err.message),
   });
   const del = trpc.clients.deleteDocument.useMutation({
@@ -1734,6 +1897,16 @@ export function DocBoard({
                           </button>
                         )}
                         <span className="flex-1" />
+                        {recordable && (
+                          <button
+                            disabled={sendToRecording.isPending}
+                            onClick={() => sendToRecording.mutate({ docId: doc.id })}
+                            className="h-5 px-1.5 rounded text-[10px] font-medium text-muted-foreground hover:text-foreground"
+                            title="Put this script on the client's recording list"
+                          >
+                            To recording
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setAiId(doc.id);

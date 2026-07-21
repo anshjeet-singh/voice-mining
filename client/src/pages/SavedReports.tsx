@@ -73,7 +73,7 @@ export default function SavedReports() {
             </div>
             <h3 className="text-sm font-semibold text-foreground mb-1">No reports yet</h3>
             <p className="text-xs text-muted-foreground mb-4">
-              Complete a voice mining search and generate your first report.
+              Complete a research search and generate your first report.
             </p>
             <Button
               size="sm"

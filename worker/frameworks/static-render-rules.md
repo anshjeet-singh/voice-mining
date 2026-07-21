@@ -57,6 +57,19 @@ The single most important rule in this file. The operator's verdict on batches t
 - VIEW EVERY IMAGE in the operator's winning-ad library BEFORE building the first ad: '/Users/anshjeetsingh/Library/CloudStorage/GoogleDrive-anshjeets@gmail.com/My Drive/Cashflow Coaches/Ad Creative System/reference-ads/' (Read tool, all of them). These are the bar: match their look, text density, spacing, and CTA treatment. Also view the skill's reference screenshots and any previously APPROVED batch outputs on Drive (Cashflow Coaches/<Client>/Ads/). Calibrate on pictures, not just prose specs.
 - Every concept that the spec says ships in both modes ships in both modes (Notes: light AND dark).
 
+## 8. Quarantined formats + the photoreal-or-swap rule (operator verdicts, 2026-07-21)
+
+The operator batch-graded four formats as "absolutely horrible" renders. They are QUARANTINED: NEVER include them in a default/diverse mix; build them ONLY when the generation request selects them by name, and then hold them to the bars below. If the render cannot hit the bar, SWAP to a strong native family and note the swap in the doc.
+
+- **napkin-handwriting** — failed because it "does not look like a napkin at all." The base MUST be a photoreal napkin/paper texture (genimage an actual napkin on a table, or a real photo), with real shadow and paper grain; marker text follows the napkin's perspective. Flat white rectangles with handwriting font = automatic fail.
+- **offer-poster** — failed for incoherent messaging. A poster carries ONE claim, ONE offer, ONE CTA in a clean hierarchy; if the copy needs three reads to parse, rewrite before rendering. Clone the exact catalog reference's layout; do not improvise poster design.
+- **tombstone-shock** — failed for "very weird contrast." Match the reference's palette and lighting exactly; no glowing text on dark gradients that the reference does not have. If the scene needs illustration the pipeline can't produce cleanly, swap.
+- **photo-caption-chips** — falls flat without a REAL photographic base. Use a real client photo or a photoreal genimage environment (never a person); caption chips composited in the platform's real chip style. Illustrated/cartoon backgrounds fail the native test for this format.
+
+These four are review-first: on any batch containing them, VIEW those renders against their reference FIRST and rebuild before touching the rest of QA.
+
+Strong native formats WITHOUT catalog images — **calendar, reminders, email-inbox** — are first-class: clone the static-ad-builder skill's own format spec + reference screenshots (native-formats.md), same chrome-compositing rules. The calendar format is operator-approved (Trent's batch).
+
 ## Where this maps in our pipeline
 
 - Ads stage, ad_statics deliverable: this file is the render contract. The ad-script-system framework governs the ANGLES and COPY of statics; this file governs the PIXELS.

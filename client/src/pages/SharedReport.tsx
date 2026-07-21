@@ -100,7 +100,7 @@ export default function SharedReport() {
           <div className="w-7 h-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
           </div>
-          <span className="font-semibold text-foreground tracking-tight">VoiceMining</span>
+          <span className="font-semibold text-foreground tracking-tight">Cashflow Coaches</span>
         </div>
       </header>
 
@@ -111,7 +111,7 @@ export default function SharedReport() {
             <div className="flex items-center gap-2 mb-1">
               <FileText className="w-4 h-4 text-primary" />
               <span className="text-xs text-primary font-medium uppercase tracking-wider">
-                Voice Mining Report
+                Market Research Report
               </span>
             </div>
             <h1 className="text-2xl font-semibold text-foreground tracking-tight">{report.name}</h1>

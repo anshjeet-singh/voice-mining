@@ -769,7 +769,7 @@ export default function ClientDetail() {
             <div className="flex items-center gap-3">
               <StageMarker n={2} state={stageState(researchDone, onboardingDone)} />
               <div className="flex-1">
-                <h2 className="text-sm font-semibold text-foreground">Voice Mining Research</h2>
+                <h2 className="text-sm font-semibold text-foreground">Market Research</h2>
                 <p className="text-xs text-muted-foreground">
                   Mine the market's language, or link a report you already have
                 </p>
