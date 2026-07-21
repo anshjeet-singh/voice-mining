@@ -40,3 +40,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-19 · job 600001 · client: Trent Kus -->
 - When the offer has any real up-front component, the shipped #1 headline's "without" clause must be pay-MODEL-accurate ("without paying my real fee until the money lands"), never "without paying a dime in fees" or any "no fees at all" phrasing. This is a systemic accuracy and financial-services-review rule, not one client's taste: a false zero-cost "without" clause is inaccurate and burns trust with a burned buyer. The headline machine should generate the bank already compliant on the "without" clause, rather than shipping an inaccurate #1 and relying on a later compliance pass to catch it.
+
+<!-- 2026-07-21 · job 720002 · client: Ibby -->
+- For a warm About-page VSL capped at 420 to 480 words, the full 8-beat arc (hook, pain, alternatives, mechanism, authority, stack, proof, close) plus a mandatory upfront fee disclosure and a named no-guarantee guarantee runs long by default. State that the fee disclosure and guarantee each get one compressed sentence inside the stack/close beats, not their own beat, so the disclosure never pushes the script past the word cap.
