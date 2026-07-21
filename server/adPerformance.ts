@@ -104,6 +104,9 @@ export interface AdSpec {
   angle?: string;
   awareness?: string;
   hookCategory?: string;
+  copyPrimary?: string;
+  copyHeadline?: string;
+  copyDescription?: string;
 }
 
 const SPEC_LABELS: Array<[keyof AdSpec, RegExp]> = [
@@ -113,6 +116,9 @@ const SPEC_LABELS: Array<[keyof AdSpec, RegExp]> = [
   ["angle", /^\*{0,2}angle\*{0,2}\s*[:—-]\s*(.+)$/i],
   ["awareness", /^\*{0,2}awareness(?:\s+level)?\*{0,2}\s*[:—-]\s*(.+)$/i],
   ["hookCategory", /^\*{0,2}hook(?:\s+category|\s+archetype)?\*{0,2}\s*[:—-]\s*(.+)$/i],
+  ["copyPrimary", /^\*{0,2}primary\s+text\*{0,2}\s*[:—-]\s*(.+)$/i],
+  ["copyHeadline", /^\*{0,2}headline\*{0,2}\s*[:—-]\s*(.+)$/i],
+  ["copyDescription", /^\*{0,2}description\*{0,2}\s*[:—-]\s*(.+)$/i],
 ];
 
 /**
@@ -129,7 +135,7 @@ export function parseAdSpecs(doc: string, filenames: string[]): Record<string, A
     .sort((a, b) => a.at - b.at);
   for (let i = 0; i < positions.length; i++) {
     const { f, at } = positions[i];
-    const end = i + 1 < positions.length ? positions[i + 1].at : Math.min(doc.length, at + 4000);
+    const end = i + 1 < positions.length ? positions[i + 1].at : Math.min(doc.length, at + 6000);
     const chunk = doc.slice(at, end);
     const spec: AdSpec = {};
     for (const rawLine of chunk.split("\n")) {
@@ -137,7 +143,7 @@ export function parseAdSpecs(doc: string, filenames: string[]): Record<string, A
       for (const [key, re] of SPEC_LABELS) {
         if (spec[key]) continue;
         const m = line.match(re);
-        if (m) spec[key] = m[1].replace(/\*+/g, "").trim().slice(0, 380);
+        if (m) spec[key] = m[1].replace(/\*+/g, "").trim().slice(0, key === "copyPrimary" ? 980 : 380);
       }
     }
     if (Object.keys(spec).length) out[f] = spec;

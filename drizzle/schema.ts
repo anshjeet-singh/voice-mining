@@ -130,6 +130,10 @@ export const clientAssets = mysqlTable("client_assets", {
   angle: varchar("angle", { length: 400 }),
   awareness: varchar("awareness", { length: 50 }),
   hookCategory: varchar("hookCategory", { length: 100 }),
+  // ── Meta upload copy, parsed from the batch spec: the ad ships WITH its words ──
+  copyPrimary: varchar("copyPrimary", { length: 1000 }),
+  copyHeadline: varchar("copyHeadline", { length: 200 }),
+  copyDescription: varchar("copyDescription", { length: 200 }),
   // ── Independent QA pass (graded before the operator ever sees the batch) ──
   qaScore: int("qaScore"),
   qaNote: varchar("qaNote", { length: 500 }),

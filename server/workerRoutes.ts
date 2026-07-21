@@ -332,15 +332,23 @@ export function registerWorkerRoutes(app: Express) {
         return res.json({ job: null });
       }
 
-      // Drive export: not a Claude job. Ship the approved images; the worker
-      // resolves the client's Drive folder and copies them in.
+      // Drive export: not a Claude job. Ship the approved images WITH their
+      // Meta upload copy; the worker resolves the client's Drive folder,
+      // copies the PNGs in, and writes the ready-to-upload copy sheet.
       if (job.type === "export_drive") {
         const approved = (await getClientAssetsMeta(job.clientId)).filter((a) => a.status === "approved");
         const images = await Promise.all(
           approved.map(async (a) => {
             const full = await getClientAssetById(a.id);
             return full && /^image\//.test(full.mime)
-              ? { filename: full.filename, mime: full.mime, base64: full.data }
+              ? {
+                  filename: full.filename,
+                  mime: full.mime,
+                  base64: full.data,
+                  copyPrimary: a.copyPrimary ?? "",
+                  copyHeadline: a.copyHeadline ?? "",
+                  copyDescription: a.copyDescription ?? "",
+                }
               : null;
           })
         );

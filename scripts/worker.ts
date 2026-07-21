@@ -462,7 +462,12 @@ async function runJob(job: ClaimedJob) {
 }
 
 /** Copy a client's approved static ads into their Google Drive Ads folder. */
-type ExportJob = { id: number; type: "export_drive"; client: { name: string }; exportImages: Array<{ filename: string; mime: string; base64: string }> };
+type ExportJob = {
+  id: number;
+  type: "export_drive";
+  client: { name: string };
+  exportImages: Array<{ filename: string; mime: string; base64: string; copyPrimary?: string; copyHeadline?: string; copyDescription?: string }>;
+};
 async function runExport(job: ExportJob) {
   console.log(`[job ${job.id}] export_drive — ${job.exportImages.length} approved ads for ${job.client.name}`);
   const finder = path.join(os.homedir(), "ad-factory", "find-client.sh");
@@ -479,7 +484,17 @@ async function runExport(job: ExportJob) {
     await fs.writeFile(path.join(dest, img.filename), Buffer.from(img.base64, "base64"));
     count++;
   }
-  console.log(`[job ${job.id}] exported ${count} ads -> ${dest}`);
+  // The copy sheet: filename + primary text + headline + description, ready
+  // to work from during Ads Manager upload. The ads ship WITH their words.
+  const csvEsc = (s: string) => `"${(s ?? "").replace(/"/g, '""')}"`;
+  const rows = job.exportImages
+    .filter((i) => /^image\//.test(i.mime))
+    .map((i) => [i.filename, i.copyPrimary ?? "", i.copyHeadline ?? "", i.copyDescription ?? ""].map(csvEsc).join(","));
+  await fs.writeFile(
+    path.join(dest, "meta_upload_copy.csv"),
+    ["filename,primary_text,headline,description", ...rows].join("\n")
+  );
+  console.log(`[job ${job.id}] exported ${count} ads + copy sheet -> ${dest}`);
   await api("export-done", { jobId: job.id, ok: true, count, path: dest }).catch(() => {});
 }
 

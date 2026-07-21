@@ -47,6 +47,9 @@ describe("parseAdSpecs", () => {
       "- Angle: right order beats big score",
       "- Awareness: problem aware",
       "- Hook category: contrarian-claim",
+      "- Primary text: I make good money. I still got declined. The order was the problem, not me. Join the free community below.",
+      "- Headline: Right Order = Fundable",
+      "- Description: Free community, no card",
       "QA: viewed against reference, passed",
       "## Ad 2 — ibby_ad02_tweet.png",
       "**Format**: tweet",
@@ -59,6 +62,9 @@ describe("parseAdSpecs", () => {
       angle: "right order beats big score",
       awareness: "problem aware",
       hookCategory: "contrarian-claim",
+      copyPrimary: "I make good money. I still got declined. The order was the problem, not me. Join the free community below.",
+      copyHeadline: "Right Order = Fundable",
+      copyDescription: "Free community, no card",
     });
     expect(specs["ibby_ad02_tweet.png"]).toEqual({ format: "tweet" });
   });

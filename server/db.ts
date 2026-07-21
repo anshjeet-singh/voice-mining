@@ -815,6 +815,9 @@ export async function getClientAssetsMeta(clientId: number) {
       angle: clientAssets.angle,
       awareness: clientAssets.awareness,
       hookCategory: clientAssets.hookCategory,
+      copyPrimary: clientAssets.copyPrimary,
+      copyHeadline: clientAssets.copyHeadline,
+      copyDescription: clientAssets.copyDescription,
       qaScore: clientAssets.qaScore,
       qaNote: clientAssets.qaNote,
       metaSpend: clientAssets.metaSpend,
@@ -838,10 +841,20 @@ export async function setAssetMetaResults(
   await db.update(clientAssets).set({ ...meta, metaImportedAt: new Date() }).where(eq(clientAssets.id, id));
 }
 
-/** Stamp parsed DNA (format/reference/avatar/angle/awareness/hook) onto an ad. */
+/** Stamp parsed DNA + Meta upload copy onto an ad. */
 export async function setAssetSpec(
   id: number,
-  spec: Partial<{ format: string; reference: string; subAvatar: string; angle: string; awareness: string; hookCategory: string }>
+  spec: Partial<{
+    format: string;
+    reference: string;
+    subAvatar: string;
+    angle: string;
+    awareness: string;
+    hookCategory: string;
+    copyPrimary: string;
+    copyHeadline: string;
+    copyDescription: string;
+  }>
 ): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

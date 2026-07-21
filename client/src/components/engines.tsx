@@ -219,6 +219,10 @@ interface ClientAssetMeta {
   /** Ad DNA parsed from the batch spec. */
   format?: string | null;
   hookCategory?: string | null;
+  /** Meta upload copy parsed from the batch spec: the ad's words. */
+  copyPrimary?: string | null;
+  copyHeadline?: string | null;
+  copyDescription?: string | null;
   /** Real Meta results imported from Ads Manager. */
   metaSpend?: number | null;
   metaCtr?: number | null;
@@ -695,6 +699,25 @@ function ReviewLightbox({
             {asset.status}
           </span>
         </div>
+        {asset.copyPrimary && (
+          <div className="mt-2 flex items-start gap-2 rounded-lg bg-card/60 px-2.5 py-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] text-foreground/90 line-clamp-2" title={asset.copyPrimary}>
+                {asset.copyPrimary}
+              </p>
+              {(asset.copyHeadline || asset.copyDescription) && (
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {[asset.copyHeadline, asset.copyDescription].filter(Boolean).join(" · ")}
+                </p>
+              )}
+            </div>
+            <CopyButton
+              text={[asset.copyPrimary, asset.copyHeadline, asset.copyDescription].filter(Boolean).join("\n")}
+              label="Copy ad copy"
+              className="flex-shrink-0 pt-0.5"
+            />
+          </div>
+        )}
         {rejecting ? (
           <div className="mt-2 flex items-center gap-2">
             <input
