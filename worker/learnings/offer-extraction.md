@@ -17,3 +17,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-16 · job 510001 · client: Veda Ray -->
 - When a rung ships as a value stack, the writer must arithmetic-check that the printed "Total Value" equals the actual sum of the itemized dollar anchors before shipping. A mis-summed total (easy to introduce when line items get edited) is a direct credibility defect on the exact number the offer is anchored on. State that the stack total is a computed sum to be verified, not a hand-typed anchor.
+
+<!-- 2026-07-21 · job 720001 · client: Ibby -->
+- The canonical value-stack swipe line, "🏷️ Total Value: $X — For Just $Y", renders with an em dash in both the exemplar Offers docs and the skool-paid-about-swipe framework examples. This directly violates the standing "NO em dashes anywhere" formatting rule, so a writer reproducing the swipe shape faithfully will ship a rule-breaking dash on the single most-scanned line of the offer, on every client. State in the value-stack spec that the Total Value line uses a comma (or colon), never an em dash, so the swipe template and the formatting rule stop contradicting each other.
