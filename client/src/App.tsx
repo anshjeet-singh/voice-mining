@@ -6,7 +6,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { CommandPaletteProvider } from "./components/CommandPalette";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
@@ -32,7 +31,8 @@ function Router() {
       >
         <ErrorBoundary>
           <Switch>
-            <Route path="/" component={Home} />
+            {/* No public landing page: this app is the operator's back end. */}
+            <Route path="/" component={Dashboard} />
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/clients" component={Clients} />
             <Route path="/clients/:id/studio" component={ClientStudio} />

@@ -234,6 +234,9 @@ function AssetGallery({
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [rejectingAsset, setRejectingAsset] = useState<number | null>(null);
   const [assetFeedback, setAssetFeedback] = useState("");
+  const [varyingAsset, setVaryingAsset] = useState<number | null>(null);
+  const [varyCount, setVaryCount] = useState(5);
+  const [varyNote, setVaryNote] = useState("");
   const exporting = exportJob?.status === "queued" || exportJob?.status === "running";
   const exportToDrive = trpc.clients.exportApprovedToDrive.useMutation({
     onSuccess: ({ count }) => {
@@ -258,6 +261,31 @@ function AssetGallery({
     },
     onError: (err) => toast.error(err.message),
   });
+
+  // Variations of one ad the operator likes: a more_statics batch that clones
+  // the source ad's winning DNA (angle, copy idea, energy) across new takes.
+  const queueVariations = trpc.clients.generateStage.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setVaryingAsset(null);
+      setVaryNote("");
+      toast.success("Variations queued: new takes on that ad's winning DNA");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const requestVariations = (a: ClientAssetMeta) => {
+    const feedback = [
+      `VARIATIONS of the ad '${a.filename}': generate EXACTLY ${varyCount} NEW static ads that are variations of that exact ad.`,
+      `First open and VIEW '${a.filename}' (it is in the client's ad library: the latest Drive AdsBatch output or the approved exports) and read its spec block in the ads deliverable doc.`,
+      `KEEP its winning DNA: the angle, the core copy idea and voice, the offer, and the energy. That level of copywriting is the bar for every variation.`,
+      `VARY one or two dimensions per variation: hook phrasing, visual format (a different reference), sub-avatar aim, or the proof beat. Each variation must read as a fresh creative to a cold feed, never a near-duplicate of the source or of each other.`,
+      varyNote.trim() ? `Operator direction: ${varyNote.trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    queueVariations.mutate({ clientId, stage: "more_statics", feedback });
+  };
 
   const rejected = assets.filter((a) => a.status === "rejected");
   const approved = assets.filter((a) => a.status === "approved");
@@ -396,7 +424,61 @@ function AssetGallery({
                   <X className="w-2.5 h-2.5" />
                   {a.status === "rejected" ? "Rejected" : "Reject"}
                 </button>
+                <button
+                  disabled={queueVariations.isPending}
+                  title="Generate variations of this ad"
+                  onClick={() => {
+                    setVaryingAsset(varyingAsset === a.id ? null : a.id);
+                    setRejectingAsset(null);
+                  }}
+                  className={`flex-1 h-6 rounded text-[10px] font-medium flex items-center justify-center gap-1 transition-colors ${
+                    varyingAsset === a.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card/60 text-muted-foreground hover:bg-primary/20 hover:text-primary"
+                  }`}
+                >
+                  <Sparkles className="w-2.5 h-2.5" />
+                  Vary
+                </button>
               </div>
+              {varyingAsset === a.id && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1">
+                    {[3, 5, 10].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setVaryCount(n)}
+                        className={`flex-1 h-6 rounded text-[10px] font-medium transition-colors ${
+                          varyCount === n
+                            ? "bg-primary/15 text-primary border border-primary/40"
+                            : "bg-card/60 text-muted-foreground border border-transparent hover:text-foreground"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  <Textarea
+                    placeholder="Optional: what to keep, what to push (hook, format, avatar...)"
+                    value={varyNote}
+                    onChange={(e) => setVaryNote(e.target.value)}
+                    className="min-h-16 text-[11px]"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={queueVariations.isPending}
+                    onClick={() => requestVariations(a)}
+                    className="w-full h-6 text-[10px] bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    {queueVariations.isPending ? (
+                      <Loader2 className="w-2.5 h-2.5 mr-1 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-2.5 h-2.5 mr-1" />
+                    )}
+                    Queue {varyCount} variations
+                  </Button>
+                </div>
+              )}
               {rejectingAsset === a.id && (
                 <div className="space-y-1.5">
                   <Textarea

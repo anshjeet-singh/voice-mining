@@ -38,7 +38,7 @@ import { composeMineRequest, harvestCompetitorSources } from "./competitorSource
 import { normalizeHooks, normalizeInsights } from "@shared/reportContent";
 import type { InsightList } from "../drizzle/schema";
 import { ON_DEMAND_TYPES, stageAllDocTypes, stageContract, stagePromptSpec, type FunnelType } from "./stages";
-import { fetchForeplayWinningAds } from "./foreplay";
+import { fetchForeplayWinningAds, fetchForeplayStaticAdInspiration } from "./foreplay";
 
 /** True when the request carries the correct worker bearer token. */
 export function isWorkerAuthorized(authHeader: string | undefined, secret: string): boolean {
@@ -351,6 +351,14 @@ export function registerWorkerRoutes(app: Express) {
         const foreplay = await fetchForeplayWinningAds(client.niche).catch(() => "");
         if (foreplay) {
           research = `${research}\n\n# FOREPLAY WINNING ADS IN THIS NICHE (live, longest-running: proven spenders. Model the angles and proof types, never copy the words)\n\n${foreplay}`;
+        }
+        // Statics jobs additionally get the winning IMAGE creatives with URLs:
+        // live design references the render session views and can clone.
+        if (job.type === "ads" || job.type === "more_statics") {
+          const foreplayStatics = await fetchForeplayStaticAdInspiration(client.niche).catch(() => "");
+          if (foreplayStatics) {
+            research = `${research}\n\n# FOREPLAY WINNING STATIC ADS IN THIS NICHE (live image creatives. VIEW each IMAGE url to study layout and composition; any may serve as a batch reference per the static-render-rules clone doctrine. Never copy their words)\n\n${foreplayStatics}`;
+          }
         }
         assetReviews = (await getClientAssetsMeta(job.clientId))
           .filter((a) => a.status !== "pending")

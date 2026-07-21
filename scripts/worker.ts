@@ -253,6 +253,24 @@ function planShards(job: ClaimedJob, output: StageOutputSpec): string[] | null {
     return shards;
   }
 
+  // Case 3: the fresh onboarding ads batch (15 statics, no feedback) — same
+  // split, or a 15-static single session becomes the slowest run we have
+  if (job.type === "ads" && output.docType === "ad_statics" && !fb.trim()) {
+    const total = 15;
+    const per = 5;
+    const k = Math.ceil(total / per);
+    const shards: string[] = [];
+    for (let i = 0; i < k; i++) {
+      const start = i * per + 1;
+      const end = Math.min((i + 1) * per, total);
+      const n = end - start + 1;
+      shards.push(
+        `PARALLEL SHARD ${i + 1} of ${k} of the ${total}-ad batch: other sessions are building the rest. Build ONLY ads ${start}-${end} (EXACTLY ${n} ads this session; the contract's total of ${total} is the COMBINED batch, not yours). Number your ads ${start}-${end} and use that range in filenames so shards never collide. To keep the combined batch diverse, split the eligible reference catalog categories alphabetically into ${k} contiguous slices and clone ONLY from slice ${i + 1}; the batch-wide spread rules (sub-avatars, hook categories, no repeated references) then hold across the union. Produce ONLY your ${n} ads and doc entries ONLY for them.`
+      );
+    }
+    return shards;
+  }
+
   return null;
 }
 

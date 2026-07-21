@@ -11,21 +11,41 @@ describe("stage registry", () => {
     expect(STAGES.ads.requires).toBe("emails");
   });
 
-  it("slims the onboarding ads stage to 10 community statics", () => {
+  it("ships 15 community statics + 10 video ad scripts from the onboarding ads stage", () => {
     const call = stagePromptSpec("ads", "call")!;
-    // One doc: 10 rendered statics that sell the free-community join
-    expect(call.outputs.map((o) => o.docType)).toEqual(["ad_statics"]);
-    expect(call.outputs[0].description).toContain("EXACTLY 10 NATIVE STATIC ADS");
+    // Two docs: 15 rendered statics + the 10 video ad scripts
+    expect(call.outputs.map((o) => o.docType)).toEqual(["ad_statics", "ad_video_scripts"]);
+    expect(call.outputs[0].description).toContain("EXACTLY 15 NATIVE STATIC ADS");
     expect(call.outputs[0].description).toContain("FULLY RENDERED");
     expect(call.outputs[0].description).toContain("[COMMUNITY LINK]");
     expect(call.outputs[0].description).toContain("./assets/");
     expect(call.outputs[0].description).toContain("VISUAL QA LOOP");
     expect(call.outputs[0].description).toContain("REBUILD ONLY");
+    // Design variety is a hard gate: no repeated references, spread the catalog
+    expect(call.outputs[0].description).toContain("DESIGN VARIETY IS A HARD GATE");
+    expect(call.outputs[0].description).toContain("FOREPLAY WINNING STATIC ADS");
+    // The video scripts doc: word for word, Foreplay transcripts as pattern models
+    expect(call.outputs[1].description).toContain("EXACTLY 10 full-length paid video ad scripts");
+    expect(call.outputs[1].description).toContain("WORD FOR WORD");
+    expect(call.outputs[1].description).toContain("FOREPLAY WINNING ADS");
+    expect(call.outputs[1].description).toContain("B-ROLL");
+    expect(call.outputs[1].description).toContain("REBUILD ONLY");
     expect(call.extraInstructions).toContain("[COMMUNITY LINK]");
     expect(call.childSkills.join()).toContain("static-ad-builder");
+    expect(call.childSkills.join()).toContain("ad-script-writer");
     // The old full-batch docTypes are retired and still get swept
     expect(stageAllDocTypes("ads")).toContain("ad_scripts");
     expect(stageAllDocTypes("ads")).toContain("ad_campaign_plan");
+  });
+
+  it("supports variations batches and design variety on the statics engine", () => {
+    const statics = stagePromptSpec("more_statics", "call")!.outputs[0].description;
+    expect(statics).toContain("DESIGN VARIETY IS A HARD GATE");
+    expect(statics).toContain("VARIATIONS BATCH");
+    expect(statics).toContain("FOREPLAY WINNING STATIC ADS");
+    const scripts = stagePromptSpec("more_scripts", "call")!.outputs[0].description;
+    expect(scripts).toContain("FOREPLAY WINNING ADS");
+    expect(scripts).toContain("VARIATIONS");
   });
 
   it("branches the funnel contract on funnel type", () => {
@@ -179,9 +199,55 @@ describe("stage registry", () => {
     expect(desc).toContain("## Breakout Videos");
     expect(spec.childSkills.join()).toContain("vsl-and-sales-page-writer");
     expect(spec.childSkills.join()).toContain("confirmation-page-that-converts");
-    // On-demand, gated on ads
-    expect(STAGES.more_landers.requires).toBe("ads");
+    // On-demand studio engine, gated only on Foundation (needs ICP/Offers/Brand),
+    // not on the whole onboarding chain through ads.
+    expect(STAGES.more_landers.requires).toBe("foundation");
     expect((ON_DEMAND_TYPES as readonly string[]).includes("more_landers")).toBe(true);
+  });
+
+  it("fills the FOUR-PAGE webinar funnel from the webinar templates, wiring every link from one domain", () => {
+    const spec = stagePromptSpec("more_landers", "webinar")!;
+    const desc = spec.outputs[0].description;
+    // Same contract docType so cards file identically across branches
+    expect(spec.outputs[0].docType).toBe("lander_extra");
+    // Reads the FOUR webinar templates as the EXACT base — fills, does not redesign
+    expect(desc).toContain("FOUR-PAGE WEBINAR FUNNEL");
+    expect(desc).toContain("worker/templates/webinar-optin.html");
+    expect(desc).toContain("worker/templates/webinar-bridge.html");
+    expect(desc).toContain("worker/templates/webinar-thankyou-purchased.html");
+    expect(desc).toContain("worker/templates/webinar-thankyou-registered.html");
+    expect(desc).toContain("FILL, DO NOT REDESIGN");
+    // Brand fixed: Playfair + standard blue
+    expect(desc).toContain("Playfair");
+    expect(desc).toContain("#3f6fff");
+    // GHL fragment, live-preview-able
+    expect(desc).toContain("```html");
+    expect(desc).toContain("@media");
+    // THE key rule: one domain wires the whole funnel by fixed slug convention
+    expect(desc).toContain("URL WIRING IS DOMAIN-ONLY");
+    expect(desc).toContain("siteDomain");
+    expect(desc).toContain("domain/training");
+    expect(desc).toContain("domain/training-offer");
+    expect(desc).toContain("domain/purchase-thanks");
+    expect(desc).toContain("domain/register-thanks");
+    expect(desc).toContain("DO NOT hand-fill bridgeUrl or declineUrl");
+    // Webinar time stays consistent across the pages that show it
+    expect(desc).toContain("IDENTICALLY across the opt-in AND both thank-you pages");
+    // FIVE SPLIT units: 4 clean page cards + 1 recording-scripts card
+    expect(desc).toContain("<!-- SPLIT -->");
+    expect(desc).toContain("FIVE units");
+    expect(desc).toContain("# Opt-In Page");
+    expect(desc).toContain("# Bridge Page ($27 Offer)");
+    expect(desc).toContain("# Thank-You (Purchased)");
+    expect(desc).toContain("# Thank-You (Registered)");
+    expect(desc).toContain("# Recording Scripts");
+    // Webinar child skills + domain-only extra instruction
+    expect(spec.extraInstructions).toContain("LINK WIRING IS DOMAIN-ONLY");
+    expect(spec.extraInstructions).toContain("WEBINAR, four pages");
+    // The call branch is untouched by the webinar branch
+    const callDesc = stagePromptSpec("more_landers", "call")!.outputs[0].description;
+    expect(callDesc).toContain("TWO-PAGE VSL FUNNEL");
+    expect(callDesc).not.toContain("FOUR-PAGE WEBINAR FUNNEL");
   });
 
   it("mandates a three-rung offer ladder and rich sub-avatars in the ICP/offers contracts", () => {

@@ -73,9 +73,9 @@ const WORKER_STAGES: Array<{
   {
     id: "ads",
     label: "Community Ads",
-    blurb: "10 rendered static ads whose one job is to get cold traffic to join the free Skool community. Review each ad below",
-    docTypes: ["ad_statics", "ad_statics_extra", "ad_scripts_extra"],
-    runningNote: "Building 10 statics through the render pipeline with visual QA",
+    blurb: "15 rendered static ads + 10 video ad scripts, all aimed at getting cold traffic into the free Skool community. Review each ad below",
+    docTypes: ["ad_statics", "ad_video_scripts", "ad_statics_extra", "ad_scripts_extra"],
+    runningNote: "Building 15 statics through the render pipeline with visual QA, then writing the 10 video scripts",
   },
 ];
 

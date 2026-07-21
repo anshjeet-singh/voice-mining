@@ -42,6 +42,14 @@ The single most important rule in this file. The operator's verdict on batches t
 - Then CLONE it: same layout, same composition, same background, same spacing feel, same text treatment hierarchy, same CTA treatment and placement, same color logic. You are producing a sibling of that exact image where ONLY the copy (and brand-specific tokens like names and numbers) changed.
 - The QA test is side by side: view your render and the reference together. If a stranger would not believe they came from the same designer's same template, the ad fails. Rebuild until it passes.
 - Inventing a new composition is allowed ONLY when no reference exists for the format, and the doc must say so explicitly on that ad.
+- A Foreplay winning static (from the FOREPLAY WINNING STATIC ADS research section) may serve as the reference instead of a catalog image: VIEW the actual image first, declare "Reference: foreplay — <advertiser>", and hold the same side-by-side clone standard. The native test still applies; a designed DR poster from Foreplay does not override rule 5's native-first mix.
+
+## 6b. Reference VARIETY across the batch (operator feedback: "same designs over and over")
+
+- Never declare the same reference image twice in one batch.
+- Spread every batch across 6+ distinct style families of the catalog (notes, chat threads, tweet/reddit, search/UI, photo-caption, handwriting, big-text, comparison, and the rest).
+- Before choosing references, list which reference files already back the client's APPROVED library ads and the OPERATOR AD VERDICTS. Any reference already behind 2+ approved ads is OFF the table for new-ad batches (VARIATIONS batches that name a source ad are the exception: there, the source's format is the point).
+- Cloning discipline (rule 6) is unchanged: variety means MORE references from MORE families, never looser clones.
 
 ## 7. Spec fidelity beats improvisation
 
