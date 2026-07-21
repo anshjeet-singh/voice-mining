@@ -73,3 +73,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-16 · job 510003 · client: Veda Ray -->
 - The Cashflow Coaches swipe appendix is still calibrated to a lowercase, dollar-figure, funding-bro register, and gives no guidance for clients whose brand is the opposite (calm, maternal, spiritual, premium). Add one line to the appendix: when the client's brand voice is buttoned-up or emotionally-led, keep the swipe's structure (subject/preview discipline, one CTA, rotating-nickname sign-off, P.S. loops, formatting cadence) and re-register the prose to sentence-case conviction, dropping the "ur/tmrw" shorthand and dollar-hype so the voice does not fight the brand.
+
+<!-- 2026-07-21 · job 720003 · client: Ibby -->
+- The cc-email-swipe-style layout puts the per-email header at `### Day N` yet tells writers to make in-email section markers (`The Problem:`, numbered steps) `## ` (H2) headings. That inverts the heading hierarchy and collides with the orchestrator's file rule (one `#` title, `##` sections, `###` subsections, never skip levels). Resolution that renders cleanly and keeps the app's parsing intact: the per-email header is `##` (it is a major section of the deliverable) and any in-email story marker is `###` nested beneath it. State this once in the swipe so writers are not choosing between the two contracts each run.

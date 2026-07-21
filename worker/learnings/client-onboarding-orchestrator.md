@@ -124,3 +124,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-21 · job 720001 · client: Ibby -->
 - The Foundation-doc formatting split needs stating once, plainly: the markdown/web deliverable uses `---` between major sections and `##`/`###` heading hierarchy per the app renderer, while the Google Doc upload drops horizontal rules. Runs currently have to reconcile the exemplar (which uses flat `###` for top sections and no `---`) against the web formatting rules by inference.
+
+<!-- 2026-07-21 · job 720003 · client: Ibby -->
+- The DOCUMENT RULES ("start on the `#` title and go straight into content, no notes about what the document contains") forbid the orienting one-liner writers instinctively add under the title of an email deliverable (a "one email/day, two CTAs, load into ConvertKit" summary). That summary reads as value to the operator but is a meta-preamble defect. A one-line reminder that email-sequence deliverables also start cold on Day 1, with the CTA/placeholder key living only in craft/client lessons, would stop it being added and then stripped in QA each run.
