@@ -37,7 +37,7 @@ import {
   reapStaleJobs,
   setAssetSpec,
 } from "./db";
-import { formatMarketTruth, parseAdSpecs } from "./adPerformance";
+import { formatMarketTruth, formatReferencePerformance, parseAdSpecs } from "./adPerformance";
 import { composeMineRequest, harvestCompetitorSources } from "./competitorSources";
 import { normalizeHooks, normalizeInsights } from "@shared/reportContent";
 import type { InsightList } from "../drizzle/schema";
@@ -444,7 +444,12 @@ export function registerWorkerRoutes(app: Express) {
         // converted, with each winner's DNA, best CTR first.
         const marketTruth = formatMarketTruth(allAssets);
         if (marketTruth) {
-          research = `${research}\n\n# MARKET TRUTH: REAL META RESULTS FOR THIS CLIENT'S SHIPPED ADS (imported from Ads Manager. This is the highest authority in this prompt: it outranks the operator verdicts and every pattern model. Study what the winners share — format, hook, awareness, avatar — and bias the new batch toward that DNA; treat the losers' DNA as anti-patterns)\n\n${marketTruth}`;
+          research = `${research}\n\n# MARKET TRUTH: REAL META RESULTS FOR THIS CLIENT'S SHIPPED ADS (imported from Ads Manager. This is the highest authority in this prompt: it outranks the operator verdicts and every pattern model. Study what the winners share — format, hook, awareness, avatar — and bias the new batch toward that DNA; treat the losers' DNA as anti-patterns. PROVEN WINNERS ARE FIRST-CLASS REFERENCES: for any ad listed here with above-average CTR, you may VIEW its PNG from the client's Drive ads folder and clone it directly, declaring 'Reference: winner — <filename>')\n\n${marketTruth}`;
+        }
+        // Which catalog references actually produce winners for THIS client
+        const refPerf = formatReferencePerformance(allAssets);
+        if (refPerf && (job.type === "ads" || job.type === "more_statics")) {
+          research = `${research}\n\n# REFERENCE PERFORMANCE (the catalog references behind this client's shipped ads, ranked by REAL average CTR. Lean on winner-backed references; treat underperformers as radioactive)\n\n${refPerf}`;
         }
         // Operator-uploaded proof/cutout images the render session composites in
         refImages = (await getRefImagesWithData(job.clientId)).map((r) => ({

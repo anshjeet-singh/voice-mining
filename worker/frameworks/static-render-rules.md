@@ -43,6 +43,7 @@ The single most important rule in this file. The operator's verdict on batches t
 - The QA test is side by side: view your render and the reference together. If a stranger would not believe they came from the same designer's same template, the ad fails. Rebuild until it passes.
 - Inventing a new composition is allowed ONLY when no reference exists for the format, and the doc must say so explicitly on that ad.
 - A Foreplay winning static (from the FOREPLAY WINNING STATIC ADS research section) may serve as the reference instead of a catalog image: VIEW the actual image first, declare "Reference: foreplay — <advertiser>", and hold the same side-by-side clone standard. The native test still applies; a designed DR poster from Foreplay does not override rule 5's native-first mix.
+- The client's OWN Meta-proven winners (MARKET TRUTH ads with above-average real CTR) are FIRST-CLASS references: VIEW the PNG from the client's Drive ads folder, declare "Reference: winner — <filename>", and clone its layout DNA with fresh copy. A reference the REFERENCE PERFORMANCE section marks UNDERPERFORMING is radioactive: never build on it except when explicitly varying a proven winner.
 
 ## 6b. Reference VARIETY across the batch (operator feedback: "same designs over and over")
 

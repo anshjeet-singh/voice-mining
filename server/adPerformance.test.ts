@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { formatMarketTruth, matchAssetFilename, parseAdSpecs, parseMetaCsv } from "./adPerformance";
+import { formatMarketTruth, formatReferencePerformance, matchAssetFilename, parseAdSpecs, parseMetaCsv } from "./adPerformance";
+
+describe("formatReferencePerformance", () => {
+  it("ranks references by avg CTR and labels winners vs underperformers", () => {
+    const s = formatReferencePerformance([
+      { filename: "a.png", reference: "notes-dark_order_02.png", metaCtr: 2.4 },
+      { filename: "b.png", reference: "notes-dark_order_02.png", metaCtr: 2.0 },
+      { filename: "c.png", reference: "tweet_red-flag_01.png", metaCtr: 0.6 },
+      { filename: "d.png", reference: "no-results.png", metaCtr: null },
+    ]);
+    const lines = s.split("\n");
+    expect(lines[0]).toContain("notes-dark_order_02.png");
+    expect(lines[0]).toContain("WINNER-BACKED");
+    expect(lines[1]).toContain("UNDERPERFORMING");
+    expect(s).not.toContain("no-results.png");
+  });
+  it("returns empty without any reference+CTR pairs", () => {
+    expect(formatReferencePerformance([{ filename: "x", reference: null, metaCtr: 2 }])).toBe("");
+  });
+});
 
 describe("parseMetaCsv", () => {
   it("parses a standard Ads Manager export", () => {

@@ -1774,6 +1774,14 @@ function mdToHtml(md: string): string {
  */
 async function copyRich(md: string, links: Record<string, string> = {}): Promise<void> {
   const clean = applyLinks(md.replace(/```html[\s\S]*?```/gi, "").trim(), links);
+  // Token guard: copy still succeeds, but unfilled links never sneak into a
+  // live client email silently — the exact tokens get named in a warning.
+  const leftover = Array.from(new Set(clean.match(/\[[A-Z][A-Z0-9 ./'&-]{2,44}\]/g) ?? [])).filter(isReusableToken);
+  if (leftover.length) {
+    toast.warning(
+      `Copied, but ${leftover.length} unfilled link${leftover.length > 1 ? "s" : ""} remain${leftover.length > 1 ? "" : "s"}: ${leftover.slice(0, 3).join(", ")}${leftover.length > 3 ? "…" : ""} — set them in Client facts & links`
+    );
+  }
   const html = mdToHtml(clean);
   try {
     if (navigator.clipboard && typeof window !== "undefined" && "ClipboardItem" in window) {
@@ -1930,7 +1938,20 @@ function TemplateFiller({
                 size="sm"
                 onClick={() => {
                   navigator.clipboard.writeText(filled);
-                  toast.success("Filled code copied — paste it into a GHL custom-code block");
+                  const leftoverTokens = Array.from(new Set(filled.match(/\[[A-Z][A-Z0-9 ./'&-]{2,44}\]/g) ?? []));
+                  const emptyFields = fields.filter((f) => !(vals[f.key] ?? "").trim()).length;
+                  if (leftoverTokens.length || emptyFields) {
+                    toast.warning(
+                      `Code copied, but ${[
+                        leftoverTokens.length ? `${leftoverTokens.length} unfilled token${leftoverTokens.length > 1 ? "s" : ""} (${leftoverTokens.slice(0, 3).join(", ")}${leftoverTokens.length > 3 ? "…" : ""})` : "",
+                        emptyFields ? `${emptyFields} empty field${emptyFields > 1 ? "s" : ""}` : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" and ")} remain — fill them before the page goes live`
+                    );
+                  } else {
+                    toast.success("Filled code copied — paste it into a GHL custom-code block");
+                  }
                 }}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 text-xs"
               >

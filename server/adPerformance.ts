@@ -164,6 +164,38 @@ export interface PerformanceAsset {
 }
 
 /**
+ * Which catalog references actually produce winners: group the client's ads
+ * by their declared reference and average the real CTR of each group. The
+ * render session reads this to lean on winner-backed references and treat
+ * loser-backed ones as radioactive. Returns "" without performance data.
+ */
+export function formatReferencePerformance(
+  assets: Array<{ reference?: string | null; metaCtr: number | null; filename: string }>
+): string {
+  const groups = new Map<string, number[]>();
+  for (const a of assets) {
+    if (!a.reference || a.metaCtr == null) continue;
+    groups.set(a.reference, [...(groups.get(a.reference) ?? []), a.metaCtr]);
+  }
+  if (!groups.size) return "";
+  const rows = Array.from(groups.entries()).map(([ref, ctrs]) => ({
+    ref,
+    n: ctrs.length,
+    avg: ctrs.reduce((s, c) => s + c, 0) / ctrs.length,
+  }));
+  rows.sort((a, b) => b.avg - a.avg);
+  const overall = rows.reduce((s, r) => s + r.avg * r.n, 0) / rows.reduce((s, r) => s + r.n, 0);
+  return rows
+    .map(
+      (r) =>
+        `- ${r.ref}: ${r.n} ad${r.n > 1 ? "s" : ""} with results, avg CTR ${r.avg.toFixed(2)}% — ${
+          r.avg >= overall ? "WINNER-BACKED (lean on this reference)" : "UNDERPERFORMING (avoid unless varying a proven winner)"
+        }`
+    )
+    .join("\n");
+}
+
+/**
  * The MARKET TRUTH claim section: real spend results per ad, best CTR first.
  * Returns "" when no ad has performance data yet.
  */
