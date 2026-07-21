@@ -1,4 +1,5 @@
 import {
+  float,
   int,
   json,
   longtext,
@@ -119,6 +120,21 @@ export const clientAssets = mysqlTable("client_assets", {
   data: longtext("data").notNull(),
   status: mysqlEnum("status", ["pending", "approved", "rejected"]).notNull().default("pending"),
   feedback: longtext("feedback"),
+  // ── Ad DNA, parsed from the batch doc's per-ad spec at completion ──
+  format: varchar("format", { length: 100 }),
+  reference: varchar("reference", { length: 300 }),
+  subAvatar: varchar("subAvatar", { length: 200 }),
+  angle: varchar("angle", { length: 400 }),
+  awareness: varchar("awareness", { length: 50 }),
+  hookCategory: varchar("hookCategory", { length: 100 }),
+  // ── Independent QA pass (graded before the operator ever sees the batch) ──
+  qaScore: int("qaScore"),
+  qaNote: varchar("qaNote", { length: 500 }),
+  // ── Real Meta results, pasted from Ads Manager: the market's verdict ──
+  metaSpend: float("metaSpend"),
+  metaCtr: float("metaCtr"),
+  metaCpl: float("metaCpl"),
+  metaImportedAt: timestamp("metaImportedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -176,6 +192,10 @@ export const jobs = mysqlTable("jobs", {
   error: text("error"),
   /** Live status line while running ("building ad 8 of 15"), cleared on finish. */
   progress: varchar("progress", { length: 500 }),
+  /** Set atomically at claim so exactly one worker owns the row. */
+  claimToken: varchar("claimToken", { length: 32 }),
+  /** Stamped by worker progress pings; the reaper requeues silent jobs. */
+  heartbeatAt: timestamp("heartbeatAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   startedAt: timestamp("startedAt"),
   finishedAt: timestamp("finishedAt"),

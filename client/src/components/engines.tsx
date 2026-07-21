@@ -11,6 +11,7 @@ import { ArrowUpToLine, Check, ChevronDown, ChevronUp, Copy, FileText, ImagePlus
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { MarkdownDoc } from "@/components/MarkdownDoc";
+import { newStaticsRequest } from "@shared/adRequests";
 
 export type StageId =
   | "foundation" | "skool" | "funnel" | "emails" | "ads"
@@ -212,6 +213,16 @@ interface ClientAssetMeta {
   filename: string;
   status: "pending" | "approved" | "rejected";
   feedback: string | null;
+  /** Independent QA grade (0-100) stamped before the batch reaches review. */
+  qaScore?: number | null;
+  qaNote?: string | null;
+  /** Ad DNA parsed from the batch spec. */
+  format?: string | null;
+  hookCategory?: string | null;
+  /** Real Meta results imported from Ads Manager. */
+  metaSpend?: number | null;
+  metaCtr?: number | null;
+  metaCpl?: number | null;
 }
 
 export /** Per-ad review gallery: view each rendered static, approve or reject with feedback. */
@@ -290,9 +301,17 @@ function AssetGallery({
   const rejected = assets.filter((a) => a.status === "rejected");
   const approved = assets.filter((a) => a.status === "approved");
 
-  /** Two groups: the working batch (pending + rejected) and the approved library. */
+  /** Two groups: the working batch (pending + rejected) and the approved
+   *  library. The batch sorts by QA score, likely winners first, so review
+   *  starts at the top of the quality curve. */
   const grouped: Array<[string, ClientAssetMeta[]]> = [
-    ["New this batch", assets.filter((a) => a.status !== "approved")],
+    [
+      "New this batch",
+      assets
+        .filter((a) => a.status !== "approved")
+        .slice()
+        .sort((a, b) => (b.qaScore ?? -1) - (a.qaScore ?? -1)),
+    ],
     ["Approved library", approved],
   ].filter(([, g]) => (g as ClientAssetMeta[]).length > 0) as Array<[string, ClientAssetMeta[]]>;
 
@@ -396,6 +415,34 @@ function AssetGallery({
               <p className="text-[10px] text-muted-foreground truncate" title={a.filename}>
                 {a.filename}
               </p>
+              {(a.qaScore != null || a.metaCtr != null || a.metaSpend != null) && (
+                <div className="flex items-center flex-wrap gap-1">
+                  {a.qaScore != null && a.status !== "approved" && (
+                    <span
+                      title={a.qaNote ?? "Independent QA grade"}
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        a.qaScore <= 30
+                          ? "bg-destructive/20 text-destructive"
+                          : a.qaScore >= 85
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-card/80 text-muted-foreground"
+                      }`}
+                    >
+                      QA {a.qaScore}
+                    </span>
+                  )}
+                  {a.metaCtr != null && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-500/15 text-sky-400" title="Real CTR from Ads Manager">
+                      {a.metaCtr}% CTR
+                    </span>
+                  )}
+                  {a.metaSpend != null && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-card/80 text-muted-foreground" title={a.metaCpl != null ? `CPL $${a.metaCpl}` : "Spend"}>
+                      ${a.metaSpend}
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-1">
                 <button
                   disabled={reviewAsset.isPending}
@@ -531,6 +578,61 @@ function AssetGallery({
 }
 
 /**
+ * Import real Meta results: paste the Ads Manager export (select the rows in
+ * the table view, copy, paste — or export CSV and paste its contents). Spend,
+ * CTR, and CPL land on the matching ads and become MARKET TRUTH in every
+ * future batch. The one paste a week that teaches the engine what converts.
+ */
+export function MetaResultsImport({ clientId, invalidate }: { clientId: number; invalidate: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [csv, setCsv] = useState("");
+  const importResults = trpc.clients.importMetaResults.useMutation({
+    onSuccess: ({ matched, unmatched, total }) => {
+      invalidate();
+      setCsv("");
+      setOpen(false);
+      toast.success(
+        `${matched} of ${total} ads matched and stamped${unmatched.length ? ` · unmatched: ${unmatched.slice(0, 3).join(", ")}${unmatched.length > 3 ? "…" : ""}` : ""}`
+      );
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  return (
+    <div>
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+        {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        Import Meta results
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          <p className="text-[11px] text-muted-foreground">
+            In Ads Manager: select the ad rows (with the header row) and copy, or export the table as CSV and paste it
+            here. Ad names match to the exported filenames; spend, CTR, and cost per result get stamped on each ad and
+            feed every future batch as market truth.
+          </p>
+          <Textarea
+            value={csv}
+            onChange={(e) => setCsv(e.target.value)}
+            placeholder={"Ad name\tAmount spent (USD)\tCTR (all)\tCost per result\nibby_ad01_notes-dark_order\t$142.10\t2.31%\t$8.40"}
+            className="min-h-24 text-[11px] font-mono"
+          />
+          <Button
+            size="sm"
+            disabled={importResults.isPending || csv.trim().length < 10}
+            onClick={() => importResults.mutate({ clientId, csv })}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 h-7 text-xs"
+          >
+            {importResults.isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+            Import results
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Style categories: the reference-ads catalog (Ad Creative System) plus the
  * phone-native formats the static-ad-builder skill renders from its own spec
  * (calendar, reminders, email-inbox — proven with Trent, no catalog image
@@ -583,7 +685,7 @@ export const ENGINES: Array<{
     hasOffer: true,
     notesPlaceholder: "Optional direction: angle, occasion, proof to feature...",
     compose: (count, styles, notes, purpose) =>
-      `Generate EXACTLY ${count} NEW static ads.${
+      `${newStaticsRequest(count)}${
         purpose && purpose !== "Any mix" ? ` AWARENESS LEVEL: ${purpose}.` : ""
       }${
         styles.length

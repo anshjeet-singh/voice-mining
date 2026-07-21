@@ -7,6 +7,7 @@
  * and keeps each run's attention on a single document.
  * No I/O here — worker.ts owns the filesystem and network.
  */
+import { NEW_STATICS_RE, REBUILD_ONLY_RE } from "../shared/adRequests";
 
 export interface StageOutputSpec {
   docType: string;
@@ -167,6 +168,141 @@ After the deliverable, also write:
 Write "none" if nothing. Be conservative.
 
 Write ${output.filename}, client_lessons.md, and craft_lessons.md, then stop.`;
+}
+
+/**
+ * Shard heavy ad renders into PARALLEL Claude sessions. One session rendering
+ * 15 statics (view references, build, visual-QA each) is the slowest thing the
+ * worker does; 3-4 sessions doing 4-5 ads each cut wall time to a quarter.
+ * Returns per-shard feedback overrides, or null when the job shouldn't shard.
+ * Pure and unit-tested: the phrases it parses are single-sourced in
+ * shared/adRequests.ts, so the studio can never drift out from under it.
+ */
+export function planShards(job: ClaimedJob, output: StageOutputSpec): string[] | null {
+  if (!["ad_scripts", "ad_statics", "ad_statics_extra"].includes(output.docType)) return null;
+  const fb = job.feedback ?? "";
+
+  // Case 1: rebuild-rejected — each rejected ad is independent, split the list
+  if (REBUILD_ONLY_RE.test(fb)) {
+    const lines = fb.split("\n");
+    const items = lines.filter((l) => l.trim().startsWith("- "));
+    if (items.length < 4) return null;
+    const header = lines.find((l) => REBUILD_ONLY_RE.test(l)) ?? "REBUILD ONLY these rejected static ads:";
+    const approvedLine = lines.find((l) => l.trim().startsWith("Approved (do not change)")) ?? "";
+    const per = 3;
+    const shards: string[] = [];
+    for (let i = 0; i < items.length; i += per) {
+      const chunk = items.slice(i, i + per);
+      const n = Math.floor(i / per) + 1;
+      const k = Math.ceil(items.length / per);
+      shards.push(
+        [
+          header,
+          ...chunk,
+          approvedLine,
+          `PARALLEL SHARD ${n} of ${k}: other sessions are rebuilding the rest of the rejected list. Rebuild ONLY the ${chunk.length} ads above (keep their exact filenames) and write doc entries ONLY for them.`,
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+    }
+    return shards;
+  }
+
+  // Case 2: fresh on-demand batch — split the count into ranges
+  const m = fb.match(NEW_STATICS_RE);
+  if (m) {
+    const total = Number(m[1]);
+    if (total < 8) return null;
+    const per = 5;
+    const k = Math.ceil(total / per);
+    const shards: string[] = [];
+    for (let i = 0; i < k; i++) {
+      const start = i * per + 1;
+      const end = Math.min((i + 1) * per, total);
+      const n = end - start + 1;
+      shards.push(
+        fb.replace(NEW_STATICS_RE, `Generate EXACTLY ${n} NEW static ads`) +
+          ` PARALLEL SHARD ${i + 1} of ${k}: other sessions are building the rest of this batch. Number YOUR ads ${start}-${end} (use that range in filenames so shards never collide). To keep the combined batch diverse, split the eligible reference catalog categories alphabetically into ${k} contiguous slices and clone ONLY from slice ${i + 1}. Produce ONLY your ${n} ads and doc entries ONLY for them.`
+      );
+    }
+    return shards;
+  }
+
+  // Case 3: the fresh onboarding ads batch (15 statics, no feedback) — same
+  // split, or a 15-static single session becomes the slowest run we have
+  if (job.type === "ads" && output.docType === "ad_statics" && !fb.trim()) {
+    const total = 15;
+    const per = 5;
+    const k = Math.ceil(total / per);
+    const shards: string[] = [];
+    for (let i = 0; i < k; i++) {
+      const start = i * per + 1;
+      const end = Math.min((i + 1) * per, total);
+      const n = end - start + 1;
+      shards.push(
+        `PARALLEL SHARD ${i + 1} of ${k} of the ${total}-ad batch: other sessions are building the rest. Build ONLY ads ${start}-${end} (EXACTLY ${n} ads this session; the contract's total of ${total} is the COMBINED batch, not yours). Number your ads ${start}-${end} and use that range in filenames so shards never collide. To keep the combined batch diverse, split the eligible reference catalog categories alphabetically into ${k} contiguous slices and clone ONLY from slice ${i + 1}; the batch-wide spread rules (sub-avatars, hook categories, no repeated references) then hold across the union. Produce ONLY your ${n} ads and doc entries ONLY for them.`
+      );
+    }
+    return shards;
+  }
+
+  return null;
+}
+
+/** Per-ad QA verdict from the independent grader session. */
+export interface QaVerdict {
+  filename: string;
+  score: number;
+  note: string;
+}
+
+/**
+ * Build the prompt for the INDEPENDENT QA + winner-score pass: a separate
+ * session (never the builder) views every rendered PNG against its spec and
+ * the render rules, and scores it. The scores order the operator's review
+ * queue and, once Meta results exist, get backtested against real CTR.
+ */
+export function buildQaPrompt(opts: {
+  assetsDir: string;
+  filenames: string[];
+  batchDoc: string;
+  frameworksDir: string;
+  verdictsDigest: string;
+}): string {
+  return `You are an independent ad-quality grader. You did NOT build these ads; grade them ruthlessly.
+
+FIRST read ${opts.frameworksDir}/static-render-rules.md in full — every numbered rule is a hard gate.
+
+THE RENDERED ADS are in ${opts.assetsDir}/: ${opts.filenames.join(", ")}.
+
+THE BATCH SPEC (each ad's declared format, reference, angle, and copy) is in ${opts.assetsDir}/BATCH_SPEC.md — read it.
+${opts.verdictsDigest ? `\nTHE OPERATOR'S TASTE, from past verdicts (approved = the bar, rejection notes = known failure modes):\n${opts.verdictsDigest}\n` : ""}
+FOR EVERY PNG: view it with the Read tool, then grade it 0-100:
+- Instant fails (score <= 30): broken layout (clipped/overflowing text, dead voids), synthesized chrome, a designed CTA floating on a native format, an AI-generated human, or failing the native test ("would this pass as something a mate screenshotted and sent you?").
+- 31-60: passes mechanically but weak — flat hook, generic copy, off-reference composition.
+- 61-84: solid, shippable.
+- 85-100: likely winner — scroll-stopping hook in the market's language, clean native illusion, proof beat present.
+One line of WHY per ad (max 20 words), naming the rule number when a rule fails.
+
+OUTPUT: write ${opts.assetsDir}/qa.json containing ONLY a JSON array:
+[{"filename": "<exact filename>", "score": <0-100>, "note": "<one line>"}]
+One entry per PNG, exact filenames, valid JSON, nothing else in the file. Do not modify any PNG.`;
+}
+
+/** Parse the grader's qa.json defensively; [] on any shape problem. */
+export function parseQaOutput(raw: string | undefined, filenames: string[]): QaVerdict[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw.replace(/^```(?:json)?/m, "").replace(/```\s*$/m, "").trim());
+    if (!Array.isArray(arr)) return [];
+    const valid = new Set(filenames);
+    return arr
+      .filter((v): v is QaVerdict => v && typeof v.filename === "string" && typeof v.score === "number" && valid.has(v.filename))
+      .map((v) => ({ filename: v.filename, score: Math.max(0, Math.min(100, Math.round(v.score))), note: String(v.note ?? "").slice(0, 480) }));
+  } catch {
+    return [];
+  }
 }
 
 export interface DocOutput {

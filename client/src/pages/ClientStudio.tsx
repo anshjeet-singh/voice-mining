@@ -11,6 +11,7 @@ import {
   EmailEngineCard,
   EngineCard,
   LinksContext,
+  MetaResultsImport,
   RefImagePanel,
   detectReusableTokens,
   type ClientAssetMeta,
@@ -1508,7 +1509,8 @@ export default function ClientStudio() {
                   <EngineCard engine={engineByKind("more_scripts")} job={jobs.more_scripts ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
                 </StudioBlock>
               </div>
-              <StudioBlock title="Ad library" hint="Approved ads live here forever; rejections with notes train every future batch. Push the approved set into the client's Google Drive Ads folder in one click" frame="border-violet-500/25 bg-violet-500/[0.05]">
+              <StudioBlock title="Ad library" hint="Approved ads live here forever; rejections with notes train every future batch. Paste Meta results to stamp real spend and CTR on each ad — that market truth outranks everything in future batches" frame="border-violet-500/25 bg-violet-500/[0.05]">
+                <MetaResultsImport clientId={clientId} invalidate={invalidate} />
                 <AssetGallery assets={assets} clientId={clientId} stageId="ads" invalidate={invalidate} canRegenerate exportJob={(data.exportJob ?? null) as StageJob} />
               </StudioBlock>
               <StudioBlock title="Script pipeline" hint="One card per script: approve what gets recorded, mark posted when live" frame="border-violet-500/25 bg-violet-500/[0.05]">

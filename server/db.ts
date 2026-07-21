@@ -728,23 +728,43 @@ export async function getLatestJobForClient(clientId: number, type: string) {
 }
 
 /**
- * Atomically claim the oldest queued job: UPDATE ... LIMIT 1 marks it running,
- * then read it back. Safe for a single worker; good enough if a second worker
- * ever runs because the UPDATE is the lock.
+ * Atomically claim the oldest queued job: the UPDATE stamps a one-off claim
+ * token, then we read back exactly THAT row. The old read-back ("newest
+ * running job") could return a different job when two ran close together.
+ * The claim also seeds heartbeatAt so the reaper's clock starts now.
  */
 export async function claimNextQueuedJob() {
   const db = await getDb();
   if (!db) return undefined;
+  const token = `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
   await db.execute(
-    sql`UPDATE jobs SET status = 'running', startedAt = NOW() WHERE status = 'queued' ORDER BY id ASC LIMIT 1`
+    sql`UPDATE jobs SET status = 'running', startedAt = NOW(), heartbeatAt = NOW(), claimToken = ${token} WHERE status = 'queued' ORDER BY id ASC LIMIT 1`
   );
-  const rows = await db
-    .select()
-    .from(jobs)
-    .where(eq(jobs.status, "running"))
-    .orderBy(desc(jobs.startedAt))
-    .limit(1);
+  const rows = await db.select().from(jobs).where(eq(jobs.claimToken, token)).limit(1);
   return rows[0];
+}
+
+/** Progress pings stamp the heartbeat so the reaper knows the job is alive. */
+export async function stampJobHeartbeat(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(jobs).set({ heartbeatAt: new Date() }).where(eq(jobs.id, id));
+}
+
+/**
+ * Requeue "running" jobs whose worker went silent (no heartbeat for
+ * `staleMinutes`). A sleeping Mac or killed session no longer strands the
+ * queue behind a phantom running job. Returns how many were requeued.
+ */
+export async function reapStaleJobs(staleMinutes = 15): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.execute(
+    sql`UPDATE jobs SET status = 'queued', claimToken = NULL, heartbeatAt = NULL, progress = NULL, error = CONCAT(COALESCE(error, ''), ' [requeued: worker went silent]') WHERE status = 'running' AND heartbeatAt IS NOT NULL AND heartbeatAt < DATE_SUB(NOW(), INTERVAL ${staleMinutes} MINUTE)`
+  );
+  const affected = (result as unknown as [{ affectedRows?: number }])[0]?.affectedRows ?? 0;
+  if (affected > 0) console.log(`[reaper] requeued ${affected} stale running job(s)`);
+  return affected;
 }
 
 export async function setJobStatus(id: number, status: "queued" | "running" | "review" | "approved" | "failed", error?: string) {
@@ -788,11 +808,44 @@ export async function getClientAssetsMeta(clientId: number) {
       mime: clientAssets.mime,
       status: clientAssets.status,
       feedback: clientAssets.feedback,
+      format: clientAssets.format,
+      reference: clientAssets.reference,
+      subAvatar: clientAssets.subAvatar,
+      angle: clientAssets.angle,
+      awareness: clientAssets.awareness,
+      hookCategory: clientAssets.hookCategory,
+      qaScore: clientAssets.qaScore,
+      qaNote: clientAssets.qaNote,
+      metaSpend: clientAssets.metaSpend,
+      metaCtr: clientAssets.metaCtr,
+      metaCpl: clientAssets.metaCpl,
+      metaImportedAt: clientAssets.metaImportedAt,
       createdAt: clientAssets.createdAt,
     })
     .from(clientAssets)
     .where(eq(clientAssets.clientId, clientId))
     .orderBy(clientAssets.filename);
+}
+
+/** Stamp real Meta results onto one ad (the market's verdict). */
+export async function setAssetMetaResults(
+  id: number,
+  meta: { metaSpend: number | null; metaCtr: number | null; metaCpl: number | null }
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clientAssets).set({ ...meta, metaImportedAt: new Date() }).where(eq(clientAssets.id, id));
+}
+
+/** Stamp parsed DNA (format/reference/avatar/angle/awareness/hook) onto an ad. */
+export async function setAssetSpec(
+  id: number,
+  spec: Partial<{ format: string; reference: string; subAvatar: string; angle: string; awareness: string; hookCategory: string }>
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (!Object.keys(spec).length) return;
+  await db.update(clientAssets).set(spec).where(eq(clientAssets.id, id));
 }
 
 export async function getClientAssetById(id: number) {

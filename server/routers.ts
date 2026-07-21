@@ -538,6 +538,73 @@ export const appRouter = router({
         return { ok: true };
       }),
 
+    /**
+     * Paste an Ads Manager export (CSV or tab-separated) and stamp real
+     * spend/CTR/CPL onto the matching rendered ads. Closes the loop: every
+     * future batch reads these as MARKET TRUTH above operator taste.
+     */
+    importMetaResults: protectedProcedure
+      .input(z.object({ clientId: z.number(), csv: z.string().min(10).max(200000) }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const { parseMetaCsv, matchAssetFilename } = await import("./adPerformance");
+        const { setAssetMetaResults } = await import("./db");
+        const rows = parseMetaCsv(input.csv);
+        if (!rows.length) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Could not read that export. Paste the Ads Manager table including the header row with 'Ad name'.",
+          });
+        }
+        const assets = await getClientAssetsMeta(input.clientId);
+        const filenames = assets.map((a) => a.filename);
+        let matched = 0;
+        const unmatched: string[] = [];
+        for (const row of rows) {
+          const filename = matchAssetFilename(row.adName, filenames);
+          const asset = filename ? assets.find((a) => a.filename === filename) : null;
+          if (!asset) {
+            unmatched.push(row.adName);
+            continue;
+          }
+          await setAssetMetaResults(asset.id, { metaSpend: row.spend, metaCtr: row.ctr, metaCpl: row.cpl });
+          matched++;
+        }
+        return { matched, unmatched: unmatched.slice(0, 20), total: rows.length };
+      }),
+
+    /** The Mac worker's pulse: last claim poll, for the online/offline chip. */
+    workerStatus: protectedProcedure.query(async () => {
+      const { getWorkerLastSeenAt } = await import("./workerRoutes");
+      return { lastSeenAt: getWorkerLastSeenAt() };
+    }),
+
+    /** Cancel a queued job, or force-requeue one stuck in running. */
+    cancelJob: protectedProcedure
+      .input(z.object({ jobId: z.number(), action: z.enum(["cancel", "requeue"]) }))
+      .mutation(async ({ ctx, input }) => {
+        const job = await (await import("./db")).getJobById(input.jobId);
+        if (!job) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireClient(job.clientId, ctx.user.id);
+        if (job.status !== "queued" && job.status !== "running") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: `Job is ${job.status}, nothing to ${input.action}` });
+        }
+        if (input.action === "cancel") {
+          await setJobStatus(input.jobId, "failed", "Canceled by the operator");
+        } else {
+          const { getDb } = await import("./db");
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+          const { jobs } = await import("../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          await db
+            .update(jobs)
+            .set({ status: "queued", claimToken: null, heartbeatAt: null, progress: null })
+            .where(eq(jobs.id, input.jobId));
+        }
+        return { ok: true };
+      }),
+
     // ── Recording queue: hand scripts to the client, they mark them recorded ──
 
     /** The shareable /record/:token link, minting the token on first use. */

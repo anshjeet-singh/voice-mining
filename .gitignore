@@ -116,3 +116,4 @@ client/public/__manus__/version.json
 # local env
 .env
 worker/logs/
+worker/spool/

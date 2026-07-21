@@ -14,6 +14,37 @@ import {
 } from "lucide-react";
 import { useCommandPalette } from "@/components/CommandPalette";
 import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { formatDistanceToNow } from "date-fns";
+
+/**
+ * The Mac engine's pulse. The worker polls the server every 5s; if it hasn't
+ * been seen for 2+ minutes it's offline (Mac asleep, agent stopped) and
+ * queued work will sit — surfaced here instead of looking like a broken app.
+ */
+function WorkerStatusChip() {
+  const { data } = trpc.clients.workerStatus.useQuery(undefined, {
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+  if (!data) return null;
+  const online = data.lastSeenAt != null && Date.now() - data.lastSeenAt < 2 * 60 * 1000;
+  return (
+    <div className="px-3 pb-2">
+      <div
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/30 text-[11px] text-muted-foreground"
+        title={
+          data.lastSeenAt
+            ? `Worker last polled ${formatDistanceToNow(new Date(data.lastSeenAt), { addSuffix: true })}`
+            : "The worker has not polled since the server started"
+        }
+      >
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${online ? "bg-emerald-500" : "bg-destructive"}`} />
+        Mac engine {online ? "online" : "offline"}
+      </div>
+    </div>
+  );
+}
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -148,6 +179,8 @@ export function AppShell({ children }: AppShellProps) {
             );
           })}
         </nav>
+
+        <WorkerStatusChip />
 
         {/* Command palette hint */}
         <div className="px-3 pb-2">

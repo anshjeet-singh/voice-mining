@@ -3,6 +3,8 @@ import {
   buildDocPrompt,
   parseCraftLessons,
   parseDocOutput,
+  parseQaOutput,
+  planShards,
   type ClaimedJob,
   type StageSpec,
 } from "./workerLib";
@@ -105,5 +107,68 @@ describe("parseCraftLessons", () => {
   it("sanitizes skill names to safe filenames", () => {
     const parsed = parseCraftLessons("## skill: ../../etc/passwd\n- evil");
     expect(parsed[0].skill).toBe("etc-passwd");
+  });
+});
+
+describe("planShards", () => {
+  const stage = {
+    label: "x", motherStep: "x", childSkills: [], extraInstructions: "x",
+    outputs: [{ docType: "ad_statics", filename: "01.md", title: "Statics", description: "d" }],
+  };
+  const baseJob = {
+    id: 1, type: "more_statics", stage,
+    client: { name: "T", niche: "n", funnelType: "call", pricePoint: "" },
+    onboardingDocs: [], approvedDocs: [], research: "", lessons: [], feedback: "",
+  } as any;
+  const output = { docType: "ad_statics_extra", filename: "01.md", title: "t", description: "d" };
+
+  it("shards a fresh on-demand batch of 10 into 2 sessions", () => {
+    const job = { ...baseJob, feedback: "Generate EXACTLY 10 NEW static ads. AWARENESS LEVEL: Problem aware." };
+    const shards = planShards(job, output)!;
+    expect(shards).toHaveLength(2);
+    expect(shards[0]).toContain("Generate EXACTLY 5 NEW static ads");
+    expect(shards[0]).toContain("PARALLEL SHARD 1 of 2");
+    expect(shards[1]).toContain("6-10");
+  });
+
+  it("does not shard small batches or non-ad docTypes", () => {
+    expect(planShards({ ...baseJob, feedback: "Generate EXACTLY 5 NEW static ads." }, output)).toBeNull();
+    expect(planShards(baseJob, { ...output, docType: "emails_extra" })).toBeNull();
+  });
+
+  it("shards REBUILD ONLY lists 3 per session, keeping the header", () => {
+    const fb = ["REBUILD ONLY these rejected static ads (keep each one's EXACT filename); do NOT generate any other ads:",
+      "- a.png: fix", "- b.png: fix", "- c.png: fix", "- d.png: fix", "- e.png: fix"].join("\n");
+    const shards = planShards({ ...baseJob, feedback: fb }, output)!;
+    expect(shards).toHaveLength(2);
+    expect(shards[0]).toContain("REBUILD ONLY");
+    expect(shards[0]).toContain("- c.png");
+    expect(shards[1]).toContain("- e.png");
+  });
+
+  it("shards the fresh onboarding 15-ad stage batch into 3 without feedback", () => {
+    const job = { ...baseJob, type: "ads", feedback: "" };
+    const shards = planShards(job, { ...output, docType: "ad_statics" })!;
+    expect(shards).toHaveLength(3);
+    expect(shards[2]).toContain("ads 11-15");
+  });
+});
+
+describe("parseQaOutput", () => {
+  it("parses valid grader output, clamps scores, drops unknown filenames", () => {
+    const raw = JSON.stringify([
+      { filename: "a.png", score: 88.6, note: "clean native" },
+      { filename: "b.png", score: 140, note: "x" },
+      { filename: "zz.png", score: 50, note: "not in batch" },
+    ]);
+    const out = parseQaOutput(raw, ["a.png", "b.png"]);
+    expect(out).toHaveLength(2);
+    expect(out[0]).toEqual({ filename: "a.png", score: 89, note: "clean native" });
+    expect(out[1].score).toBe(100);
+  });
+  it("survives fenced json and garbage", () => {
+    expect(parseQaOutput("```json\n[{\"filename\":\"a.png\",\"score\":10,\"note\":\"\"}]\n```", ["a.png"])).toHaveLength(1);
+    expect(parseQaOutput("not json", ["a.png"])).toEqual([]);
+    expect(parseQaOutput(undefined, ["a.png"])).toEqual([]);
   });
 });

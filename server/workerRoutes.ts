@@ -33,7 +33,11 @@ import {
   setJobProgress,
   setJobStatus,
   upsertClientDocumentByType,
+  stampJobHeartbeat,
+  reapStaleJobs,
+  setAssetSpec,
 } from "./db";
+import { formatMarketTruth, parseAdSpecs } from "./adPerformance";
 import { composeMineRequest, harvestCompetitorSources } from "./competitorSources";
 import { normalizeHooks, normalizeInsights } from "@shared/reportContent";
 import type { InsightList } from "../drizzle/schema";
@@ -48,6 +52,13 @@ export function isWorkerAuthorized(authHeader: string | undefined, secret: strin
 
 /** Legacy export kept for the worker-auth test contract. */
 export const FOUNDATION_DOC_TITLES: Record<string, string> = stageContract("foundation", "call");
+
+/** When the Mac worker last polled: drives the online/offline chip in the app. */
+let workerLastSeenAt: number | null = null;
+let lastReapAt = 0;
+export function getWorkerLastSeenAt(): number | null {
+  return workerLastSeenAt;
+}
 
 // On-demand single-doc AI jobs (doc_create / doc_edit) borrow the skills and
 // frameworks of the engine whose board the document lives on, so the worker
@@ -281,6 +292,14 @@ export function registerWorkerRoutes(app: Express) {
   app.post("/api/worker/claim", async (req: Request, res: Response) => {
     if (!guard(req, res)) return;
     try {
+      workerLastSeenAt = Date.now();
+      // Reaper rides the claim poll, throttled: a running job whose worker
+      // went silent (Mac asleep, session killed) requeues instead of
+      // stranding the queue forever.
+      if (Date.now() - lastReapAt > 60_000) {
+        lastReapAt = Date.now();
+        reapStaleJobs().catch(() => {});
+      }
       const job = await claimNextQueuedJob();
       if (!job) return res.json({ job: null });
 
@@ -386,9 +405,17 @@ export function registerWorkerRoutes(app: Express) {
             research = `${research}\n\n# FOREPLAY WINNING STATIC ADS IN THIS NICHE (live image creatives. VIEW each IMAGE url to study layout and composition; any may serve as a batch reference per the static-render-rules clone doctrine. Never copy their words)\n\n${foreplayStatics}`;
           }
         }
-        assetReviews = (await getClientAssetsMeta(job.clientId))
+        const allAssets = await getClientAssetsMeta(job.clientId);
+        assetReviews = allAssets
           .filter((a) => a.status !== "pending")
           .map((a) => ({ filename: a.filename, status: a.status, feedback: a.feedback }));
+        // MARKET TRUTH: real Meta spend results imported by the operator.
+        // Outranks operator taste AND generator instinct: what actually
+        // converted, with each winner's DNA, best CTR first.
+        const marketTruth = formatMarketTruth(allAssets);
+        if (marketTruth) {
+          research = `${research}\n\n# MARKET TRUTH: REAL META RESULTS FOR THIS CLIENT'S SHIPPED ADS (imported from Ads Manager. This is the highest authority in this prompt: it outranks the operator verdicts and every pattern model. Study what the winners share — format, hook, awareness, avatar — and bias the new batch toward that DNA; treat the losers' DNA as anti-patterns)\n\n${marketTruth}`;
+        }
         // Operator-uploaded proof/cutout images the render session composites in
         refImages = (await getRefImagesWithData(job.clientId)).map((r) => ({
           filename: r.filename,
@@ -433,12 +460,17 @@ export function registerWorkerRoutes(app: Express) {
         docs: Record<string, string>;
         clientLessons?: string[];
         /** Rendered binaries (static ad PNGs): base64, keyed to a docType. */
-        assets?: Array<{ docType: string; filename: string; mime?: string; base64: string }>;
+        assets?: Array<{ docType: string; filename: string; mime?: string; base64: string; qaScore?: number; qaNote?: string }>;
       };
       if (!jobId || !docs) return res.status(400).json({ error: "jobId and docs required" });
 
       const job = await (await import("./db")).getJobById(jobId);
       if (!job) return res.status(404).json({ error: "job not found" });
+      // Idempotent: a retried complete (worker spool replay after a network
+      // blip) must not double-write or flip an already-reviewed job.
+      if (job.status === "review" || job.status === "approved") {
+        return res.json({ ok: true, alreadyComplete: true });
+      }
       const client = await getClientById(job.clientId);
       if (!client) return res.status(404).json({ error: "client not found" });
 
@@ -486,12 +518,18 @@ export function registerWorkerRoutes(app: Express) {
         return res.status(400).json({ error: `unknown job type: ${job.type}` });
       }
       const kind = job.type === "foundation" ? ("foundation" as const) : ("deliverable" as const);
-      for (const [docType, title] of Object.entries(contract)) {
+      // TWO-PHASE: validate the WHOLE contract before writing anything. The
+      // old in-loop validation could overwrite docs 1..N-1 and then reject on
+      // doc N, leaving the client half-updated with the PNGs discarded.
+      for (const docType of Object.keys(contract)) {
         const content = docs[docType];
         if (!content || content.trim().length < 50) {
           await setJobStatus(jobId, "failed", `Worker returned empty or too-short doc: ${docType}`);
           return res.status(400).json({ error: `missing doc: ${docType}` });
         }
+      }
+      for (const [docType, title] of Object.entries(contract)) {
+        const content = docs[docType]!;
         // Engine batches split into ONE document per piece (reel, script,
         // email, post): each lands on the kanban as its own card. Units are
         // separated by an <!-- SPLIT --> line; title comes from the unit's
@@ -532,18 +570,34 @@ export function registerWorkerRoutes(app: Express) {
             .map((p) => p.filename)
         );
         await deleteUnapprovedClientAssetsByTypes(job.clientId, stageAllDocTypes(job.type));
+        const createdIds: Record<string, number> = {};
         for (const a of assets) {
           if (!a.filename || !a.base64 || !(a.docType in contract)) continue;
           const filename = a.filename.slice(0, 300);
           if (prevApproved.has(filename)) continue;
-          await createClientAsset({
+          createdIds[filename] = await createClientAsset({
             clientId: job.clientId,
             jobId,
             docType: a.docType,
             filename,
             mime: a.mime?.slice(0, 100) || "image/png",
             data: a.base64,
+            qaScore: typeof a.qaScore === "number" ? Math.round(a.qaScore) : undefined,
+            qaNote: a.qaNote?.slice(0, 500),
           });
+        }
+        // Parse each ad's DNA (format/reference/avatar/angle/awareness/hook)
+        // out of the batch doc's spec blocks into structured columns — the
+        // schema the market-truth analysis and QA backtest sit on.
+        const specSource = Object.keys(contract)
+          .filter((t) => t.startsWith("ad_statics"))
+          .map((t) => docs[t] ?? "")
+          .join("\n\n");
+        if (specSource) {
+          const specs = parseAdSpecs(specSource, Object.keys(createdIds));
+          for (const [filename, spec] of Object.entries(specs)) {
+            await setAssetSpec(createdIds[filename], spec).catch(() => {});
+          }
         }
       }
 
@@ -577,6 +631,7 @@ export function registerWorkerRoutes(app: Express) {
         return res.status(400).json({ error: "jobId and progress required" });
       }
       await setJobProgress(jobId, progress);
+      await stampJobHeartbeat(jobId).catch(() => {});
       res.json({ ok: true });
     } catch (err) {
       console.error("[worker/progress]", err);
@@ -627,6 +682,12 @@ export function registerWorkerRoutes(app: Express) {
     try {
       const { jobId, error } = req.body as { jobId: number; error: string };
       if (!jobId) return res.status(400).json({ error: "jobId required" });
+      // A late/spurious fail (e.g. after a complete already landed via the
+      // spool replay) must never yank a finished job back to failed.
+      const job = await (await import("./db")).getJobById(jobId);
+      if (job && (job.status === "review" || job.status === "approved")) {
+        return res.json({ ok: true, ignored: "job already completed" });
+      }
       await setJobStatus(jobId, "failed", (error ?? "Unknown worker error").slice(0, 2000));
       res.json({ ok: true });
     } catch (err) {

@@ -19,8 +19,11 @@ import os from "node:os";
 import "dotenv/config";
 import {
   buildDocPrompt,
+  buildQaPrompt,
   parseCraftLessons,
   parseDocOutput,
+  parseQaOutput,
+  planShards,
   type ClaimedJob,
   type StageOutputSpec,
 } from "./workerLib";
@@ -83,6 +86,55 @@ async function api<T>(route: string, body: unknown): Promise<T> {
   });
   if (!res.ok) throw new Error(`${route} -> HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
   return res.json() as Promise<T>;
+}
+
+// ─── Crash-safe completion: spool -> retry -> replay ─────────────────────────
+// A finished multi-hour batch must NEVER be lost to a network blip or a Render
+// cold start. The payload is spooled to disk BEFORE the first POST; retries
+// back off; unsent spools replay on boot and between polls. The server's
+// /complete is idempotent, so a double-send is harmless.
+
+const SPOOL_DIR = path.join(REPO_ROOT, "worker", "spool");
+
+async function spoolPath(jobId: number): Promise<string> {
+  await fs.mkdir(SPOOL_DIR, { recursive: true });
+  return path.join(SPOOL_DIR, `complete-${jobId}.json`);
+}
+
+/** POST /complete with backoff. True = server confirmed; false = spooled for replay. */
+async function completeWithRetry(payload: { jobId: number } & Record<string, unknown>): Promise<boolean> {
+  const file = await spoolPath(payload.jobId);
+  await fs.writeFile(file, JSON.stringify(payload));
+  const delays = [0, 10_000, 45_000, 120_000];
+  for (const delay of delays) {
+    if (delay) await new Promise((r) => setTimeout(r, delay));
+    try {
+      await api("complete", payload);
+      await fs.rm(file, { force: true });
+      return true;
+    } catch (err) {
+      console.error(`[job ${payload.jobId}] complete attempt failed:`, (err as Error).message.slice(0, 200));
+    }
+  }
+  console.error(`[job ${payload.jobId}] complete NOT confirmed — payload spooled at ${file}; will replay`);
+  return false;
+}
+
+/** Re-send any spooled completions (boot + between polls). */
+async function replaySpool(): Promise<void> {
+  const files = await fs.readdir(SPOOL_DIR).catch(() => [] as string[]);
+  for (const f of files) {
+    if (!f.startsWith("complete-") || !f.endsWith(".json")) continue;
+    const full = path.join(SPOOL_DIR, f);
+    try {
+      const payload = JSON.parse(await fs.readFile(full, "utf8"));
+      await api("complete", payload);
+      await fs.rm(full, { force: true });
+      console.log(`[spool] replayed ${f} — server confirmed`);
+    } catch (err) {
+      console.error(`[spool] replay of ${f} failed:`, (err as Error).message.slice(0, 150));
+    }
+  }
 }
 
 async function readJobDir(dir: string): Promise<Record<string, string | undefined>> {
@@ -196,83 +248,8 @@ function makeProgressReporter(jobId: number) {
 
 type ProgressReporter = ReturnType<typeof makeProgressReporter>;
 
-/**
- * Shard heavy ad renders into PARALLEL Claude sessions. One session rendering
- * 15 statics (view references, build, visual-QA each) is the slowest thing the
- * worker does; 3-4 sessions doing 4-5 ads each cut wall time to a quarter.
- * Returns per-shard feedback overrides, or null when the job shouldn't shard.
- */
-function planShards(job: ClaimedJob, output: StageOutputSpec): string[] | null {
-  if (!["ad_scripts", "ad_statics", "ad_statics_extra"].includes(output.docType)) return null;
-  const fb = job.feedback ?? "";
-
-  // Case 1: rebuild-rejected — each rejected ad is independent, split the list
-  if (/REBUILD ONLY/i.test(fb)) {
-    const lines = fb.split("\n");
-    const items = lines.filter((l) => l.trim().startsWith("- "));
-    if (items.length < 4) return null;
-    const header = lines.find((l) => /REBUILD ONLY/i.test(l)) ?? "REBUILD ONLY these rejected static ads:";
-    const approvedLine = lines.find((l) => l.trim().startsWith("Approved (do not change)")) ?? "";
-    const per = 3;
-    const shards: string[] = [];
-    for (let i = 0; i < items.length; i += per) {
-      const chunk = items.slice(i, i + per);
-      const n = Math.floor(i / per) + 1;
-      const k = Math.ceil(items.length / per);
-      shards.push(
-        [
-          header,
-          ...chunk,
-          approvedLine,
-          `PARALLEL SHARD ${n} of ${k}: other sessions are rebuilding the rest of the rejected list. Rebuild ONLY the ${chunk.length} ads above (keep their exact filenames) and write doc entries ONLY for them.`,
-        ]
-          .filter(Boolean)
-          .join("\n")
-      );
-    }
-    return shards;
-  }
-
-  // Case 2: fresh on-demand batch — split the count into ranges
-  const m = fb.match(/Generate EXACTLY (\d+) NEW static ads/i);
-  if (m) {
-    const total = Number(m[1]);
-    if (total < 8) return null;
-    const per = 5;
-    const k = Math.ceil(total / per);
-    const shards: string[] = [];
-    for (let i = 0; i < k; i++) {
-      const start = i * per + 1;
-      const end = Math.min((i + 1) * per, total);
-      const n = end - start + 1;
-      shards.push(
-        fb.replace(/Generate EXACTLY \d+ NEW static ads/i, `Generate EXACTLY ${n} NEW static ads`) +
-          ` PARALLEL SHARD ${i + 1} of ${k}: other sessions are building the rest of this batch. Number YOUR ads ${start}-${end} (use that range in filenames so shards never collide). To keep the combined batch diverse, split the eligible reference catalog categories alphabetically into ${k} contiguous slices and clone ONLY from slice ${i + 1}. Produce ONLY your ${n} ads and doc entries ONLY for them.`
-      );
-    }
-    return shards;
-  }
-
-  // Case 3: the fresh onboarding ads batch (15 statics, no feedback) — same
-  // split, or a 15-static single session becomes the slowest run we have
-  if (job.type === "ads" && output.docType === "ad_statics" && !fb.trim()) {
-    const total = 15;
-    const per = 5;
-    const k = Math.ceil(total / per);
-    const shards: string[] = [];
-    for (let i = 0; i < k; i++) {
-      const start = i * per + 1;
-      const end = Math.min((i + 1) * per, total);
-      const n = end - start + 1;
-      shards.push(
-        `PARALLEL SHARD ${i + 1} of ${k} of the ${total}-ad batch: other sessions are building the rest. Build ONLY ads ${start}-${end} (EXACTLY ${n} ads this session; the contract's total of ${total} is the COMBINED batch, not yours). Number your ads ${start}-${end} and use that range in filenames so shards never collide. To keep the combined batch diverse, split the eligible reference catalog categories alphabetically into ${k} contiguous slices and clone ONLY from slice ${i + 1}; the batch-wide spread rules (sub-avatars, hook categories, no repeated references) then hold across the union. Produce ONLY your ${n} ads and doc entries ONLY for them.`
-      );
-    }
-    return shards;
-  }
-
-  return null;
-}
+// planShards moved to workerLib.ts (pure + unit-tested; phrases single-sourced
+// in shared/adRequests.ts so the studio and the planner can never drift apart).
 
 /** Run ONE Claude session for a deliverable (or one shard of it). */
 async function runDeliverable(
@@ -343,9 +320,67 @@ async function runDeliverable(
   }
   if (assets.length) console.log(`[job ${job.id}] ${title}: ${assets.length} rendered assets collected`);
 
-  await fs.rm(jobDir, { recursive: true, force: true });
+  // jobDir is NOT deleted here: runJob cleans up only after the server
+  // confirms the completion, so a failed POST never destroys finished work.
   console.log(`[job ${job.id}] ${title}: done (${parsed.content.length.toLocaleString()} chars)`);
-  return { docType: output.docType, assets, ...parsed };
+  return { docType: output.docType, assets, jobDir, ...parsed };
+}
+
+/**
+ * Independent QA + winner-score pass over a statics batch: a SEPARATE fast
+ * session (never the builder) views every PNG against the batch spec, the
+ * render rules, and the operator's verdict history, and scores each ad.
+ * Scores order the review queue; failures are visible before the operator
+ * opens a single ad. Fail-open: any error just skips QA.
+ */
+async function runQaPass(
+  job: ClaimedJob,
+  assets: Array<{ docType: string; filename: string; mime: string; base64: string; qaScore?: number; qaNote?: string }>,
+  batchDoc: string
+): Promise<void> {
+  const statics = assets.filter((a) => a.docType.startsWith("ad_statics"));
+  if (statics.length < 2) return;
+  const qaDir = await fs.mkdtemp(path.join(os.tmpdir(), `qa-${job.id}-`));
+  try {
+    for (const a of statics) {
+      await fs.writeFile(path.join(qaDir, a.filename), Buffer.from(a.base64, "base64"));
+    }
+    await fs.writeFile(path.join(qaDir, "BATCH_SPEC.md"), batchDoc.slice(0, 120_000));
+    const verdictsDigest = (job.assetReviews ?? [])
+      .slice(-30)
+      .map((r) => `- ${r.filename}: ${r.status}${r.feedback ? ` (${r.feedback.slice(0, 120)})` : ""}`)
+      .join("\n");
+    const prompt = buildQaPrompt({
+      assetsDir: qaDir,
+      filenames: statics.map((a) => a.filename),
+      batchDoc: "",
+      frameworksDir: FRAMEWORKS_DIR,
+      verdictsDigest,
+    });
+    const promptFile = path.join(qaDir, "QA_PROMPT.md");
+    await fs.writeFile(promptFile, prompt);
+    console.log(`[job ${job.id}] QA pass: grading ${statics.length} statics with an independent session`);
+    await runClaude(
+      ["-p", `Follow the instructions in ${promptFile} exactly.`, "--model", "sonnet", "--dangerously-skip-permissions"],
+      qaDir,
+      20 * 60 * 1000
+    );
+    const raw = await fs.readFile(path.join(qaDir, "qa.json"), "utf8").catch(() => undefined);
+    const verdicts = parseQaOutput(raw, statics.map((a) => a.filename));
+    for (const v of verdicts) {
+      const asset = statics.find((a) => a.filename === v.filename);
+      if (asset) {
+        asset.qaScore = v.score;
+        asset.qaNote = v.note;
+      }
+    }
+    const fails = verdicts.filter((v) => v.score <= 30).length;
+    console.log(`[job ${job.id}] QA pass: ${verdicts.length} graded${fails ? `, ${fails} flagged as fails` : ""}`);
+  } catch (err) {
+    console.error(`[job ${job.id}] QA pass skipped:`, (err as Error).message.slice(0, 200));
+  } finally {
+    await fs.rm(qaDir, { recursive: true, force: true });
+  }
 }
 
 async function runJob(job: ClaimedJob) {
@@ -358,19 +393,42 @@ async function runJob(job: ClaimedJob) {
   // focused on one document. Heavy ad renders shard further into parallel
   // sessions of a few ads each, merged back into one deliverable.
   const reporter = makeProgressReporter(job.id);
+  const jobDirs: string[] = [];
   const results = await Promise.all(
     job.stage.outputs.map(async (output) => {
       const shards = planShards(job, output);
-      if (!shards) return runDeliverable(job, output, reporter);
+      if (!shards) {
+        const r = await runDeliverable(job, output, reporter);
+        jobDirs.push(r.jobDir);
+        return r;
+      }
       console.log(`[job ${job.id}] ${output.title}: sharding into ${shards.length} parallel sessions`);
-      const parts = await Promise.all(
+      // SALVAGE: one dead shard must not discard the others' finished ads.
+      // Succeeded shards merge and ship with a failure manifest; a full
+      // wipeout still throws so the job fails honestly.
+      const settled = await Promise.allSettled(
         shards.map((feedback, i) =>
           runDeliverable(job, output, reporter, { feedback, label: `${i + 1}/${shards.length}` })
         )
       );
+      const parts = settled.filter((s): s is PromiseFulfilledResult<Awaited<ReturnType<typeof runDeliverable>>> => s.status === "fulfilled").map((s) => s.value);
+      const failed = settled
+        .map((s, i) => (s.status === "rejected" ? { shard: i + 1, reason: String((s.reason as Error)?.message ?? s.reason).slice(0, 200) } : null))
+        .filter(Boolean) as Array<{ shard: number; reason: string }>;
+      if (!parts.length) {
+        throw new Error(`All ${shards.length} shards failed: ${failed.map((f) => f.reason).join(" | ")}`);
+      }
+      for (const p of parts) jobDirs.push(p.jobDir);
+      if (failed.length) {
+        console.error(`[job ${job.id}] ${output.title}: salvaged ${parts.length}/${shards.length} shards (failed: ${failed.map((f) => f.shard).join(", ")})`);
+      }
+      const manifest = failed.length
+        ? `\n\n> PARTIAL BATCH: shard${failed.length > 1 ? "s" : ""} ${failed.map((f) => f.shard).join(", ")} of ${shards.length} failed (${failed.map((f) => f.reason).join("; ")}). The ads above are the salvaged shards — rebuild the missing range on demand.`
+        : "";
       return {
         docType: output.docType,
-        content: parts.map((p) => p.content).join("\n\n"),
+        jobDir: parts[0].jobDir,
+        content: parts.map((p) => p.content).join("\n\n") + manifest,
         assets: parts.flatMap((p) => p.assets),
         clientLessons: parts.flatMap((p) => p.clientLessons),
         craftLessonsRaw: parts.map((p) => p.craftLessonsRaw).join("\n\n"),
@@ -380,12 +438,23 @@ async function runJob(job: ClaimedJob) {
 
   const docs = Object.fromEntries(results.map((r) => [r.docType, r.content]));
   const clientLessons = Array.from(new Set(results.flatMap((r) => r.clientLessons)));
-  const assets = results.flatMap((r) => r.assets);
+  const assets: Array<{ docType: string; filename: string; mime: string; base64: string; qaScore?: number; qaNote?: string }> =
+    results.flatMap((r) => r.assets);
 
-  await api("complete", { jobId: job.id, docs, clientLessons, assets });
+  // Independent QA + winner scoring before the operator ever sees the batch.
+  const staticsDoc = results.find((r) => r.docType.startsWith("ad_statics"))?.content ?? "";
+  if (staticsDoc) await runQaPass(job, assets, staticsDoc);
+
+  const confirmed = await completeWithRetry({ jobId: job.id, docs, clientLessons, assets });
   console.log(
-    `[job ${job.id}] complete in ${Math.round((Date.now() - started) / 60000)}m — ${results.length} docs posted, ${clientLessons.length} client lessons`
+    `[job ${job.id}] ${confirmed ? "complete" : "finished (completion spooled)"} in ${Math.round((Date.now() - started) / 60000)}m — ${results.length} docs posted, ${clientLessons.length} client lessons`
   );
+
+  // Only after the server has the work (or it is safely spooled) do the
+  // session dirs get cleaned up.
+  for (const dir of jobDirs) {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
 
   for (const r of results) {
     await saveCraftLessons(r.craftLessonsRaw, job.id, job.client.name);
@@ -446,6 +515,10 @@ async function tick() {
   console.log(`Skills: ${SKILLS_DIR}`);
   console.log(`Learnings: ${LEARNINGS_DIR}`);
 
+  // Any completion that never reached the server last run goes out first.
+  await replaySpool();
+  let lastSpoolReplay = Date.now();
+
   // Auto-refresh mining heartbeat: a few pings a day; the server decides
   // which clients' competitor intel is stale and queues re-mines itself.
   const AUTO_INTEL_MS = 6 * 60 * 60 * 1000;
@@ -457,6 +530,10 @@ async function tick() {
         lastAutoIntel = Date.now();
         const { queued } = await api<{ queued: number[] }>("auto-intel", {}).catch(() => ({ queued: [] as number[] }));
         if (queued.length) console.log(`auto-intel: queued refresh mines -> jobs ${queued.join(", ")}`);
+      }
+      if (Date.now() - lastSpoolReplay > 5 * 60 * 1000) {
+        lastSpoolReplay = Date.now();
+        await replaySpool();
       }
       await tick();
     } catch (err) {
