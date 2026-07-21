@@ -262,12 +262,50 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const asset = await getClientAssetById(input.assetId);
         if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
-        await requireClient(asset.clientId, ctx.user.id);
+        const client = await requireClient(asset.clientId, ctx.user.id);
         await reviewClientAsset(
           input.assetId,
           input.action === "approve" ? "approved" : "rejected",
           input.feedback?.trim() || null
         );
+        // AUTOPILOT: the LAST verdict on a batch, with rejects present,
+        // queues the rebuild immediately — same request the Rebuild button
+        // composes, grouped per owning engine.
+        if (client.autoRun) {
+          const all = await getClientAssetsMeta(asset.clientId);
+          const pending = all.filter((a) => a.status === "pending");
+          const rejected = all.filter((a) => a.status === "rejected");
+          if (!pending.length && rejected.length) {
+            const approvedNames = all.filter((a) => a.status === "approved").map((a) => a.filename);
+            const groups = new Map<string, typeof rejected>();
+            for (const a of rejected) {
+              const stage = a.docType === "ad_statics_extra" ? "more_statics" : "ads";
+              groups.set(stage, [...(groups.get(stage) ?? []), a]);
+            }
+            const queued: number[] = [];
+            for (const [stage, group] of Array.from(groups.entries())) {
+              const active = await getLatestJobForClient(asset.clientId, stage);
+              if (active && (active.status === "queued" || active.status === "running")) continue;
+              const feedback = [
+                `REBUILD ONLY these rejected static ads (keep each one's EXACT filename); do NOT generate any other ads:`,
+                ...group.map((a) => `- ${a.filename}: ${a.feedback || "rejected, no note"}`),
+                approvedNames.length ? `Approved library (do not touch, do not re-render): ${approvedNames.join(", ")}` : "",
+              ]
+                .filter(Boolean)
+                .join("\n");
+              queued.push(
+                await createJob({
+                  clientId: asset.clientId,
+                  userId: ctx.user.id,
+                  type: stage,
+                  status: "queued",
+                  payload: { feedback },
+                })
+              );
+            }
+            if (queued.length) return { ok: true, autoRebuild: queued };
+          }
+        }
         return { ok: true };
       }),
 
@@ -573,6 +611,15 @@ export const appRouter = router({
         return { matched, unmatched: unmatched.slice(0, 20), total: rows.length };
       }),
 
+    /** Autopilot on/off: approvals queue the next stage, final verdicts queue rebuilds. */
+    setAutoRun: protectedProcedure
+      .input(z.object({ clientId: z.number(), autoRun: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        await updateClient(input.clientId, { autoRun: input.autoRun ? 1 : 0 });
+        return { ok: true };
+      }),
+
     /** The Mac worker's pulse: last claim poll, for the online/offline chip. */
     workerStatus: protectedProcedure.query(async () => {
       const { getWorkerLastSeenAt } = await import("./workerRoutes");
@@ -818,6 +865,24 @@ export const appRouter = router({
         if (input.action === "approve") {
           await setJobStatus(job.id, "approved");
           await logActivity(ctx.user.id, "foundation_approved", `${input.stage} for client ${input.clientId}`);
+          // AUTOPILOT: approval queues the next stage in the chain, so the
+          // pipeline runs overnight and mornings start with a review queue.
+          const client = await getClientById(input.clientId);
+          const chainIdx = (STAGE_ORDER as readonly string[]).indexOf(input.stage);
+          const nextStage = chainIdx >= 0 ? (STAGE_ORDER as readonly string[])[chainIdx + 1] : undefined;
+          if (client?.autoRun && nextStage) {
+            const existing = await getLatestJobForClient(input.clientId, nextStage);
+            if (!existing || (existing.status !== "queued" && existing.status !== "running" && existing.status !== "review")) {
+              const jobId = await createJob({
+                clientId: input.clientId,
+                userId: ctx.user.id,
+                type: nextStage,
+                status: "queued",
+                payload: {},
+              });
+              return { status: "approved" as const, autoQueued: nextStage, jobId };
+            }
+          }
           return { status: "approved" as const };
         }
         await setJobStatus(job.id, "failed", "Rejected by owner with feedback");

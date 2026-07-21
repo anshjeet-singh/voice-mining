@@ -169,6 +169,38 @@ function LinkReportControl({
   );
 }
 
+/** Autopilot: approvals queue the next stage; the last ad verdict with
+ *  rejects queues the rebuild. The pipeline runs while the operator sleeps. */
+function AutopilotToggle({ clientId, autoRun, invalidate }: { clientId: number; autoRun: boolean; invalidate: () => void }) {
+  const set = trpc.clients.setAutoRun.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success(autoRun ? "Autopilot off" : "Autopilot on: approvals now queue the next stage automatically");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/30 px-4 py-3">
+      <button
+        disabled={set.isPending}
+        onClick={() => set.mutate({ clientId, autoRun: !autoRun })}
+        className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${autoRun ? "bg-primary" : "bg-card border border-border/60"}`}
+        aria-label="Toggle autopilot"
+      >
+        <span
+          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${autoRun ? "left-[18px]" : "left-0.5"}`}
+        />
+      </button>
+      <div>
+        <p className="text-xs font-semibold text-foreground">Autopilot</p>
+        <p className="text-[11px] text-muted-foreground">
+          Approving a stage queues the next one immediately, and finishing an ad review with rejects queues the rebuild. Overnight, the Mac keeps building.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /** Numbered circle for each pipeline stage: done, active, or upcoming. */
 function StageMarker({ n, state }: { n: number; state: "done" | "active" | "upcoming" }) {
   if (state === "done") {
@@ -831,6 +863,7 @@ export default function ClientDetail() {
           </div>
 
           {/* ─── Stages 3-6: worker pipeline (foundation, skool, emails, ads) ─── */}
+          <AutopilotToggle clientId={clientId} autoRun={!!(client as { autoRun?: number }).autoRun} invalidate={invalidate} />
           {WORKER_STAGES.map((stage, i) => {
             const jobsByStage = jobs as Record<string, StageJob>;
             const prevStage = i > 0 ? WORKER_STAGES[i - 1] : null;

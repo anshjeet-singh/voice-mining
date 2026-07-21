@@ -81,6 +81,9 @@ export const clients = mysqlTable("clients", {
   linkedReportId: int("linkedReportId"),
   /** Public token for the client's recording queue page (/record/:token). */
   recordingToken: varchar("recordingToken", { length: 64 }),
+  /** Autopilot: stage approval queues the next stage; the last ad verdict
+   *  with rejects queues the rebuild. 0/1. */
+  autoRun: int("autoRun").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -163,6 +166,19 @@ export const clientRecordingItems = mysqlTable("client_recording_items", {
 });
 
 export type ClientRecordingItem = typeof clientRecordingItems.$inferSelect;
+
+/** Weekly-ish social stat snapshots so growth is a trendline, not a memory.
+ *  Written when stats are fetched (Overview load, weekly report). */
+export const socialStatsSnapshots = mysqlTable("social_stats_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  platform: varchar("platform", { length: 20 }).notNull(),
+  handle: varchar("handle", { length: 200 }).notNull(),
+  followers: int("followers"),
+  posts: int("posts"),
+  extra: int("extra"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 
 export type ClientAsset = typeof clientAssets.$inferSelect;
 export type InsertClientAsset = typeof clientAssets.$inferInsert;

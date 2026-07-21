@@ -523,6 +523,7 @@ async function tick() {
   // which clients' competitor intel is stale and queues re-mines itself.
   const AUTO_INTEL_MS = 6 * 60 * 60 * 1000;
   let lastAutoIntel = 0;
+  let lastDigestDate = "";
 
   for (;;) {
     try {
@@ -534,6 +535,18 @@ async function tick() {
       if (Date.now() - lastSpoolReplay > 5 * 60 * 1000) {
         lastSpoolReplay = Date.now();
         await replaySpool();
+      }
+      // Morning digest (daily, after 7am local) + weekly report (Mondays).
+      const now = new Date();
+      const today = now.toISOString().slice(0, 10);
+      if (now.getHours() >= 7 && lastDigestDate !== today) {
+        lastDigestDate = today;
+        await api("daily-digest", {}).then(() => console.log("morning digest sent")).catch(() => {});
+        if (now.getDay() === 1) {
+          await api<{ reports: number }>("weekly-report", {})
+            .then((r) => console.log(`weekly reports written: ${r.reports}`))
+            .catch(() => {});
+        }
       }
       await tick();
     } catch (err) {

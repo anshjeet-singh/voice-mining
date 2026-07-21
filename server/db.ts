@@ -23,6 +23,7 @@ import {
   reports,
   scrapeCache,
   sharedReports,
+  socialStatsSnapshots,
   trendSnapshots,
   users,
   vaultCollections,
@@ -1023,4 +1024,61 @@ export async function deleteRecordingItem(id: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(clientRecordingItems).where(eq(clientRecordingItems.id, id));
+}
+
+// ─── Social stat snapshots + recent jobs (digest/report fuel) ───────────────
+
+export async function saveSocialSnapshot(data: {
+  clientId: number;
+  platform: string;
+  handle: string;
+  followers?: number | null;
+  posts?: number | null;
+  extra?: number | null;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  // At most one snapshot per client+platform per day: fetches are cached
+  // hourly, so dedupe on the calendar day.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const existing = await db
+    .select({ id: socialStatsSnapshots.id })
+    .from(socialStatsSnapshots)
+    .where(
+      and(
+        eq(socialStatsSnapshots.clientId, data.clientId),
+        eq(socialStatsSnapshots.platform, data.platform),
+        gt(socialStatsSnapshots.createdAt, today)
+      )
+    )
+    .limit(1);
+  if (existing[0]) return;
+  await db.insert(socialStatsSnapshots).values({
+    clientId: data.clientId,
+    platform: data.platform,
+    handle: data.handle,
+    followers: data.followers ?? null,
+    posts: data.posts ?? null,
+    extra: data.extra ?? null,
+  });
+}
+
+export async function getSocialSnapshots(clientId: number, sinceDays = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
+  return db
+    .select()
+    .from(socialStatsSnapshots)
+    .where(and(eq(socialStatsSnapshots.clientId, clientId), gt(socialStatsSnapshots.createdAt, since)))
+    .orderBy(socialStatsSnapshots.createdAt);
+}
+
+/** Every job created in the last N days, newest first (digest + report fuel). */
+export async function getRecentJobs(sinceDays: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
+  return db.select().from(jobs).where(gt(jobs.createdAt, since)).orderBy(desc(jobs.id));
 }

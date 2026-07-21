@@ -1467,6 +1467,22 @@ export default function ClientStudio() {
                 </div>
               </div>
 
+              {/* Weekly reports: the Monday what-shipped digest, newest first */}
+              {docsFor("weekly_report").length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Weekly reports</h3>
+                  <div className="space-y-1.5">
+                    {docsFor("weekly_report")
+                      .slice()
+                      .sort((a, b) => b.id - a.id)
+                      .slice(0, 6)
+                      .map((d) => (
+                        <DocRow key={d.id} doc={d} invalidate={invalidate} />
+                      ))}
+                  </div>
+                </div>
+              )}
+
               {/* Competitor Desk */}
               <div id="competitor-desk">
                 <StudioBlock

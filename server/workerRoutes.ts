@@ -41,7 +41,7 @@ import { formatMarketTruth, parseAdSpecs } from "./adPerformance";
 import { composeMineRequest, harvestCompetitorSources } from "./competitorSources";
 import { normalizeHooks, normalizeInsights } from "@shared/reportContent";
 import type { InsightList } from "../drizzle/schema";
-import { ON_DEMAND_TYPES, stageAllDocTypes, stageContract, stagePromptSpec, type FunnelType } from "./stages";
+import { ON_DEMAND_TYPES, STAGES, stageAllDocTypes, stageContract, stagePromptSpec, type FunnelType } from "./stages";
 import { fetchForeplayWinningAds, fetchForeplayStaticAdInspiration } from "./foreplay";
 
 /** True when the request carries the correct worker bearer token. */
@@ -192,6 +192,29 @@ async function renderResearchForClient(clientId: number): Promise<string> {
     if (gapLines.length) {
       parts.push(`\nMARKET GAPS + MOVES:\n${gapLines.join("\n")}`);
     }
+  }
+
+  // TRENDING THIS WEEK: the weekly trend cron already produces this data for
+  // the client's keywords; feeding it here means month-3 batches hook into
+  // this week's conversations, not month-0's.
+  try {
+    const { getLatestTrendSnapshot } = await import("./db");
+    for (const kw of keyword.split(",").map((k) => k.trim()).filter(Boolean).slice(0, 3)) {
+      const snap = await getLatestTrendSnapshot(kw);
+      if (!snap) continue;
+      const topics = (snap.trendingTopics ?? [])
+        .slice(0, 6)
+        .map((t) => `- ${t.name} (${t.momentum}, ${t.score}/100): ${t.description}`)
+        .join("\n");
+      const phrases = (snap.trendingPhrases ?? []).slice(0, 10).map((p) => `- ${p}`).join("\n");
+      const questions = (snap.emergingQuestions ?? []).slice(0, 8).map((q) => `- ${q}`).join("\n");
+      parts.push(
+        `\nTRENDING THIS WEEK (${snap.snapshotDate}, keyword "${kw}" — hooks and angles should ride what the market is talking about NOW):\nTOPICS:\n${topics}\nPHRASES:\n${phrases}\nQUESTIONS PEOPLE ARE ASKING:\n${questions}`
+      );
+      break;
+    }
+  } catch {
+    /* trends are a bonus, never a blocker */
   }
 
   return parts.join("\n");
@@ -351,7 +374,7 @@ export function registerWorkerRoutes(app: Express) {
         job.type === "foundation"
           ? []
           : docs
-              .filter((d) => (d.kind === "foundation" || d.kind === "deliverable") && d.docType !== "client_links" && d.docType !== "client_facts")
+              .filter((d) => (d.kind === "foundation" || d.kind === "deliverable") && !["client_links", "client_facts", "weekly_report"].includes(d.docType))
               .map((d) => ({ title: d.title, docType: d.docType, content: d.content }));
 
       // CLIENT FACTS: the operator's canonical links/names + current-state
@@ -758,6 +781,134 @@ export function registerWorkerRoutes(app: Express) {
     } catch (err) {
       console.error("[worker/auto-intel]", err);
       res.status(500).json({ error: "auto-intel failed" });
+    }
+  });
+
+  // Morning digest: what needs the operator TODAY. The worker pings this once
+  // a day; the digest goes out via notifyOwner (webhook or server log) and
+  // closes the worker-finishes-at-2am / operator-reviews-at-9am gap.
+  app.post("/api/worker/daily-digest", async (req: Request, res: Response) => {
+    if (!guard(req, res)) return;
+    try {
+      const { getRecentJobs } = await import("./db");
+      const { notifyOwner } = await import("./_core/notification");
+      const clients = await getAllClients();
+      const names = new Map(clients.map((c) => [c.id, c.name]));
+      const jobs = await getRecentJobs(7);
+      const lines: string[] = [];
+
+      const inReview = jobs.filter((j) => j.status === "review");
+      if (inReview.length) {
+        lines.push("NEEDS YOUR REVIEW:");
+        for (const j of inReview) {
+          const hrs = Math.round((Date.now() - new Date(j.finishedAt ?? j.createdAt).getTime()) / 3600000);
+          lines.push(`- ${names.get(j.clientId) ?? j.clientId}: ${j.type} (waiting ${hrs}h)`);
+        }
+      }
+      for (const c of clients) {
+        const pending = (await getClientAssetsMeta(c.id)).filter((a) => a.status === "pending").length;
+        if (pending) lines.push(`- ${c.name}: ${pending} ads awaiting verdicts`);
+      }
+      const failed = jobs.filter((j) => j.status === "failed" && Date.now() - new Date(j.createdAt).getTime() < 26 * 3600000);
+      if (failed.length) {
+        lines.push("FAILED (last 24h):");
+        for (const j of failed) lines.push(`- ${names.get(j.clientId) ?? j.clientId}: ${j.type} — ${(j.error ?? "no error recorded").slice(0, 120)}`);
+      }
+      // Research staleness: month-3 copy written from month-0 language
+      for (const c of clients) {
+        const searches = await getSearchesByClient(c.id);
+        const complete = searches.find((s) => s.status === "complete");
+        if (complete && Date.now() - new Date(complete.createdAt).getTime() > 30 * 24 * 3600000 && !c.linkedReportId) {
+          lines.push(`- ${c.name}: research is ${Math.round((Date.now() - new Date(complete.createdAt).getTime()) / (24 * 3600000))} days old — re-run or link a fresh report`);
+        }
+      }
+
+      const content = lines.length ? lines.join("\n") : "All clear: nothing waiting on you.";
+      await notifyOwner({ title: "Cashflow Coaches — morning digest", content });
+      res.json({ ok: true, lines: lines.length });
+    } catch (err) {
+      console.error("[worker/daily-digest]", err);
+      res.status(500).json({ error: "digest failed" });
+    }
+  });
+
+  // Weekly per-client report: what shipped, what's live, how socials moved.
+  // Composed from data already in the DB (zero LLM cost), stored as a
+  // document so it shows on the Overview — the "machine is working" artifact.
+  app.post("/api/worker/weekly-report", async (req: Request, res: Response) => {
+    if (!guard(req, res)) return;
+    try {
+      const { getRecentJobs, saveSocialSnapshot, getSocialSnapshots } = await import("./db");
+      const { getClientSocialStats } = await import("./socialStats");
+      const weekAgo = Date.now() - 7 * 24 * 3600000;
+      const allJobs = await getRecentJobs(7);
+      const created: number[] = [];
+
+      for (const client of await getAllClients()) {
+        const docs = await getClientDocuments(client.id);
+        const newDocs = docs.filter(
+          (d) => d.kind === "deliverable" && d.docType !== "weekly_report" && new Date(d.createdAt).getTime() > weekAgo
+        );
+        const postedDocs = docs.filter(
+          (d) => d.status === "posted" && new Date(d.updatedAt).getTime() > weekAgo
+        );
+        const assets = await getClientAssetsMeta(client.id);
+        const newAds = assets.filter((a) => new Date(a.createdAt).getTime() > weekAgo);
+        const approvedAds = assets.filter((a) => a.status === "approved");
+        const clientJobs = allJobs.filter((j) => j.clientId === client.id && (j.status === "approved" || j.status === "review"));
+        if (!newDocs.length && !newAds.length && !clientJobs.length) continue; // quiet week, no report
+
+        // Social pulse: fetch (cached hourly), snapshot, and diff vs ~last week
+        let socialLines = "";
+        try {
+          const stats = await getClientSocialStats(client);
+          for (const s of stats) {
+            if (s.error || s.followers == null) continue;
+            await saveSocialSnapshot({ clientId: client.id, platform: s.platform, handle: s.handle, followers: s.followers, posts: s.posts ?? null, extra: s.extra ?? null });
+          }
+          const snaps = await getSocialSnapshots(client.id, 30);
+          socialLines = stats
+            .filter((s) => !s.error && s.followers != null)
+            .map((s) => {
+              const prior = snaps.filter((p) => p.platform === s.platform && Date.now() - new Date(p.createdAt).getTime() > 5 * 24 * 3600000).pop();
+              const delta = prior?.followers != null ? (s.followers ?? 0) - prior.followers : null;
+              return `- ${s.platform}: ${s.followers?.toLocaleString()} followers${delta != null ? ` (${delta >= 0 ? "+" : ""}${delta} this period)` : ""}`;
+            })
+            .join("\n");
+        } catch {
+          /* socials optional */
+        }
+
+        const engineCounts = new Map<string, number>();
+        for (const j of clientJobs) engineCounts.set(j.type, (engineCounts.get(j.type) ?? 0) + 1);
+        const date = new Date().toISOString().slice(0, 10);
+        const md = [
+          `# Weekly Report — ${date}`,
+          "",
+          `## Shipped this week`,
+          newAds.length ? `- ${newAds.length} new ad creatives rendered (${approvedAds.length} total in the approved library)` : "",
+          ...Array.from(engineCounts.entries()).map(([t, n]) => `- ${n}x ${STAGES[t]?.label ?? t}`),
+          newDocs.length ? `- ${newDocs.length} new deliverable documents: ${newDocs.slice(0, 8).map((d) => d.title).join(", ")}${newDocs.length > 8 ? "…" : ""}` : "",
+          postedDocs.length ? `\n## Went live\n${postedDocs.slice(0, 10).map((d) => `- ${d.title}`).join("\n")}` : "",
+          socialLines ? `\n## Social pulse\n${socialLines}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+
+        await createClientDocument({
+          clientId: client.id,
+          kind: "deliverable",
+          docType: "weekly_report",
+          title: `Weekly Report — ${date}`,
+          content: md,
+          status: "approved",
+        });
+        created.push(client.id);
+      }
+      res.json({ ok: true, reports: created.length });
+    } catch (err) {
+      console.error("[worker/weekly-report]", err);
+      res.status(500).json({ error: "weekly report failed" });
     }
   });
 }

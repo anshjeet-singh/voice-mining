@@ -3,7 +3,7 @@
  * gallery, and their types. Used by the pipeline page (ClientDetail) and
  * the Client Studio dashboard.
  */
-import { createContext, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
@@ -383,6 +383,23 @@ function AssetGallery({
               Rebuild {rejected.length} rejected
             </Button>
           )}
+          {assets.some((a) => a.status === "pending") && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={reviewAsset.isPending}
+              onClick={() => {
+                const remaining = assets.filter((a) => a.status === "pending");
+                if (confirm(`Approve all ${remaining.length} pending ads?`)) {
+                  for (const a of remaining) reviewAsset.mutate({ assetId: a.id, action: "approve" });
+                }
+              }}
+              className="h-7 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <Check className="w-3 h-3 mr-1.5" />
+              Approve all pending
+            </Button>
+          )}
         </div>
       </div>
       <div className="space-y-4">
@@ -562,17 +579,143 @@ function AssetGallery({
       </div>
 
       {lightbox !== null && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8 cursor-zoom-out"
-          onClick={() => setLightbox(null)}
-        >
-          <img
-            src={`/api/assets/${lightbox}`}
-            alt="Ad preview"
-            className="max-h-full max-w-full rounded-lg shadow-2xl"
-          />
-        </div>
+        <ReviewLightbox
+          assets={grouped.flatMap(([, g]) => g)}
+          currentId={lightbox}
+          setCurrentId={setLightbox}
+          onApprove={(id) => reviewAsset.mutate({ assetId: id, action: "approve" })}
+          onReject={(id, feedback) => reviewAsset.mutate({ assetId: id, action: "reject", feedback })}
+          onVary={(a) => {
+            setVaryCount(5);
+            requestVariations(a);
+          }}
+          busy={reviewAsset.isPending || queueVariations.isPending}
+        />
       )}
+    </div>
+  );
+}
+
+/**
+ * Keyboard-first review: arrows move, A approves, R opens the reject note
+ * (Enter sends), V queues 5 variations, Esc closes. Verdicts auto-advance,
+ * so a 15-ad batch is one sub-minute pass instead of ~45 clicks.
+ */
+function ReviewLightbox({
+  assets,
+  currentId,
+  setCurrentId,
+  onApprove,
+  onReject,
+  onVary,
+  busy,
+}: {
+  assets: ClientAssetMeta[];
+  currentId: number;
+  setCurrentId: (id: number | null) => void;
+  onApprove: (id: number) => void;
+  onReject: (id: number, feedback: string) => void;
+  onVary: (a: ClientAssetMeta) => void;
+  busy: boolean;
+}) {
+  const idx = Math.max(0, assets.findIndex((a) => a.id === currentId));
+  const asset = assets[idx];
+  const pending = assets.filter((a) => a.status === "pending").length;
+  const [rejecting, setRejecting] = useState(false);
+  const [note, setNote] = useState("");
+  const noteRef = useRef<HTMLInputElement>(null);
+
+  const advance = useCallback(() => {
+    const next = assets[idx + 1] ?? null;
+    setCurrentId(next ? next.id : null);
+    setRejecting(false);
+    setNote("");
+  }, [assets, idx, setCurrentId]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (rejecting) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setRejecting(false);
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          if (asset) {
+            onReject(asset.id, note);
+            advance();
+          }
+        }
+        return;
+      }
+      if (e.key === "Escape") setCurrentId(null);
+      else if (e.key === "ArrowRight") setCurrentId(assets[Math.min(idx + 1, assets.length - 1)]?.id ?? null);
+      else if (e.key === "ArrowLeft") setCurrentId(assets[Math.max(idx - 1, 0)]?.id ?? null);
+      else if (!busy && asset && (e.key === "a" || e.key === "A")) {
+        onApprove(asset.id);
+        advance();
+      } else if (asset && (e.key === "r" || e.key === "R")) {
+        e.preventDefault();
+        setRejecting(true);
+        setTimeout(() => noteRef.current?.focus(), 0);
+      } else if (!busy && asset && (e.key === "v" || e.key === "V")) {
+        onVary(asset);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [asset, assets, idx, rejecting, note, busy, advance, onApprove, onReject, onVary, setCurrentId]);
+
+  if (!asset) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/85 flex flex-col items-center justify-center p-6" onClick={() => setCurrentId(null)}>
+      <div className="flex-1 min-h-0 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+        <img src={`/api/assets/${asset.id}`} alt={asset.filename} className="max-h-full max-w-full rounded-lg shadow-2xl" />
+      </div>
+      <div
+        className="flex-shrink-0 mt-4 w-full max-w-2xl rounded-xl border border-border/40 bg-background/95 px-4 py-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground flex-shrink-0">
+            {idx + 1} of {assets.length} · {pending} pending
+          </span>
+          <span className="flex-1 text-xs text-foreground truncate" title={asset.filename}>
+            {asset.filename}
+          </span>
+          {asset.qaScore != null && (
+            <span className="text-[10px] font-bold text-muted-foreground flex-shrink-0" title={asset.qaNote ?? ""}>
+              QA {asset.qaScore}
+            </span>
+          )}
+          <span
+            className={`text-[10px] font-bold uppercase flex-shrink-0 ${
+              asset.status === "approved" ? "text-emerald-400" : asset.status === "rejected" ? "text-destructive" : "text-muted-foreground"
+            }`}
+          >
+            {asset.status}
+          </span>
+        </div>
+        {rejecting ? (
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              ref={noteRef}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Why? Enter sends the rejection, Esc cancels."
+              className="flex-1 h-8 rounded-lg border border-destructive/40 bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+            />
+          </div>
+        ) : (
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            <kbd className="px-1 rounded bg-card border border-border/40">A</kbd> approve ·{" "}
+            <kbd className="px-1 rounded bg-card border border-border/40">R</kbd> reject ·{" "}
+            <kbd className="px-1 rounded bg-card border border-border/40">V</kbd> vary ·{" "}
+            <kbd className="px-1 rounded bg-card border border-border/40">←</kbd>
+            <kbd className="px-1 rounded bg-card border border-border/40">→</kbd> move ·{" "}
+            <kbd className="px-1 rounded bg-card border border-border/40">Esc</kbd> close
+          </p>
+        )}
+      </div>
     </div>
   );
 }
