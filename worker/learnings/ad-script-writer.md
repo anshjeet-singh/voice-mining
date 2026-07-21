@@ -36,3 +36,6 @@ Accumulated craft lessons applied on every run.
 <!-- 2026-07-11 · job 270013 · client: Trent Kus -->
 - Never give the entire mechanism away flat in the ad ("the whole method in three moves," each step labeled). Once the prospect has read the whole method, "see how it works" offers nothing. Name the mechanism to open a curiosity loop; let the funnel do the full teach.
 - Diagnose the audience's real objection before choosing the reassurance. For an audience that believes the system is rigged, not complicated, "it's simpler than you think" aims at the wrong emotion. Match the promise to the belief in the ICP, not to a generic reassurance.
+
+<!-- 2026-07-21 · job 720006 · client: Ibby -->
+Every line in a chat/native format must survive the read-aloud gate literally, as texted speech. A clever reframe that reads well on paper ("it's the key, not the trophy") gets rejected the moment someone asks "would a person actually text this?" Cute metaphors and copywriter turns of phrase fail the native test; the mechanism spoken flat and concrete ("a solid score on a messy file still gets declined, it's the order") passes. Prefer the plain mechanism over the memorable metaphor inside native formats.

@@ -60,3 +60,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-16 · job 510004 · client: Veda Ray -->
 - The Notes CTA rule caps DM keywords at 4 characters, but a real client's approved DM keywords are often longer (this client's were BORNFREE, SOVEREIGN, SEPARATE). native-formats.md / notes-format-spec.md should state the fallback explicitly: when the client's confirmed keyword exceeds 4 characters, the Notes ad uses the link CTA ("Click the link below to get started"), never a truncated keyword, and the writer flags that a short keyword is needed for any DM-funnel Notes static.
+
+<!-- 2026-07-21 · job 720006 · client: Ibby -->
+In the occupation-callout / big-text spotlight formats, the giant emphasized word is the audience magnet: whoever identifies with that word is who stops. In any filtered or regulated niche (funding, credit, finance, health), lead the eye with the QUALIFIER, never the disqualifier. An ad that blows up "BAD CREDIT" recruits the broke, unqualified files the offer repels; flipping the giant word to the income/qualifying identity and demoting the problem to a subordinate line selects for buyers. Bake this into the spotlight copy skeleton: the hero word is the qualification, the objection is the small line.
