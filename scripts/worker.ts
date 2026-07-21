@@ -617,17 +617,15 @@ async function tick() {
         lastSpoolReplay = Date.now();
         await replaySpool();
       }
-      // Morning digest (daily, after 7am local) + weekly report (Mondays).
+      // Weekly client reports fire on Mondays. (The morning digest was cut:
+      // operator verdict, client-facing functionality over operator noise.)
       const now = new Date();
       const today = now.toISOString().slice(0, 10);
-      if (now.getHours() >= 7 && lastDigestDate !== today) {
+      if (now.getHours() >= 7 && now.getDay() === 1 && lastDigestDate !== today) {
         lastDigestDate = today;
-        await api("daily-digest", {}).then(() => console.log("morning digest sent")).catch(() => {});
-        if (now.getDay() === 1) {
-          await api<{ reports: number }>("weekly-report", {})
-            .then((r) => console.log(`weekly reports written: ${r.reports}`))
-            .catch(() => {});
-        }
+        await api<{ reports: number }>("weekly-report", {})
+          .then((r) => console.log(`weekly reports written: ${r.reports}`))
+          .catch(() => {});
       }
       await tick();
     } catch (err) {

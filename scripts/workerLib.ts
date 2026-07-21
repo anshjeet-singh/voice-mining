@@ -85,7 +85,7 @@ export function buildDocPrompt(job: ClaimedJob, output: StageOutputSpec, opts: P
   const verdicts = job.assetReviews?.length
     ? `\n# OPERATOR AD VERDICTS FROM THE PREVIOUS BATCH (the calibration loop — this outranks your own taste)\n${
         approvedAds.length
-          ? `\nAPPROVED (the operator's bar. VIEW these PNGs with the Read tool in the client's most recent AdsBatch output folder on Drive before building anything; they are positive reference examples. If this run rebuilds the batch, reproduce these ads IDENTICALLY — same angle, format, copy, pixels):\n${approvedAds
+          ? `\nAPPROVED (the operator's bar. VIEW these PNGs with the Read tool in the client's Drive folder — 'Ads/Approved Static Ads/' or the most recent folder in 'Ads/_batches/' — before building anything; they are positive reference examples. If this run rebuilds the batch, reproduce these ads IDENTICALLY — same angle, format, copy, pixels):\n${approvedAds
               .map((r) => `- ${r.filename}${r.feedback ? ` (note: ${r.feedback})` : ""}`)
               .join("\n")}\n`
           : ""

@@ -292,7 +292,7 @@ function AssetGallery({
   const requestVariations = (a: ClientAssetMeta) => {
     const feedback = [
       `VARIATIONS of the ad '${a.filename}': generate EXACTLY ${varyCount} NEW static ads that are variations of that exact ad.`,
-      `First open and VIEW '${a.filename}' (it is in the client's ad library: the latest Drive AdsBatch output or the approved exports) and read its spec block in the ads deliverable doc.`,
+      `First open and VIEW '${a.filename}' (it is in the client's ad library: the latest folder in Drive Ads/_batches/ or the approved exports) and read its spec block in the ads deliverable doc.`,
       `KEEP its winning DNA: the angle, the core copy idea and voice, the offer, and the energy. That level of copywriting is the bar for every variation.`,
       `VARY one or two dimensions per variation: hook phrasing, visual format (a different reference), sub-avatar aim, or the proof beat. Each variation must read as a fresh creative to a cold feed, never a near-duplicate of the source or of each other.`,
       varyNote.trim() ? `Operator direction: ${varyNote.trim()}` : "",
