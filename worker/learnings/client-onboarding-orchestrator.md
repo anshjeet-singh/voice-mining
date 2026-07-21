@@ -130,3 +130,7 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-21 · job 720003 · client: Ibby -->
 - The Step 5 SMS voice rule ("no emoji unless the client's voice material uses them") reads as permission to add emoji whenever the client's brand uses it, but emoji forces UCS-2 encoding on SMS, which cuts the per-segment budget from 160 to 70 characters and multiplies send cost. Add a caveat: even when the client's voice permits emoji, keep marketing SMS emoji-light (ideally GSM-7 only) so texts stay single-segment, and carry the client's voice through wording and signature phrases instead. This is true for every client, not just this one.
+
+<!-- 2026-07-21 · job 750001 · client: Trent Kus -->
+- Intel Engine: verify every provided competitor handle resolves to the INTENDED person before scraping and mining, then note the resolved display name in the report. Bare first-name Instagram handles (this run's "hunter" was an Amazon FBA creator, not Hunter Tobin) and misspellings silently pull a wrong account, inflating the source count with off-niche rejects and wasting scrape budget. Flag any mismatch in the report rather than presenting it as a competitor.
+- Intel Engine: when the transcription API returns an auth failure (a repeated 401), detect it once and skip transcription for the whole batch, then fall back to caption (Instagram) and packaging (YouTube) analysis. Retrying a dead key three times per reel wastes minutes on a 40-reel run for zero benefit; the graceful-degrade path should trigger on the first confirmed auth error, not per item.
