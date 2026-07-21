@@ -127,3 +127,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-21 · job 720003 · client: Ibby -->
 - The DOCUMENT RULES ("start on the `#` title and go straight into content, no notes about what the document contains") forbid the orienting one-liner writers instinctively add under the title of an email deliverable (a "one email/day, two CTAs, load into ConvertKit" summary). That summary reads as value to the operator but is a meta-preamble defect. A one-line reminder that email-sequence deliverables also start cold on Day 1, with the CTA/placeholder key living only in craft/client lessons, would stop it being added and then stripped in QA each run.
+
+<!-- 2026-07-21 · job 720003 · client: Ibby -->
+- The Step 5 SMS voice rule ("no emoji unless the client's voice material uses them") reads as permission to add emoji whenever the client's brand uses it, but emoji forces UCS-2 encoding on SMS, which cuts the per-segment budget from 160 to 70 characters and multiplies send cost. Add a caveat: even when the client's voice permits emoji, keep marketing SMS emoji-light (ideally GSM-7 only) so texts stay single-segment, and carry the client's voice through wording and signature phrases instead. This is true for every client, not just this one.
