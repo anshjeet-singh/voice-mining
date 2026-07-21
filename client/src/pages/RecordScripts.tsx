@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { MarkdownDoc } from "@/components/MarkdownDoc";
-import { Check, ChevronDown, ChevronUp, Circle, Clapperboard, Copy, Loader2 } from "lucide-react";
+import { CopyButton, stripHtmlBlock } from "@/components/engines";
+import { Check, ChevronDown, ChevronUp, Circle, Clapperboard, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 /**
@@ -88,16 +89,7 @@ export default function RecordScripts() {
                     {idx + 1}. {item.title}
                   </p>
                 </button>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(item.content);
-                    toast.success("Script copied");
-                  }}
-                  className="flex-shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground"
-                  title="Copy the script"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
+                <CopyButton text={item.content} label="Copy" className="flex-shrink-0" />
                 <button
                   onClick={() => setOpen(open === item.id ? null : item.id)}
                   className="flex-shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground"
@@ -107,7 +99,14 @@ export default function RecordScripts() {
               </div>
               {open === item.id && (
                 <div className="px-5 pb-5 border-t border-border/40 pt-4">
-                  <MarkdownDoc content={item.content} />
+                  {/* Page-code blocks never render for the client — scripts only. */}
+                  {stripHtmlBlock(item.content).trim().length > 40 ? (
+                    <MarkdownDoc content={stripHtmlBlock(item.content)} />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      This item is a web page build, not a recording script — ask your coach for the script version.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

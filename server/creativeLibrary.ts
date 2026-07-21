@@ -140,15 +140,52 @@ async function retrieve(
   return picked;
 }
 
+/** Rows worth archiving to the Drive swipe folder that haven't been yet. */
+export async function getUnarchivedIntel(limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select()
+    .from(creativeIntel)
+    .where(sql`${creativeIntel.archivedAt} IS NULL AND (${creativeIntel.imageUrl} IS NOT NULL OR ${creativeIntel.transcript} IS NOT NULL)`)
+    .orderBy(desc(creativeIntel.lastSeenAt))
+    .limit(200);
+  rows.sort((a, b) => scoreIntel(b) - scoreIntel(a));
+  return rows.slice(0, limit);
+}
+
+export async function markIntelArchived(ids: number[]): Promise<void> {
+  const db = await getDb();
+  if (!db || !ids.length) return;
+  await db.update(creativeIntel).set({ archivedAt: new Date() }).where(sql`${creativeIntel.id} IN (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})`);
+}
+
+/** True when the niche's library was refreshed from Foreplay recently —
+ *  serving from the library alone then costs zero API calls. */
+async function recentlyRefreshed(niche: string, maxAgeHours = 6): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const primary = niche.split(",")[0]?.trim() ?? niche;
+  const rows = await db
+    .select({ last: sql<Date>`MAX(${creativeIntel.lastSeenAt})` })
+    .from(creativeIntel)
+    .where(eq(creativeIntel.niche, primary.slice(0, 300)));
+  const last = rows[0]?.last ? new Date(rows[0].last).getTime() : 0;
+  return Date.now() - last < maxAgeHours * 3600 * 1000;
+}
+
 /**
- * The claim-time entrypoint: refresh the library from Foreplay, then serve
- * rotated, ranked references. Degrades to "" like the old direct fetchers.
+ * The claim-time entrypoint: refresh the library from Foreplay (skipped when
+ * the niche was refreshed in the last 6h — no double-paying the API), then
+ * serve rotated, ranked references. Degrades to "" like the old fetchers.
  */
 export async function serveCreativeIntel(
   niche: string,
   clientId: number
 ): Promise<{ adsBlob: string; staticsBlob: string; libraryCount: number }> {
-  await refreshLibrary(niche).catch(() => 0);
+  if (!(await recentlyRefreshed(niche).catch(() => false))) {
+    await refreshLibrary(niche).catch(() => 0);
+  }
   const primary = niche.split(",")[0]?.trim() ?? niche;
   const db = await getDb();
   let libraryCount = 0;

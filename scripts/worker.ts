@@ -461,6 +461,71 @@ async function runJob(job: ClaimedJob) {
   }
 }
 
+// ─── Swipe archive: winning creatives land on Drive, forever ────────────────
+// Foreplay's feed moves on and API access can vanish; the winners shouldn't.
+// Images -> Ad Creative System/Foreplay Winners/<niche>/, transcripts append
+// to that niche's video-transcripts.md with full attribution.
+
+const SWIPE_DIR = path.join(
+  os.homedir(),
+  "Library/CloudStorage/GoogleDrive-anshjeets@gmail.com/My Drive/Cashflow Coaches/Ad Creative System/Foreplay Winners"
+);
+
+type SwipeItem = {
+  id: number;
+  niche: string;
+  advertiser: string | null;
+  sourceId: string;
+  imageUrl: string | null;
+  transcript: string | null;
+  headline: string | null;
+  copy: string | null;
+  runningDays: number;
+  live: boolean;
+};
+
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "unknown";
+
+async function syncSwipeArchive(): Promise<void> {
+  // Drive not mounted (offline, first boot): skip quietly, retry next cycle.
+  if (!fsSync.existsSync(path.dirname(path.dirname(SWIPE_DIR)))) return;
+  const { items } = await api<{ items: SwipeItem[] }>("swipe-sync", {});
+  if (!items.length) return;
+  const done: number[] = [];
+  for (const item of items) {
+    try {
+      const nicheDir = path.join(SWIPE_DIR, slug(item.niche));
+      await fs.mkdir(nicheDir, { recursive: true });
+      if (item.imageUrl) {
+        const res = await fetch(item.imageUrl, { signal: AbortSignal.timeout(30_000) });
+        if (res.ok) {
+          const buf = Buffer.from(await res.arrayBuffer());
+          const ext = (res.headers.get("content-type") ?? "").includes("png") ? "png" : "jpg";
+          await fs.writeFile(path.join(nicheDir, `${slug(item.advertiser ?? "ad")}_${slug(item.sourceId)}.${ext}`), buf);
+        }
+      }
+      if (item.transcript) {
+        const entry = [
+          `\n---\n\n## ${item.advertiser ?? "Unknown"} (${item.live ? "LIVE" : "ended"}, ${item.runningDays}+ days running) · source: foreplay ${item.sourceId}`,
+          item.headline ? `**Headline:** ${item.headline}` : "",
+          item.copy ? `**Primary copy:** ${item.copy}` : "",
+          `**Transcript:**\n\n${item.transcript}`,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+        await fs.appendFile(path.join(nicheDir, "video-transcripts.md"), entry);
+      }
+      done.push(item.id);
+    } catch (err) {
+      console.error(`[swipe] archive of ${item.sourceId} failed:`, (err as Error).message.slice(0, 120));
+    }
+  }
+  if (done.length) {
+    await api("swipe-done", { ids: done }).catch(() => {});
+    console.log(`[swipe] archived ${done.length} winning creatives -> Drive Foreplay Winners`);
+  }
+}
+
 /** Copy a client's approved static ads into their Google Drive Ads folder. */
 type ExportJob = {
   id: number;
@@ -546,6 +611,7 @@ async function tick() {
         lastAutoIntel = Date.now();
         const { queued } = await api<{ queued: number[] }>("auto-intel", {}).catch(() => ({ queued: [] as number[] }));
         if (queued.length) console.log(`auto-intel: queued refresh mines -> jobs ${queued.join(", ")}`);
+        await syncSwipeArchive().catch((e) => console.error("[swipe] sync failed:", (e as Error).message.slice(0, 150)));
       }
       if (Date.now() - lastSpoolReplay > 5 * 60 * 1000) {
         lastSpoolReplay = Date.now();

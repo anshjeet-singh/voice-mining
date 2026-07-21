@@ -805,6 +805,48 @@ export function registerWorkerRoutes(app: Express) {
     }
   });
 
+  // Swipe archive: the worker pulls unarchived library winners, downloads the
+  // creatives into the Drive swipe folder (images + transcripts), and reports
+  // back. The winners then survive Foreplay's feed — and Foreplay itself.
+  app.post("/api/worker/swipe-sync", async (req: Request, res: Response) => {
+    if (!guard(req, res)) return;
+    try {
+      const { getUnarchivedIntel } = await import("./creativeLibrary");
+      const rows = await getUnarchivedIntel(20);
+      res.json({
+        items: rows.map((r) => ({
+          id: r.id,
+          niche: r.niche,
+          advertiser: r.advertiser,
+          sourceId: r.sourceId,
+          imageUrl: r.imageUrl,
+          transcript: r.transcript,
+          headline: r.headline,
+          copy: r.copy,
+          runningDays: r.runningDays,
+          live: !!r.live,
+        })),
+      });
+    } catch (err) {
+      console.error("[worker/swipe-sync]", err);
+      res.status(500).json({ error: "swipe sync failed" });
+    }
+  });
+
+  app.post("/api/worker/swipe-done", async (req: Request, res: Response) => {
+    if (!guard(req, res)) return;
+    try {
+      const { ids } = req.body as { ids: number[] };
+      if (!Array.isArray(ids)) return res.status(400).json({ error: "ids required" });
+      const { markIntelArchived } = await import("./creativeLibrary");
+      await markIntelArchived(ids.filter((i) => Number.isInteger(i)));
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[worker/swipe-done]", err);
+      res.status(500).json({ error: "swipe done failed" });
+    }
+  });
+
   // Morning digest: what needs the operator TODAY. The worker pings this once
   // a day; the digest goes out via notifyOwner (webhook or server log) and
   // closes the worker-finishes-at-2am / operator-reviews-at-9am gap.
@@ -834,6 +876,24 @@ export function registerWorkerRoutes(app: Express) {
       if (failed.length) {
         lines.push("FAILED (last 24h):");
         for (const j of failed) lines.push(`- ${names.get(j.clientId) ?? j.clientId}: ${j.type} — ${(j.error ?? "no error recorded").slice(0, 120)}`);
+      }
+      // Client momentum: scripts they ticked off overnight (worth a nudge back)
+      for (const c of clients) {
+        const { listRecordingItems } = await import("./db");
+        const items = await listRecordingItems(c.id).catch(() => []);
+        const recorded24h = items.filter((i) => i.recordedAt && Date.now() - new Date(i.recordedAt).getTime() < 26 * 3600000);
+        const waiting = items.filter((i) => !i.recordedAt).length;
+        if (recorded24h.length) lines.push(`- ${c.name} recorded ${recorded24h.length} script${recorded24h.length > 1 ? "s" : ""} (${waiting} left on their list)`);
+      }
+      // The performance loop starves without results: nudge for exports with no data
+      for (const c of clients) {
+        const cAssets = await getClientAssetsMeta(c.id);
+        const shippedNoData = cAssets.filter(
+          (a) => a.status === "approved" && a.metaCtr == null && a.metaSpend == null && Date.now() - new Date(a.createdAt).getTime() > 7 * 24 * 3600000
+        );
+        if (shippedNoData.length >= 5) {
+          lines.push(`- ${c.name}: ${shippedNoData.length} approved ads have no Meta results yet — paste the Ads Manager export so batches learn from real spend`);
+        }
       }
       // Research staleness: month-3 copy written from month-0 language
       for (const c of clients) {

@@ -196,6 +196,9 @@ export const creativeIntel = mysqlTable("creative_intel", {
   timesSeen: int("timesSeen").default(1).notNull(),
   firstSeenAt: timestamp("firstSeenAt").defaultNow().notNull(),
   lastSeenAt: timestamp("lastSeenAt").defaultNow().notNull(),
+  /** Stamped once the worker has archived the creative to the Drive swipe
+   *  folder — the asset then survives Foreplay's feed (and Foreplay itself). */
+  archivedAt: timestamp("archivedAt"),
 });
 
 /** Which library ads were served to which client, for no-repeat retrieval. */
