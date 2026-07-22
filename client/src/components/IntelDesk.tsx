@@ -24,8 +24,36 @@ export interface IntelReel {
   topic: string;
   hookStyle: string;
   caption?: string;
+  /** Full verbatim transcript (newer intel runs; null for captionless YT). */
+  transcript?: string | null;
   sections?: Array<{ label: string; text: string; note?: string }>;
+  /** 3 plain-language bullets on what made the piece win (newer runs). */
+  whyItWorked?: string[];
+  /** One-sentence "your next video" suggestion (newer runs). */
+  videoIdea?: string;
   angle?: string;
+}
+
+/** YT pieces without captions carry packaging analysis, not a transcript. */
+function isPackagingOnly(r: IntelReel): boolean {
+  return (r.platform ?? "instagram") === "youtube" && !(r.sections ?? []).some((s) => s.label === "Hook");
+}
+
+/** The piece's transcript: the dedicated field, else the verbatim sections joined. */
+function pieceTranscript(r: IntelReel): string | null {
+  if (r.transcript) return r.transcript;
+  if (isPackagingOnly(r)) return null;
+  const joined = (r.sections ?? []).map((s) => s.text).join("\n\n");
+  return joined.trim() ? joined : null;
+}
+
+/** Why it worked: the dedicated bullets, else the per-beat analysis notes. */
+function whyBullets(r: IntelReel): string[] {
+  if (r.whyItWorked?.length) return r.whyItWorked.slice(0, 3);
+  return (r.sections ?? [])
+    .filter((s) => s.note)
+    .slice(0, 3)
+    .map((s) => `${s.label}: ${s.note}`);
 }
 
 const cleanHandle = (h: string) => h.replace(/^@+/, "");
@@ -119,10 +147,6 @@ export function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?
   const pool = reels.filter((r) => platform === "all" || (r.platform ?? "instagram") === platform);
 
   const accounts = Array.from(new Set(pool.map((r) => r.account)));
-  const byAccount = accounts
-    .map((a) => ({ account: a, views: pool.filter((r) => r.account === a).reduce((n, r) => n + r.views, 0) }))
-    .sort((a, b) => b.views - a.views);
-  const maxAcc = byAccount[0]?.views || 1;
 
   const styleAgg = new Map<string, { count: number; views: number }>();
   for (const r of pool) {
@@ -150,6 +174,11 @@ export function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        How to use this: find a winner below, read why it worked, copy the caption, and use the transcript as the base
+        for your own version.
+      </p>
+
       {/* Platform tabs + sort */}
       <div className="flex flex-wrap items-center gap-1.5">
         {([
@@ -179,68 +208,39 @@ export function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {[
-          { n: String(pool.length), l: "pieces analyzed" },
-          { n: String(accounts.length), l: "sources" },
+          { n: String(pool.length), l: "winning pieces" },
           { n: fmt(totalViews), l: "combined views" },
-          { n: fmt(topViews), l: "top piece" },
+          { n: fmt(topViews), l: "biggest piece" },
         ].map((k) => (
           <div key={k.l} className="rounded-lg border border-border/40 bg-background/40 p-3">
             <p className="text-xl font-semibold text-foreground tabular-nums">{k.n}</p>
-            <p className="text-[10px] text-muted-foreground">{k.l}</p>
+            <p className="text-[11px] text-muted-foreground">{k.l}</p>
           </div>
         ))}
         <div className="rounded-lg border border-primary/40 bg-primary/10 p-3">
           <p className="text-sm font-semibold text-primary truncate">{taxonomy[0]?.[0] ?? "-"}</p>
-          <p className="text-[10px] text-muted-foreground">winning hook style</p>
+          <p className="text-[11px] text-muted-foreground">winning hook style</p>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-3">
-        {/* Reach by source */}
-        <div className="rounded-lg border border-border/40 bg-background/40 p-3">
-          <p className="text-[11px] font-semibold text-foreground mb-2">Reach by source</p>
-          <div className="space-y-1.5">
-            {byAccount.map((a, i) => (
-              <div key={a.account} className="grid grid-cols-[110px_1fr_56px] gap-2 items-center">
-                <span className="text-[11px] text-muted-foreground truncate">@{cleanHandle(a.account)}</span>
-                <div className="h-4 rounded bg-card/60 overflow-hidden">
-                  <div
-                    className={`h-full rounded ${i === 0 ? "bg-primary" : "bg-foreground/30"}`}
-                    style={{ width: `${(a.views / maxAcc) * 100}%` }}
-                  />
-                </div>
-                <span className="text-[11px] text-muted-foreground text-right tabular-nums">{fmt(a.views)}</span>
-              </div>
-            ))}
-          </div>
+      {/* Hook styles, winning first — which openers this market rewards */}
+      {taxonomy.length > 1 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground">Hooks that win here:</span>
+          {taxonomy.slice(0, 6).map(([style, d], i) => (
+            <span
+              key={style}
+              className={`px-2.5 py-1 rounded-full text-[11px] border ${
+                i === 0 ? "border-primary/40 bg-primary/10 text-primary font-semibold" : "border-border/40 text-muted-foreground"
+              }`}
+            >
+              {style} · {d.count}
+            </span>
+          ))}
         </div>
-        {/* Hook taxonomy */}
-        <div className="rounded-lg border border-border/40 bg-background/40 p-3">
-          <p className="text-[11px] font-semibold text-foreground mb-2">Hook taxonomy (by combined views)</p>
-          <div className="space-y-1.5">
-            {taxonomy.map(([style, d], i) => (
-              <div
-                key={style}
-                className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${
-                  i === 0 ? "border-primary/40 bg-primary/10" : "border-border/40"
-                }`}
-              >
-                <span className="text-[11px] font-medium text-foreground">{style}</span>
-                {i === 0 && (
-                  <span className="text-[9px] font-semibold uppercase tracking-wider bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
-                    winning
-                  </span>
-                )}
-                <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
-                  {d.count} piece{d.count > 1 ? "s" : ""} · {fmt(d.views)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Source filter */}
       <div className="flex flex-wrap items-center gap-1.5">
@@ -297,48 +297,69 @@ export function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?
             </button>
             {openReel === reelKey(r) && (
               <div className="border-t border-border/40 bg-card/20 p-5 grid lg:grid-cols-[3fr_2fr] gap-6">
-                {/* Script rail */}
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                    {(r.platform ?? "instagram") === "youtube" && !(r.sections ?? []).some((s) => s.label === "Hook")
-                      ? "Packaging breakdown"
-                      : "Script breakdown"}
-                  </p>
-                  <div className="relative pl-5 space-y-4 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-px before:bg-border">
-                    {(r.sections ?? []).map((sec, si) => (
-                      <div key={si} className="relative">
-                        <span
-                          className={`absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full border-2 ${
-                            sec.label === "Hook"
-                              ? "bg-primary border-primary"
-                              : sec.label === "CTA"
-                                ? "bg-foreground border-foreground"
-                                : "bg-background border-muted-foreground"
-                          }`}
-                        />
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-primary/80">
-                          {sec.label}
-                          {sec.note && (
-                            <span className="normal-case tracking-normal font-normal italic text-muted-foreground"> · {sec.note}</span>
-                          )}
+                {/* What to take from it: why it won + the words themselves */}
+                <div className="space-y-4">
+                  {whyBullets(r).length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                        Why this worked
+                      </p>
+                      <ul className="space-y-1.5">
+                        {whyBullets(r).map((b, bi) => (
+                          <li key={bi} className="flex items-start gap-2.5 text-sm text-foreground/90 leading-relaxed">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
+                            {b}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {pieceTranscript(r) ? (
+                    <div className="rounded-xl border border-border/40 bg-background/40 p-4">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Transcript — your starting script
                         </p>
-                        <p className="text-xs text-foreground/90 leading-relaxed mt-0.5">{sec.text}</p>
+                        <CopyButton text={pieceTranscript(r) ?? ""} label="Copy transcript" />
                       </div>
-                    ))}
-                  </div>
+                      <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{pieceTranscript(r)}</p>
+                      <p className="text-[11px] text-muted-foreground mt-3">
+                        Don't post it word for word — swap in your story, your numbers, your offer.
+                      </p>
+                    </div>
+                  ) : (
+                    (r.sections ?? []).length > 0 && (
+                      <div className="rounded-xl border border-border/40 bg-background/40 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                          No transcript on this one — here's the packaging
+                        </p>
+                        <div className="space-y-2">
+                          {(r.sections ?? []).map((sec, si) => (
+                            <p key={si} className="text-sm text-foreground/90 leading-relaxed">
+                              <span className="font-semibold">{sec.label}: </span>
+                              {sec.text}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  )}
                 </div>
-                {/* Angle + caption */}
+                {/* What to do with it */}
                 <div className="space-y-3">
-                  {r.angle && (
+                  {(r.videoIdea || r.angle) && (
                     <div className="rounded-xl border border-primary/40 bg-primary/10 p-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-1.5">Your angle: the gap they left open</p>
-                      <p className="text-xs text-foreground leading-relaxed">{r.angle}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1.5">Your next video</p>
+                      <p className="text-sm text-foreground leading-relaxed">{r.videoIdea ?? r.angle}</p>
                     </div>
                   )}
                   {r.caption && (
                     <div className="rounded-xl border border-border/40 bg-background/40 p-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Caption</p>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">{r.caption}</p>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Caption</p>
+                        <CopyButton text={r.caption} label="Copy caption" />
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{r.caption}</p>
                     </div>
                   )}
                   {r.url && (
@@ -346,9 +367,9 @@ export function IntelDesk({ reels, reportDoc }: { reels: IntelReel[]; reportDoc?
                       href={r.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-block text-[11px] font-medium text-primary underline underline-offset-2"
+                      className="inline-block text-sm font-medium text-primary underline underline-offset-2"
                     >
-                      Open the original ↗
+                      Watch the original ↗
                     </a>
                   )}
                 </div>

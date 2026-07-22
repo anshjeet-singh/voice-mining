@@ -1015,6 +1015,7 @@ export async function listRecordingItems(clientId: number) {
       title: clientDocuments.title,
       content: clientDocuments.content,
       status: clientDocuments.status,
+      docType: clientDocuments.docType,
     })
     .from(clientRecordingItems)
     .innerJoin(clientDocuments, eq(clientRecordingItems.docId, clientDocuments.id))

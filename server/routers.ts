@@ -1570,6 +1570,7 @@ export const appRouter = router({
               id: i.id,
               title: i.title,
               content: i.content,
+              docType: i.docType,
               recordedAt: i.recordedAt,
               checkedSections: (i.checkedSections as string[] | null) ?? [],
               sectionLinks: (i.sectionLinks as Record<string, string> | null) ?? {},
@@ -1578,7 +1579,9 @@ export const appRouter = router({
         };
       }),
 
-    /** Client pastes the recording URL (Loom/Wistia/YouTube) for a video. */
+    /** Client pastes the recording URL (Loom/Wistia/YouTube) for a video.
+     *  The link IS the proof it's filmed: a whole-item link (or the last
+     *  section's link) ticks it off and advances the card to In editing. */
     setLink: publicProcedure
       .input(
         z.object({
@@ -1597,9 +1600,33 @@ export const appRouter = router({
         if (url && !/^https?:\/\/\S+$/i.test(url)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Paste a full link starting with https://" });
         }
-        const { setRecordingLink } = await import("./db");
+        const { setRecordingLink, toggleRecordingSection } = await import("./db");
         await setRecordingLink(input.itemId, input.section ?? null, url);
-        return { ok: true };
+        if (!url) return { ok: true, advanced: false };
+        const doc = await getClientDocumentById(item.docId);
+        let advanced = false;
+        if (input.section) {
+          // The link counts as the tick for that video.
+          const checkedNow = (item.checkedSections as string[] | null) ?? [];
+          const checked = checkedNow.includes(input.section)
+            ? checkedNow
+            : await toggleRecordingSection(input.itemId, input.section);
+          if (doc) {
+            const sections = scriptSectionTitles(doc.content);
+            if (sections.length > 0 && sections.every((s) => checked.includes(s))) {
+              await setRecordingItemRecorded(input.itemId, true);
+              await advanceDocAfterRecording(item.docId, doc.status);
+              advanced = true;
+            }
+          }
+        } else {
+          await setRecordingItemRecorded(input.itemId, true);
+          if (doc) {
+            await advanceDocAfterRecording(item.docId, doc.status);
+            advanced = true;
+          }
+        }
+        return { ok: true, advanced };
       }),
 
     /** Client ticks one section (one video) inside a multi-part script doc.

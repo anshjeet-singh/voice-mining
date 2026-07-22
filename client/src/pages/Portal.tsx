@@ -441,7 +441,7 @@ function AdLibraryTab({ home }: { home: PortalHome }) {
   );
 }
 
-function TodoTab({ home }: { home: PortalHome }) {
+function TodoTab({ home, goTo }: { home: PortalHome; goTo: (tab: TabId) => void }) {
   const { data: rec } = trpc.recording.get.useQuery(
     { token: home.recordingToken ?? "" },
     { enabled: !!home.recordingToken }
@@ -457,12 +457,19 @@ function TodoTab({ home }: { home: PortalHome }) {
   return (
     <div>
       {(rec?.items.length ?? 0) > 0 && (
-        <p className="text-xs text-muted-foreground mb-4">
-          Each card is one video, scripted word for word. Open it to read the full script, film it, tick it off, and
-          paste your recording link. Ticked scripts move to In editing on your pipelines automatically.
+        <p className="text-sm text-muted-foreground mb-4">
+          Each card is one video, scripted word for word. Open it, film it, paste your link — it moves to In editing
+          on your pipeline by itself.
         </p>
       )}
-      <RecordingChecklist token={home.recordingToken} />
+      <RecordingChecklist
+        token={home.recordingToken}
+        pipelineLink={(docType) => {
+          if (docType === "content_ig_extra") return { label: "Short-Form pipeline", go: () => goTo("shortform") };
+          if (docType === "content_yt_extra") return { label: "YouTube pipeline", go: () => goTo("youtube") };
+          return null;
+        }}
+      />
     </div>
   );
 }
@@ -616,8 +623,8 @@ function PipelineTab({ docs, emptyNote }: { docs: PortalContentDoc[]; emptyNote:
                       onClick={() => setExpanded(expanded === doc.id ? null : doc.id)}
                       className="w-full flex items-center gap-2 p-2.5 text-left"
                     >
-                      <FileText className="w-3 h-3 text-primary flex-shrink-0" />
-                      <span className="flex-1 text-[11px] font-medium text-foreground leading-snug">{doc.title}</span>
+                      <FileText className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                      <span className="flex-1 text-sm font-medium text-foreground leading-snug">{doc.title}</span>
                       {expanded === doc.id ? (
                         <ChevronUp className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                       ) : (
@@ -735,7 +742,7 @@ function PortalShell({ clientName, onSignOut }: { clientName: string; onSignOut:
       </div>
 
       <main className="flex-1 min-w-0">
-        <div className="max-w-5xl mx-auto px-5 lg:px-8 py-7 lg:py-9">
+        <div className="max-w-6xl mx-auto px-5 lg:px-8 py-7 lg:py-9">
           <div className="mb-6">
             <h1 className="text-lg font-semibold text-foreground tracking-tight">{activeLabel}</h1>
             {tab === "overview" && home && (
@@ -753,7 +760,7 @@ function PortalShell({ clientName, onSignOut }: { clientName: string; onSignOut:
               {tab === "research" && <ResearchTab />}
               {tab === "competitors" && <CompetitorsTab home={home} />}
               {tab === "overview" && <OverviewTab home={home} goTo={goTo} />}
-              {tab === "todo" && <TodoTab home={home} />}
+              {tab === "todo" && <TodoTab home={home} goTo={goTo} />}
               {tab === "ads" && <AdLibraryTab home={home} />}
               {tab === "shortform" && (
                 <PipelineTab
