@@ -118,7 +118,7 @@ You MUST read, in full, in this order:
 This is not optional. The deliverable must VISIBLY follow the skill templates and pass the framework quality bars. If your draft would read the same without having read these files, you have failed the task. Skill files and framework files are READ-ONLY. Never modify anything under ${opts.skillsDir}.
 
 # CLIENT
-- Name: ${job.client.name}
+- Name: ${job.client.name} (this spelling is CANONICAL: use it in every sign-off and mention. If an earlier approved doc spells the name differently, the earlier doc is WRONG — never copy its spelling)
 - Niche: ${job.client.niche}
 - Funnel type: ${job.client.funnelType}
 - Price point: ${job.client.pricePoint || "not specified"}
