@@ -19,5 +19,14 @@ export const ENV = {
   workerSecret: process.env.WORKER_SECRET ?? "",
   /** Email that gets the admin role on sign-in (replaces Manus OWNER_OPEN_ID). */
   adminEmail: process.env.ADMIN_EMAIL ?? "",
+  /**
+   * Sign-in allowlist (comma-separated emails). When set, ONLY these Google
+   * accounts can sign in — anyone else gets a polite refusal instead of a
+   * fresh workspace with the keys to the engine. Falls back to adminEmail.
+   */
+  ownerEmails: (process.env.OWNER_EMAILS ?? process.env.ADMIN_EMAIL ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
   isProduction: process.env.NODE_ENV === "production",
 };

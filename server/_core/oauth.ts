@@ -57,6 +57,18 @@ export function registerOAuthRoutes(app: Express) {
       const info = await exchangeGoogleCode(code, redirectUri);
       const openId = `google_${info.sub}`;
 
+      // Private workspace: only allowlisted owners get in. Anyone else gets
+      // a polite refusal — never a fresh account with the engine's keys.
+      if (ENV.ownerEmails.length && !ENV.ownerEmails.includes((info.email ?? "").toLowerCase())) {
+        console.warn(`[OAuth] refused sign-in for non-owner: ${info.email ?? "unknown"}`);
+        res
+          .status(403)
+          .send(
+            `<!doctype html><html><head><meta charset="utf-8"><title>Private workspace</title><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0b12;color:#f5f7fc;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}div{text-align:center;max-width:26rem;padding:2rem}h1{font-size:1.15rem;margin:0 0 .5rem}p{font-size:.85rem;color:#9aa4bb;line-height:1.5}</style></head><body><div><h1>This is a private workspace</h1><p>Cashflow Coaches operations live here, and sign-in is restricted to the team. If you're a client, use the link your coach sent you instead.</p></div></body></html>`
+          );
+        return;
+      }
+
       await db.upsertUser({
         openId,
         name: info.name || info.email || null,
