@@ -1014,6 +1014,7 @@ export async function listRecordingItems(clientId: number) {
       createdAt: clientRecordingItems.createdAt,
       title: clientDocuments.title,
       content: clientDocuments.content,
+      status: clientDocuments.status,
     })
     .from(clientRecordingItems)
     .innerJoin(clientDocuments, eq(clientRecordingItems.docId, clientDocuments.id))
@@ -1026,6 +1027,13 @@ export async function getRecordingItemById(id: number) {
   if (!db) return null;
   const rows = await db.select().from(clientRecordingItems).where(eq(clientRecordingItems.id, id)).limit(1);
   return rows[0] ?? null;
+}
+
+/** Drop a doc's to-do entry (the card moved back out of the Recording stage). */
+export async function deleteRecordingItemsByDoc(docId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(clientRecordingItems).where(eq(clientRecordingItems.docId, docId));
 }
 
 /** Save a recording URL: per-section when a section is named, else the item's. */

@@ -1625,11 +1625,22 @@ export function HtmlPreview({ html, filename }: { html: string; filename: string
 }
 
 /** Kanban pipeline for deliverable docs: Draft -> Approved -> Posted. */
-const BOARD_COLUMNS = [
-  { id: "draft", label: "Drafts", tint: "bg-slate-500/[0.07] border-slate-500/25" },
-  { id: "approved", label: "Approved", tint: "bg-emerald-500/[0.07] border-emerald-500/25" },
+type BoardColumn = { id: string; label: string; tint: string; forward?: string; forwardTone?: string };
+
+const BOARD_COLUMNS: BoardColumn[] = [
+  { id: "draft", label: "Drafts", tint: "bg-slate-500/[0.07] border-slate-500/25", forward: "Approve →", forwardTone: "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30" },
+  { id: "approved", label: "Approved", tint: "bg-emerald-500/[0.07] border-emerald-500/25", forward: "Posted →", forwardTone: "bg-sky-500/20 text-sky-400 hover:bg-sky-500/30" },
   { id: "posted", label: "Posted", tint: "bg-sky-500/[0.07] border-sky-500/25" },
-] as const;
+];
+
+/** Recordable scripts run the recording pipeline: the client sees the SAME
+ *  columns in their portal, and "To record" = on their to-do list. */
+const RECORD_COLUMNS: BoardColumn[] = [
+  { id: "draft", label: "Drafts", tint: "bg-slate-500/[0.07] border-slate-500/25", forward: "To record →", forwardTone: "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30" },
+  { id: "recording", label: "To record", tint: "bg-amber-500/[0.07] border-amber-500/25", forward: "To editing →", forwardTone: "bg-sky-500/20 text-sky-400 hover:bg-sky-500/30" },
+  { id: "editing", label: "In editing", tint: "bg-sky-500/[0.07] border-sky-500/25", forward: "Posted →", forwardTone: "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30" },
+  { id: "posted", label: "Posted", tint: "bg-emerald-500/[0.07] border-emerald-500/25" },
+];
 
 /** Split a markdown doc into its H1-H3 sections so each can be copied on its own. */
 export function splitSections(md: string): Array<{ title: string; text: string; level: number }> {
@@ -2026,7 +2037,9 @@ export function DocBoard({
   clientId?: number;
   docType?: string;
   accent?: string;
-  /** Cards get a "To recording" action: one click puts the script on the client's recording list. */
+  /** Recordable scripts run Draft → To record → In editing → Posted; the
+   *  "To record" column IS the client's to-do list, and their tick moves the
+   *  card to In editing on this board automatically. */
   recordable?: boolean;
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -2049,13 +2062,6 @@ export function DocBoard({
 
   const setStatus = trpc.clients.setDocumentStatus.useMutation({
     onSuccess: () => invalidate(),
-    onError: (err) => toast.error(err.message),
-  });
-  const sendToRecording = trpc.clients.sendToRecording.useMutation({
-    onSuccess: () => {
-      invalidate();
-      toast.success("On the client's recording list");
-    },
     onError: (err) => toast.error(err.message),
   });
   const del = trpc.clients.deleteDocument.useMutation({
@@ -2085,6 +2091,12 @@ export function DocBoard({
   });
 
   const visible = docs.filter((d) => (d.status ?? "draft") !== "archived");
+  const columns = recordable ? RECORD_COLUMNS : BOARD_COLUMNS;
+  // Legacy 'approved' scripts render in Drafts on recordable boards.
+  const stageOf = (d: ClientDoc) => {
+    const s = d.status ?? "draft";
+    return recordable && s === "approved" ? "draft" : s;
+  };
 
   return (
     <div>
@@ -2134,9 +2146,9 @@ export function DocBoard({
       {!visible.length ? (
         <p className="text-[11px] text-muted-foreground">Nothing here yet: generate above or write your own draft.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {BOARD_COLUMNS.map((col) => {
-            const items = visible.filter((d) => (d.status ?? "draft") === col.id);
+        <div className={`grid grid-cols-1 gap-3 ${recordable ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3"}`}>
+          {columns.map((col, colIdx) => {
+            const items = visible.filter((d) => stageOf(d) === col.id);
             return (
               <div key={col.id} className={`rounded-xl border p-2.5 min-h-28 ${col.tint}`}>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 px-1 pb-2">
@@ -2163,39 +2175,35 @@ export function DocBoard({
                         )}
                       </button>
                       <div className="flex items-center gap-1 px-2.5 pb-2">
-                        {col.id !== "draft" && (
+                        {colIdx > 0 && (
                           <button
                             disabled={setStatus.isPending}
-                            onClick={() => setStatus.mutate({ id: doc.id, status: col.id === "approved" ? "draft" : "approved" })}
+                            onClick={() =>
+                              setStatus.mutate({
+                                id: doc.id,
+                                status: columns[colIdx - 1].id as "draft" | "approved" | "posted" | "recording" | "editing",
+                              })
+                            }
                             className="h-5 px-1.5 rounded text-[10px] bg-card/80 text-muted-foreground hover:text-foreground"
                           >
                             ←
                           </button>
                         )}
-                        {col.id !== "posted" && (
+                        {col.forward && (
                           <button
                             disabled={setStatus.isPending}
-                            onClick={() => setStatus.mutate({ id: doc.id, status: col.id === "draft" ? "approved" : "posted" })}
-                            className={`h-5 px-2 rounded text-[10px] font-semibold ${
-                              col.id === "draft"
-                                ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
-                                : "bg-sky-500/20 text-sky-400 hover:bg-sky-500/30"
-                            }`}
+                            onClick={() =>
+                              setStatus.mutate({
+                                id: doc.id,
+                                status: columns[colIdx + 1].id as "draft" | "approved" | "posted" | "recording" | "editing",
+                              })
+                            }
+                            className={`h-5 px-2 rounded text-[10px] font-semibold ${col.forwardTone}`}
                           >
-                            {col.id === "draft" ? "Approve →" : "Posted →"}
+                            {col.forward}
                           </button>
                         )}
                         <span className="flex-1" />
-                        {recordable && (
-                          <button
-                            disabled={sendToRecording.isPending}
-                            onClick={() => sendToRecording.mutate({ docId: doc.id })}
-                            className="h-5 px-1.5 rounded text-[10px] font-medium text-muted-foreground hover:text-foreground"
-                            title="Put this script on the client's recording list"
-                          >
-                            To recording
-                          </button>
-                        )}
                         <button
                           onClick={() => {
                             setAiId(doc.id);

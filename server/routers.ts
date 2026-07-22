@@ -111,6 +111,28 @@ import {
   verifyPortalPassword,
 } from "./portalAuth";
 
+/**
+ * Section titles of a multi-part script doc (each ## / ### heading = one
+ * video) — the server-side mirror of the client's docSections parser, so
+ * "every section ticked" can complete the item authoritatively.
+ */
+function scriptSectionTitles(content: string): string[] {
+  const clean = content.replace(/```html[\s\S]*?```/g, "");
+  for (const level of ["##", "###"]) {
+    const re = new RegExp(`^${level}\\s+(.+)$`, "gm");
+    const titles = Array.from(clean.matchAll(re)).map((m) => m[1].replace(/\*+/g, "").trim().slice(0, 280));
+    if (titles.length >= 2) return titles;
+  }
+  return [];
+}
+
+/** Recorded → the card leaves the to-do and lands in the Editing stage. */
+async function advanceDocAfterRecording(docId: number, currentStatus: string | null): Promise<void> {
+  if (!["editing", "posted", "archived"].includes(currentStatus ?? "draft")) {
+    await setClientDocumentStatus(docId, "editing");
+  }
+}
+
 /** Requires a valid client-portal session cookie; injects ctx.portal. */
 const portalProcedure = publicProcedure.use(async ({ ctx, next }) => {
   const session = await authenticatePortalRequest(ctx.req);
@@ -762,8 +784,8 @@ export const appRouter = router({
         return { token };
       }),
 
-    /** Put one script doc on the client's recording to-do list. Sending it
-     *  IS approval — the card moves to Approved automatically. */
+    /** Put one script doc on the client's recording to-do list — same effect
+     *  as moving its pipeline card into the Recording stage. */
     sendToRecording: protectedProcedure
       .input(z.object({ docId: z.number() }))
       .mutation(async ({ ctx, input }) => {
@@ -771,9 +793,7 @@ export const appRouter = router({
         if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" });
         await requireClient(doc.clientId, ctx.user.id);
         const id = await addRecordingItem(doc.clientId, input.docId);
-        if ((doc.status ?? "draft") === "draft") {
-          await setClientDocumentStatus(input.docId, "approved");
-        }
+        await setClientDocumentStatus(input.docId, "recording");
         return { id };
       }),
 
@@ -868,14 +888,25 @@ export const appRouter = router({
         return { id };
       }),
 
-    /** Move a deliverable through the kanban: draft -> approved -> posted -> archived. */
+    /**
+     * Move a deliverable through its kanban. Non-recordable boards run
+     * draft -> approved -> posted; recordable scripts run draft -> recording
+     * -> editing -> posted. Moving INTO recording puts the script on the
+     * client's to-do; pulling it back to draft takes it off again.
+     */
     setDocumentStatus: protectedProcedure
-      .input(z.object({ id: z.number(), status: z.enum(["draft", "approved", "posted", "archived"]) }))
+      .input(z.object({ id: z.number(), status: z.enum(["draft", "approved", "posted", "archived", "recording", "editing"]) }))
       .mutation(async ({ ctx, input }) => {
         const doc = await getClientDocumentById(input.id);
         if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
         await requireClient(doc.clientId, ctx.user.id);
         await setClientDocumentStatus(input.id, input.status);
+        if (input.status === "recording") {
+          await addRecordingItem(doc.clientId, input.id);
+        } else if ((doc.status ?? "draft") === "recording" && input.status === "draft") {
+          const { deleteRecordingItemsByDoc } = await import("./db");
+          await deleteRecordingItemsByDoc(input.id);
+        }
         return { ok: true };
       }),
 
@@ -1366,7 +1397,9 @@ export const appRouter = router({
       return client ? { clientName: client.name, email: login.email } : null;
     }),
 
-    /** Everything the portal renders, in one scoped read. */
+    /** Everything the portal renders, in one scoped read. Deliberately
+     *  NARROW: strategy docs never leave the operator's side — the client
+     *  gets their ads, their content pipelines, research, and the desk. */
     home: portalProcedure.query(async ({ ctx }) => {
       const client = await getClientById(ctx.portal.clientId);
       if (!client) throw new TRPCError({ code: "NOT_FOUND" });
@@ -1375,44 +1408,27 @@ export const appRouter = router({
         getClientAssetsMeta(client.id),
       ]);
 
-      // A stage's docs stay status=draft (the JOB carries the approval), so
-      // client visibility = the owning stage's latest job is approved. Engine
-      // docs carry their own kanban status: approved/posted only.
-      const stageNames = [...STAGE_ORDER, "funnel"];
-      const docTypeStage = new Map<string, string>();
-      for (const stage of stageNames) {
-        for (const d of STAGES[stage].docs(client.funnelType)) docTypeStage.set(d.docType, stage);
-      }
-      const stageApproved: Record<string, boolean> = {};
-      await Promise.all(
-        stageNames.map(async (stage) => {
-          const job = await getLatestJobForClient(client.id, stage);
-          stageApproved[stage] = job?.status === "approved";
-        })
-      );
-      const HIDDEN_DOC_TYPES = new Set([
-        "client_facts", // operator ground-truth notes
-        "weekly_report", // shown on the Overview, not the library
-        "content_intel_extra", // rendered as the competitor desk
-        "ad_statics", // batch spec working file — the ads live in the Ad Library
-        "ad_statics_extra",
-      ]);
-      const documents = docs
-        .filter((d) => {
-          if (HIDDEN_DOC_TYPES.has(d.docType)) return false;
-          if (d.kind === "lesson" || d.kind === "onboarding") return false;
-          const approvedStatus = d.status === "approved" || d.status === "posted";
-          const stage = docTypeStage.get(d.docType);
-          return stage ? stageApproved[stage] || approvedStatus : approvedStatus;
-        })
-        .map((d) => ({
-          id: d.id,
-          docType: d.docType,
-          title: d.title,
-          content: d.content,
-          status: d.status,
-          updatedAt: d.updatedAt,
-        }));
+      // Content pipelines, stage-mapped: legacy 'approved' renders as Draft.
+      const mapStage = (s: string | null): "draft" | "recording" | "editing" | "posted" | "archived" => {
+        const v = s ?? "draft";
+        if (v === "approved") return "draft";
+        return (["draft", "recording", "editing", "posted", "archived"].includes(v) ? v : "draft") as
+          | "draft"
+          | "recording"
+          | "editing"
+          | "posted"
+          | "archived";
+      };
+      const pipeline = (docType: string) =>
+        docs
+          .filter((d) => d.docType === docType && mapStage(d.status) !== "archived")
+          .map((d) => ({
+            id: d.id,
+            title: d.title,
+            content: d.content,
+            stage: mapStage(d.status),
+            updatedAt: d.updatedAt,
+          }));
 
       const weeklyReports = docs
         .filter((d) => d.docType === "weekly_report")
@@ -1443,13 +1459,36 @@ export const appRouter = router({
             copyDescription: a.copyDescription,
             createdAt: a.createdAt,
           })),
-        documents,
+        content: {
+          shortform: pipeline("content_ig_extra"),
+          youtube: pipeline("content_yt_extra"),
+        },
         weeklyReports,
         intelContent: intel?.content ?? null,
         intelUpdatedAt: intel?.updatedAt ?? null,
         hasReport: Boolean(client.linkedReportId ?? researchReport),
       };
     }),
+
+    /**
+     * The client hit "recorded" on a pipeline card: the script leaves the
+     * Recording stage and lands in In editing — on the operator's board too,
+     * because it is the same status column.
+     */
+    advanceDoc: portalProcedure
+      .input(z.object({ docId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const doc = await getClientDocumentById(input.docId);
+        if (!doc || doc.clientId !== ctx.portal.clientId) throw new TRPCError({ code: "NOT_FOUND" });
+        if ((doc.status ?? "draft") !== "recording") {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This script is not in the recording stage" });
+        }
+        await setClientDocumentStatus(input.docId, "editing");
+        const items = await listRecordingItems(doc.clientId);
+        const item = items.find((i) => i.docId === input.docId);
+        if (item && !item.recordedAt) await setRecordingItemRecorded(item.id, true);
+        return { ok: true };
+      }),
 
     /** The client's market research report — same payload shape as the public
      *  share so the portal renders the exact owner report, read-only. */
@@ -1513,7 +1552,9 @@ export const appRouter = router({
   }),
 
   /** Public recording page: the client opens /record/:token, reads their
-   *  scripts, and ticks each one off as recorded. Token IS the auth. */
+   *  scripts, and ticks each one off as recorded. Token IS the auth.
+   *  The list IS the Recording pipeline stage — ticking a script off moves
+   *  its card to In editing, so it leaves the to-do on both sides at once. */
   recording: router({
     get: publicProcedure
       .input(z.object({ token: z.string().min(6).max(64) }))
@@ -1523,15 +1564,17 @@ export const appRouter = router({
         const items = await listRecordingItems(client.id);
         return {
           clientName: client.name,
-          items: items.map((i) => ({
-            id: i.id,
-            title: i.title,
-            content: i.content,
-            recordedAt: i.recordedAt,
-            checkedSections: (i.checkedSections as string[] | null) ?? [],
-            sectionLinks: (i.sectionLinks as Record<string, string> | null) ?? {},
-            recordingUrl: i.recordingUrl ?? null,
-          })),
+          items: items
+            .filter((i) => !["editing", "posted", "archived"].includes(i.status ?? "draft"))
+            .map((i) => ({
+              id: i.id,
+              title: i.title,
+              content: i.content,
+              recordedAt: i.recordedAt,
+              checkedSections: (i.checkedSections as string[] | null) ?? [],
+              sectionLinks: (i.sectionLinks as Record<string, string> | null) ?? {},
+              recordingUrl: i.recordingUrl ?? null,
+            })),
         };
       }),
 
@@ -1559,7 +1602,8 @@ export const appRouter = router({
         return { ok: true };
       }),
 
-    /** Client ticks one section (one video) inside a multi-part script doc. */
+    /** Client ticks one section (one video) inside a multi-part script doc.
+     *  Ticking the LAST section completes the item and advances the card. */
     toggleSection: publicProcedure
       .input(z.object({ token: z.string().min(6).max(64), itemId: z.number(), section: z.string().min(1).max(300) }))
       .mutation(async ({ input }) => {
@@ -1569,6 +1613,14 @@ export const appRouter = router({
         if (!item || item.clientId !== client.id) throw new TRPCError({ code: "NOT_FOUND" });
         const { toggleRecordingSection } = await import("./db");
         const checked = await toggleRecordingSection(input.itemId, input.section);
+        const doc = await getClientDocumentById(item.docId);
+        if (doc) {
+          const sections = scriptSectionTitles(doc.content);
+          if (sections.length > 0 && sections.every((s) => checked.includes(s))) {
+            await setRecordingItemRecorded(input.itemId, true);
+            await advanceDocAfterRecording(item.docId, doc.status);
+          }
+        }
         return { checked };
       }),
 
@@ -1580,6 +1632,8 @@ export const appRouter = router({
         const item = await getRecordingItemById(input.itemId);
         if (!item || item.clientId !== client.id) throw new TRPCError({ code: "NOT_FOUND" });
         await setRecordingItemRecorded(input.itemId, input.recorded);
+        const doc = await getClientDocumentById(item.docId);
+        if (doc && input.recorded) await advanceDocAfterRecording(item.docId, doc.status);
         return { ok: true };
       }),
   }),

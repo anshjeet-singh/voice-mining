@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useLocation, useParams } from "wouter";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../server/routers";
 import { trpc } from "@/lib/trpc";
 import { MarkdownDoc } from "@/components/MarkdownDoc";
-import { MarketPulse, parsePulsePieces } from "@/components/MarketPulse";
 import { RecordingChecklist } from "@/components/RecordingChecklist";
-import { CopyButton, extractHtml, stripHtmlBlock, HtmlPreview } from "@/components/engines";
+import { CopyButton, stripHtmlBlock } from "@/components/engines";
+import { IntelDesk, parseIntelReels } from "@/components/IntelDesk";
 import { IntelligenceTab, toAnalysisView } from "@/components/report/IntelligenceTab";
 import { HooksTab } from "@/components/report/HooksTab";
 import { AdsTab } from "@/components/report/AdsTab";
@@ -25,6 +25,7 @@ import {
   type YouTubeIdea,
 } from "@shared/reportContent";
 import {
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -32,8 +33,8 @@ import {
   Clapperboard,
   Download,
   FileText,
-  FolderOpen,
   Image as ImageIcon,
+  Instagram,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -42,46 +43,41 @@ import {
   Sparkles,
   TrendingUp,
   X,
+  Youtube,
 } from "lucide-react";
+import { toast } from "sonner";
 
 /**
  * The client portal (app.cashflowcoaches.io/portal): a client signs in with
  * the email + password their coach created and sees THEIR work, read-only.
- * Ad library with downloads and the Meta copy, recording to-dos, the research
- * report, the competitor desk, and every approved document. No generate
- * buttons anywhere — the engines stay on the operator's side.
+ * Research first, then the competitor desk (the operator's exact desk),
+ * then the working surfaces: to-dos, ad library, and the content pipelines
+ * (Draft → To record → In editing → Posted — the same columns the operator
+ * sees, because they are the same columns). No generate buttons anywhere.
  */
 
 type PortalHome = inferRouterOutputs<AppRouter>["portal"]["home"];
 type PortalAd = PortalHome["ads"][number];
-type PortalDoc = PortalHome["documents"][number];
+type PortalContentDoc = PortalHome["content"]["shortform"][number];
 
 const TABS = [
+  { id: "research", label: "Market Research", icon: Search },
+  { id: "competitors", label: "Competitor Research", icon: TrendingUp },
   { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "ads", label: "Ad Library", icon: Megaphone },
   { id: "todo", label: "To-Do", icon: Clapperboard },
-  { id: "research", label: "Research", icon: Search },
-  { id: "pulse", label: "Market Pulse", icon: TrendingUp },
-  { id: "docs", label: "Documents", icon: FolderOpen },
+  { id: "ads", label: "Ad Library", icon: Megaphone },
+  { id: "shortform", label: "Short-Form", icon: Instagram },
+  { id: "youtube", label: "YouTube", icon: Youtube },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
-/** Folder grouping for the Documents tab, mapped from docType families. */
-const DOC_FOLDERS: Array<{ label: string; match: (docType: string) => boolean }> = [
-  {
-    label: "Strategy & foundation",
-    match: (t) => ["icp_snapshot", "offers", "brand_positioning", "course_outline"].includes(t),
-  },
-  { label: "Community", match: (t) => t.startsWith("skool") },
-  { label: "Emails & SMS", match: (t) => t.startsWith("email") || t === "sms_set" || t === "emails_extra" },
-  { label: "Content", match: (t) => t.startsWith("content_") },
-  {
-    label: "Scripts & funnel pages",
-    match: (t) =>
-      ["ad_video_scripts", "ad_scripts_extra", "video_scripts", "funnel_asset_extra", "lander_extra"].includes(t) ||
-      t.startsWith("funnel_"),
-  },
-];
+/** Same stages, labels, and tints as the operator's recordable DocBoard. */
+const PIPE_STAGES = [
+  { id: "draft", label: "Drafts", tint: "bg-slate-500/[0.07] border-slate-500/25" },
+  { id: "recording", label: "To record", tint: "bg-amber-500/[0.07] border-amber-500/25" },
+  { id: "editing", label: "In editing", tint: "bg-sky-500/[0.07] border-sky-500/25" },
+  { id: "posted", label: "Posted", tint: "bg-emerald-500/[0.07] border-emerald-500/25" },
+] as const;
 
 /** "TK_Ad03_Notes_hook-swap.png" -> "Ad 03 · Notes" fallback to the format chip. */
 function adLabel(ad: PortalAd): string {
@@ -181,18 +177,65 @@ function OverviewTab({ home, goTo }: { home: PortalHome; goTo: (tab: TabId) => v
     { enabled: !!home.recordingToken }
   );
   const [openReport, setOpenReport] = useState<number | null>(0);
-  const recDone = rec ? rec.items.filter((i) => i.recordedAt).length : 0;
-  const recTotal = rec?.items.length ?? 0;
-  const pulseCount = parsePulsePieces(home.intelContent).length;
+  const toRecord = rec ? rec.items.filter((i) => !i.recordedAt).length : 0;
+  const allContent = [...home.content.shortform, ...home.content.youtube];
+  const inEditing = allContent.filter((d) => d.stage === "editing").length;
+  const posted = allContent.filter((d) => d.stage === "posted").length;
+  const reels = parseIntelReels(home.intelContent ? { content: home.intelContent } : null);
 
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         <Stat value={String(home.ads.length)} label="Approved ads" />
-        <Stat value={recTotal ? `${recDone}/${recTotal}` : "0"} label="Videos recorded" />
-        <Stat value={String(home.documents.length)} label="Documents delivered" />
-        <Stat value={String(pulseCount)} label="Market pulse pieces" />
+        <Stat value={String(toRecord)} label="Videos to record" />
+        <Stat value={String(inEditing)} label="In editing" />
+        <Stat value={String(posted)} label="Content posted" />
       </div>
+
+      {/* The two research surfaces this build stands on */}
+      <div className="grid sm:grid-cols-2 gap-2.5">
+        <button
+          onClick={() => goTo("research")}
+          className="rounded-xl border border-border/50 bg-card/30 px-4 py-3.5 text-left hover:border-primary/40 transition-colors"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <Search className="w-3.5 h-3.5 text-primary" />
+            <p className="text-sm font-semibold text-foreground">Market research</p>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {home.hasReport
+              ? "The voice-of-market report your campaigns are built on. Open it."
+              : "Your market research report is in production."}
+          </p>
+        </button>
+        <button
+          onClick={() => goTo("competitors")}
+          className="rounded-xl border border-border/50 bg-card/30 px-4 py-3.5 text-left hover:border-primary/40 transition-colors"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="w-3.5 h-3.5 text-primary" />
+            <p className="text-sm font-semibold text-foreground">Competitor research</p>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {reels.length
+              ? `${reels.length} winning pieces from your market, broken down hook by hook.`
+              : "The first competitor sweep of your market is on its way."}
+          </p>
+        </button>
+      </div>
+
+      {toRecord > 0 && (
+        <button
+          onClick={() => goTo("todo")}
+          className="w-full rounded-xl border border-primary/25 bg-primary/[0.06] px-4 py-3 flex items-center gap-3 text-left hover:bg-primary/10 transition-colors"
+        >
+          <Clapperboard className="w-4 h-4 text-primary flex-shrink-0" />
+          <span className="flex-1 text-sm text-foreground">
+            {toRecord} video{toRecord === 1 ? "" : "s"} waiting on you to record
+          </span>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </button>
+      )}
 
       {home.ads.length > 0 && (
         <section>
@@ -215,19 +258,6 @@ function OverviewTab({ home, goTo }: { home: PortalHome; goTo: (tab: TabId) => v
             ))}
           </div>
         </section>
-      )}
-
-      {recTotal > 0 && recDone < recTotal && (
-        <button
-          onClick={() => goTo("todo")}
-          className="w-full rounded-xl border border-primary/25 bg-primary/[0.06] px-4 py-3 flex items-center gap-3 text-left hover:bg-primary/10 transition-colors"
-        >
-          <Clapperboard className="w-4 h-4 text-primary flex-shrink-0" />
-          <span className="flex-1 text-sm text-foreground">
-            {recTotal - recDone} video{recTotal - recDone === 1 ? "" : "s"} waiting on you to record
-          </span>
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        </button>
       )}
 
       {home.weeklyReports.length > 0 && (
@@ -428,8 +458,8 @@ function TodoTab({ home }: { home: PortalHome }) {
     <div>
       {(rec?.items.length ?? 0) > 0 && (
         <p className="text-xs text-muted-foreground mb-4">
-          Each card is one video, scripted word for word. Open it, film it, tick it off, and paste your recording link
-          so your coach can grab the footage.
+          Each card is one video, scripted word for word. Open it to read the full script, film it, tick it off, and
+          paste your recording link. Ticked scripts move to In editing on your pipelines automatically.
         </p>
       )}
       <RecordingChecklist token={home.recordingToken} />
@@ -521,83 +551,107 @@ function ResearchTab() {
   );
 }
 
-function PulseTab({ home }: { home: PortalHome }) {
-  const hasPulse = parsePulsePieces(home.intelContent).length > 0;
-  if (!hasPulse) {
+/** The operator's Competitor Desk, exactly — same component, read-only data. */
+function CompetitorsTab({ home }: { home: PortalHome }) {
+  const reels = parseIntelReels(home.intelContent ? { content: home.intelContent } : null);
+  if (!home.intelContent) {
     return (
       <div className="text-center py-20">
         <TrendingUp className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
-        <p className="text-sm text-muted-foreground">
-          The first competitor sweep of your market is on its way.
-        </p>
+        <p className="text-sm text-muted-foreground">The first competitor sweep of your market is on its way.</p>
       </div>
     );
   }
-  return <MarketPulse intelContent={home.intelContent} intelUpdatedAt={home.intelUpdatedAt} limit={20} />;
-}
-
-function DocRow({ doc }: { doc: PortalDoc }) {
-  const [open, setOpen] = useState(false);
-  const html = extractHtml(doc.content);
   return (
-    <div className="rounded-xl border border-border/50 bg-card/30">
-      <div className="flex items-center gap-2 px-4 py-3">
-        <button className="flex-1 flex items-center gap-2 text-left min-w-0" onClick={() => setOpen(!open)}>
-          <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-          <span className="text-sm font-medium text-foreground truncate">{doc.title}</span>
-        </button>
-        <CopyButton text={stripHtmlBlock(doc.content)} label="Copy" className="flex-shrink-0" />
-        <button onClick={() => setOpen(!open)} className="flex-shrink-0 p-1 rounded-lg text-muted-foreground hover:text-foreground">
-          {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
-      </div>
-      {open && (
-        <div className="px-5 pb-5 border-t border-border/40 pt-4 space-y-4">
-          {html && <HtmlPreview html={html} filename={`${doc.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.html`} />}
-          <MarkdownDoc content={stripHtmlBlock(doc.content)} />
-        </div>
-      )}
-    </div>
+    <IntelDesk
+      reels={reels}
+      reportDoc={{ title: "Competitor intel report", content: home.intelContent }}
+    />
   );
 }
 
-function DocumentsTab({ home }: { home: PortalHome }) {
-  const groups = useMemo(() => {
-    const used = new Set<number>();
-    const out = DOC_FOLDERS.map((f) => {
-      const docs = home.documents.filter((d) => {
-        if (used.has(d.id) || !f.match(d.docType)) return false;
-        used.add(d.id);
-        return true;
-      });
-      return { label: f.label, docs };
-    }).filter((g) => g.docs.length > 0);
-    const rest = home.documents.filter((d) => !used.has(d.id));
-    if (rest.length) out.push({ label: "More", docs: rest });
-    return out;
-  }, [home.documents]);
+/**
+ * A content pipeline, client-side: the operator's exact columns. The only
+ * action the client has is the one that is theirs — "I recorded this".
+ */
+function PipelineTab({ docs, emptyNote }: { docs: PortalContentDoc[]; emptyNote: string }) {
+  const utils = trpc.useUtils();
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const advance = trpc.portal.advanceDoc.useMutation({
+    onSuccess: () => {
+      utils.portal.home.invalidate();
+      utils.recording.get.invalidate();
+      toast.success("Nice. Moved to In editing.");
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
-  if (!groups.length) {
+  if (!docs.length) {
     return (
       <div className="text-center py-20">
-        <FolderOpen className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
-        <p className="text-sm text-muted-foreground">Approved documents land here as your build progresses.</p>
+        <Clapperboard className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
+        <p className="text-sm text-muted-foreground">{emptyNote}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-7">
-      {groups.map((g) => (
-        <section key={g.label}>
-          <h2 className="text-sm font-semibold text-foreground mb-2">{g.label}</h2>
-          <div className="space-y-2">
-            {g.docs.map((d) => (
-              <DocRow key={d.id} doc={d} />
-            ))}
-          </div>
-        </section>
-      ))}
+    <div>
+      <p className="text-xs text-muted-foreground mb-4">
+        Every piece moves left to right: your coach drafts, you record, they edit, it posts. Scripts in "To record" are
+        also on your To-Do list.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        {PIPE_STAGES.map((col) => {
+          const items = docs.filter((d) => d.stage === col.id);
+          return (
+            <div key={col.id} className={`rounded-xl border p-2.5 min-h-28 ${col.tint}`}>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/70 px-1 pb-2">
+                {col.label} <span className="text-muted-foreground font-normal">· {items.length}</span>
+              </p>
+              <div className="space-y-2">
+                {items.map((doc) => (
+                  <div key={doc.id} className="rounded-lg border border-border/60 bg-background/70 shadow-sm">
+                    <button
+                      onClick={() => setExpanded(expanded === doc.id ? null : doc.id)}
+                      className="w-full flex items-center gap-2 p-2.5 text-left"
+                    >
+                      <FileText className="w-3 h-3 text-primary flex-shrink-0" />
+                      <span className="flex-1 text-[11px] font-medium text-foreground leading-snug">{doc.title}</span>
+                      {expanded === doc.id ? (
+                        <ChevronUp className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                      )}
+                    </button>
+                    <div className="flex items-center gap-1 px-2.5 pb-2">
+                      {col.id === "recording" && (
+                        <button
+                          disabled={advance.isPending}
+                          onClick={() => advance.mutate({ docId: doc.id })}
+                          className="h-5 px-2 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 flex items-center gap-1"
+                          title="Filmed it? Move it to editing"
+                        >
+                          <Check className="w-2.5 h-2.5" />
+                          Recorded
+                        </button>
+                      )}
+                      <span className="flex-1" />
+                      <CopyButton text={stripHtmlBlock(doc.content)} className="px-1.5" />
+                    </div>
+                    {expanded === doc.id && (
+                      <div className="px-3 pb-3 border-t border-border/40 pt-3">
+                        <MarkdownDoc content={stripHtmlBlock(doc.content)} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {!items.length && <p className="text-[10px] text-muted-foreground/50 px-1">Empty</p>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -605,13 +659,13 @@ function DocumentsTab({ home }: { home: PortalHome }) {
 function PortalShell({ clientName, onSignOut }: { clientName: string; onSignOut: () => void }) {
   const params = useParams<{ tab?: TabId }>();
   const [, navigate] = useLocation();
-  const tab: TabId = TABS.some((t) => t.id === params.tab) ? (params.tab as TabId) : "overview";
-  const goTo = (t: TabId) => navigate(t === "overview" ? "/portal" : `/portal/${t}`);
+  const tab: TabId = TABS.some((t) => t.id === params.tab) ? (params.tab as TabId) : "research";
+  const goTo = (t: TabId) => navigate(t === "research" ? "/portal" : `/portal/${t}`);
 
   const { data: home, isLoading } = trpc.portal.home.useQuery();
   const logout = trpc.portal.logout.useMutation({ onSuccess: onSignOut });
 
-  const activeLabel = TABS.find((t) => t.id === tab)?.label ?? "Overview";
+  const activeLabel = TABS.find((t) => t.id === tab)?.label ?? "Market Research";
 
   return (
     <div className="min-h-screen bg-background lg:flex">
@@ -696,12 +750,23 @@ function PortalShell({ clientName, onSignOut }: { clientName: string; onSignOut:
             </div>
           ) : (
             <>
-              {tab === "overview" && <OverviewTab home={home} goTo={goTo} />}
-              {tab === "ads" && <AdLibraryTab home={home} />}
-              {tab === "todo" && <TodoTab home={home} />}
               {tab === "research" && <ResearchTab />}
-              {tab === "pulse" && <PulseTab home={home} />}
-              {tab === "docs" && <DocumentsTab home={home} />}
+              {tab === "competitors" && <CompetitorsTab home={home} />}
+              {tab === "overview" && <OverviewTab home={home} goTo={goTo} />}
+              {tab === "todo" && <TodoTab home={home} />}
+              {tab === "ads" && <AdLibraryTab home={home} />}
+              {tab === "shortform" && (
+                <PipelineTab
+                  docs={home.content.shortform}
+                  emptyNote="Your short-form pipeline fills up as reels are scripted."
+                />
+              )}
+              {tab === "youtube" && (
+                <PipelineTab
+                  docs={home.content.youtube}
+                  emptyNote="Your YouTube pipeline fills up as videos are scripted."
+                />
+              )}
             </>
           )}
         </div>
