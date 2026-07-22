@@ -28,12 +28,18 @@ export function RecordingChecklist({ token }: { token: string }) {
   const { data, isLoading, error } = trpc.recording.get.useQuery({ token }, { enabled: !!token });
   const [open, setOpen] = useState<number | null>(null);
 
+  // Ticks advance the doc's pipeline card too — refresh the portal's view of
+  // it when the checklist is embedded there (no-op on the public /record page).
+  const refresh = () => {
+    utils.recording.get.invalidate({ token });
+    utils.portal.home.invalidate();
+  };
   const mark = trpc.recording.markRecorded.useMutation({
-    onSuccess: () => utils.recording.get.invalidate({ token }),
+    onSuccess: refresh,
     onError: (err) => toast.error(err.message),
   });
   const toggleSection = trpc.recording.toggleSection.useMutation({
-    onSuccess: () => utils.recording.get.invalidate({ token }),
+    onSuccess: refresh,
     onError: (err) => toast.error(err.message),
   });
   const setLink = trpc.recording.setLink.useMutation({
