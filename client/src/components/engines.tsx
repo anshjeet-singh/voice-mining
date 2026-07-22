@@ -1993,27 +1993,60 @@ function TemplateFiller({
  * the doc section by section, with a per-section Copy and PDF button that appear
  * ONLY on sections with real body content (never on bare headings/dividers).
  */
-/** Split an email/SMS doc into one section PER EMAIL: H3 boundaries only
- *  ("### Day N: ..."). H2s stay INSIDE the email body — they are ConvertKit
- *  headings (the CTA line, "The Problem" beats), not section breaks. A
- *  single-email doc with no H3s stays one whole section. */
+/** Split an email/SMS doc into one section PER EMAIL. Heading levels are NOT
+ *  reliable (docs mix "## Day N" and "### Day N", and emails contain their own
+ *  H2/H3 beats), so an email boundary is detected structurally: a heading whose
+ *  next lines carry the block-layout labels (Send / Subject / Preview text).
+ *  Fallback for docs without that layout (SMS sets): split on the shallowest
+ *  heading level present; a doc with no headings stays one whole section. */
 function splitEmailSections(md: string, fallbackTitle: string): Array<{ title: string; text: string; level: number }> {
-  const out: Array<{ title: string; text: string; level: number }> = [];
-  let cur: { title: string; text: string; level: number } | null = null;
-  for (const ln of md.split("\n")) {
-    const h = ln.match(/^###\s+(.+)$/);
-    if (h) {
-      if (cur) out.push(cur);
-      cur = { title: h[1].replace(/[#*`]/g, "").trim(), text: "", level: 3 };
-    } else if (cur) {
-      cur.text += ln + "\n";
-    } else if (ln.trim() && !/^#\s/.test(ln)) {
-      // Content before the first H3 (or a doc with none): one whole-email section.
-      cur = { title: fallbackTitle, text: ln + "\n", level: 3 };
+  const lines = md.split("\n");
+  const isLabel = (s: string) => /^\**\s*(Send|Subject|Preview text)\b/i.test(s.trim());
+  const headingAt = (i: number) => lines[i].match(/^(#{1,4})\s+(.+)$/);
+
+  const bounds: number[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!headingAt(i)) continue;
+    // Look at the next few non-empty lines, but never past the NEXT heading —
+    // otherwise a beat heading right before another email's Send block matches.
+    const next: string[] = [];
+    for (let j = i + 1; j < lines.length && next.length < 3; j++) {
+      if (headingAt(j)) break;
+      if (lines[j].trim()) next.push(lines[j]);
+    }
+    if (next.some(isLabel)) bounds.push(i);
+  }
+  const hasLabels = lines.some((l) => isLabel(l));
+  if (!bounds.length && !hasLabels) {
+    // No block layout anywhere (SMS sets): split on the shallowest heading level.
+    let min = 99;
+    for (let i = 0; i < lines.length; i++) {
+      const h = headingAt(i);
+      if (h && h[1].length >= 2) min = Math.min(min, h[1].length);
+    }
+    if (min < 99) {
+      for (let i = 0; i < lines.length; i++) {
+        const h = headingAt(i);
+        if (h && h[1].length === min) bounds.push(i);
+      }
     }
   }
-  if (cur) out.push(cur);
-  return out.map((s) => ({ ...s, text: s.text.trim() })).filter((s) => s.text);
+  if (!bounds.length) {
+    // Single email (labels but no day heading), or a headingless doc: one section.
+    const whole = md.replace(/^#\s+.+$/m, "").trim();
+    return whole ? [{ title: fallbackTitle, text: whole, level: 3 }] : [];
+  }
+
+  const out: Array<{ title: string; text: string; level: number }> = [];
+  const intro = lines.slice(0, bounds[0]).join("\n").replace(/^#\s+.+$/m, "").trim();
+  if (intro) out.push({ title: "Intro", text: intro, level: 3 });
+  bounds.forEach((b, idx) => {
+    const end = idx + 1 < bounds.length ? bounds[idx + 1] : lines.length;
+    const title = lines[b].replace(/^#+\s*/, "").replace(/[#*`]/g, "").trim();
+    const text = lines.slice(b + 1, end).join("\n").trim();
+    if (text) out.push({ title, text, level: 3 });
+  });
+  return out;
 }
 
 export function DocSections({ content, title, docType }: { content: string; title: string; docType?: string }) {
