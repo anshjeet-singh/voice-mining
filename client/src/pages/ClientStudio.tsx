@@ -252,7 +252,7 @@ function DocRow({ doc, invalidate }: { doc: ClientDoc; invalidate?: () => void }
               </div>
             </>
           ) : (
-            <DocSections content={doc.content} title={doc.title} />
+            <DocSections content={doc.content} title={doc.title} docType={doc.docType} />
           )}
         </div>
       )}
@@ -913,6 +913,7 @@ const DEFAULT_FACT_TOKENS = [
   "[HOST NAME]",
   "[VSL LINK]",
   "[COMMUNITY LINK]",
+  "[CLASSROOM LINK]",
   "[BOOKING LINK]",
 ];
 

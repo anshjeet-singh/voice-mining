@@ -70,3 +70,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-22 · job 840002 · client: Blake Matthews -->
 - The Sequence-architecture contract requires a REPLY-BAIT email (a one-word-reply question) in every 10+ email nurture, but its own link-pass gate demands "the closing CTA is a hyperlinked ## H2 heading." A reply-bait email has no URL: its whole ask is "hit reply." Codify the carve-out so it is not re-derived each run: a reply-CTA email's closing CTA is a plain ## H2 instruction with no hyperlink ("## Just hit reply with one word: ..."), and that is NOT a link-pass failure. Same carve-out applies to a post-call non-closer email whose one CTA is a reply.
+
+<!-- 2026-07-22 · operator link-roles verdict · client: Blake Matthews -->
+- OPERATOR HARD RULE on lead-magnet links (now codified in cc-email-swipe-style.md Link roles and the stage contracts): every "go consume [named magnet]" pointer hyperlinks the MAGNET NAME to [CLASSROOM LINK] (the Skool classroom, e.g. skool.com/<community>/classroom) — ONE destination for all magnet pointers in member emails. [COMMUNITY LINK] (the About/join page) is for NON-members only (ads, join CTAs) and never appears as a magnet pointer inside member emails. [VSL LINK] stays the conversion CTA. Never paste a bare URL where a magnet pointer belongs; the anchor is always the asset name.

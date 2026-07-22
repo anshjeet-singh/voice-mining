@@ -189,7 +189,7 @@ export interface ClientDoc {
 }
 
 /** Copy-to-clipboard button. Strips the machine-facing html block from docs. */
-export function CopyButton({ text, label = "Copy", className = "" }: { text: string; label?: string; className?: string }) {
+export function CopyButton({ text, label = "Copy", className = "", prominent = false }: { text: string; label?: string; className?: string; prominent?: boolean }) {
   const [copied, setCopied] = useState(false);
   const links = useContext(LinksContext);
   return (
@@ -200,7 +200,11 @@ export function CopyButton({ text, label = "Copy", className = "" }: { text: str
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
-      className={`flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground ${className}`}
+      className={
+        prominent
+          ? `flex items-center gap-1.5 h-6 px-2.5 rounded-md border border-primary/40 bg-primary/10 text-[10px] font-semibold text-primary hover:bg-primary/20 flex-shrink-0 ${className}`
+          : `flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground ${className}`
+      }
     >
       {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
       {copied ? "Copied" : label}
@@ -1989,26 +1993,57 @@ function TemplateFiller({
  * the doc section by section, with a per-section Copy and PDF button that appear
  * ONLY on sections with real body content (never on bare headings/dividers).
  */
-export function DocSections({ content, title }: { content: string; title: string }) {
+/** Split an email/SMS doc into one section PER EMAIL: H3 boundaries only
+ *  ("### Day N: ..."). H2s stay INSIDE the email body — they are ConvertKit
+ *  headings (the CTA line, "The Problem" beats), not section breaks. A
+ *  single-email doc with no H3s stays one whole section. */
+function splitEmailSections(md: string, fallbackTitle: string): Array<{ title: string; text: string; level: number }> {
+  const out: Array<{ title: string; text: string; level: number }> = [];
+  let cur: { title: string; text: string; level: number } | null = null;
+  for (const ln of md.split("\n")) {
+    const h = ln.match(/^###\s+(.+)$/);
+    if (h) {
+      if (cur) out.push(cur);
+      cur = { title: h[1].replace(/[#*`]/g, "").trim(), text: "", level: 3 };
+    } else if (cur) {
+      cur.text += ln + "\n";
+    } else if (ln.trim() && !/^#\s/.test(ln)) {
+      // Content before the first H3 (or a doc with none): one whole-email section.
+      cur = { title: fallbackTitle, text: ln + "\n", level: 3 };
+    }
+  }
+  if (cur) out.push(cur);
+  return out.map((s) => ({ ...s, text: s.text.trim() })).filter((s) => s.text);
+}
+
+export function DocSections({ content, title, docType }: { content: string; title: string; docType?: string }) {
   const html = extractHtml(content);
-  const sections = useMemo(() => splitSections(stripHtmlBlock(content)), [content]);
+  // Email/SMS docs: one copy button per EMAIL, rich-copied for ConvertKit, no PDF chrome.
+  const emailMode = /email|sms/.test(docType ?? "");
+  const sections = useMemo(
+    () => (emailMode ? splitEmailSections(stripHtmlBlock(content), title) : splitSections(stripHtmlBlock(content))),
+    [content, emailMode, title]
+  );
   return (
     <div className="space-y-3">
       {html && <TemplateFiller html={html} filename={title} />}
       <div className="max-h-96 overflow-y-auto rounded-lg bg-card/40 p-3 space-y-4">
         {sections.map((s, i) => {
-          const body = s.text.replace(/^#{1,3}\s+.+\n?/, "").trim();
+          const body = emailMode ? s.text : s.text.replace(/^#{1,3}\s+.+\n?/, "").trim();
           return (
-            <div key={i} className={s.level >= 3 ? "pl-3" : ""}>
+            <div key={i} className={!emailMode && s.level >= 3 ? "pl-3" : ""}>
               <div className="flex items-center gap-2 mb-1 border-b border-border/25 pb-1">
                 <h4
                   className={`flex-1 min-w-0 font-semibold text-foreground ${
-                    s.level <= 1 ? "text-sm" : s.level === 2 ? "text-[13px]" : "text-xs text-foreground/80"
+                    emailMode || s.level <= 1 ? "text-sm" : s.level === 2 ? "text-[13px]" : "text-xs text-foreground/80"
                   }`}
                 >
                   {s.title}
                 </h4>
-                {body && (
+                {body && emailMode && (
+                  <CopyButton text={body} label={/sms/.test(docType ?? "") ? "Copy SMS" : "Copy email"} prominent />
+                )}
+                {body && !emailMode && (
                   <>
                     <button
                       onClick={() => printPdf(s.title, s.text)}
@@ -2320,7 +2355,7 @@ export function DocBoard({
                               </div>
                             </div>
                           ) : (
-                            <DocSections content={doc.content} title={doc.title} />
+                            <DocSections content={doc.content} title={doc.title} docType={doc.docType} />
                           )}
                         </div>
                       )}
