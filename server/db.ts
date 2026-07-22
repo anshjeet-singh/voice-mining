@@ -14,6 +14,7 @@ import {
   analysisResults,
   calendarEntries,
   clientAssets,
+  clientPortalLogins,
   clientRecordingItems,
   clientRefImages,
   clientDocuments,
@@ -1138,4 +1139,69 @@ export async function getClientByShareToken(token: string) {
   if (!db) return null;
   const rows = await db.select().from(clients).where(eq(clients.shareToken, token)).limit(1);
   return rows[0] ?? null;
+}
+
+// ─── Client portal logins (email + password, scoped to one client) ──────────
+
+export async function getPortalLoginByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(clientPortalLogins)
+    .where(eq(clientPortalLogins.email, email.trim().toLowerCase()))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getPortalLoginById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(clientPortalLogins).where(eq(clientPortalLogins.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getPortalLoginByClientId(clientId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(clientPortalLogins)
+    .where(eq(clientPortalLogins.clientId, clientId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Create or replace THE login for a client (one login per client). */
+export async function upsertPortalLogin(clientId: number, email: string, passwordHash: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const normalized = email.trim().toLowerCase();
+  const existing = await getPortalLoginByClientId(clientId);
+  if (existing) {
+    await db
+      .update(clientPortalLogins)
+      .set({ email: normalized, passwordHash })
+      .where(eq(clientPortalLogins.id, existing.id));
+  } else {
+    await db.insert(clientPortalLogins).values({ clientId, email: normalized, passwordHash });
+  }
+}
+
+export async function setPortalLoginPassword(id: number, passwordHash: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clientPortalLogins).set({ passwordHash }).where(eq(clientPortalLogins.id, id));
+}
+
+export async function deletePortalLogin(clientId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(clientPortalLogins).where(eq(clientPortalLogins.clientId, clientId));
+}
+
+export async function touchPortalLastLogin(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(clientPortalLogins).set({ lastLoginAt: new Date() }).where(eq(clientPortalLogins.id, id));
 }

@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { MarkdownDoc } from "@/components/MarkdownDoc";
-import { ChevronDown, ChevronUp, Eye, Instagram, Loader2, Sparkles, TrendingUp, Youtube } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { MarketPulse, parsePulsePieces } from "@/components/MarketPulse";
+import { ChevronDown, ChevronUp, Loader2, Sparkles } from "lucide-react";
 
 /**
  * The client's window into the machine (/c/:token): weekly reports plus the
@@ -11,51 +11,10 @@ import { formatDistanceToNow } from "date-fns";
  * once; it stays current on its own — the biweekly "here's what's moving"
  * send is just re-sending the same URL.
  */
-
-interface SharePiece {
-  platform: "instagram" | "youtube";
-  account: string;
-  url?: string;
-  views: number;
-  likes: number;
-  topic: string;
-  hookStyle?: string;
-  angle?: string;
-  sections?: Array<{ label: string; text: string; note?: string }>;
-}
-
-function parsePieces(content: string | null): SharePiece[] {
-  if (!content) return [];
-  const m = content.match(/```json\s*([\s\S]*?)```/);
-  if (!m) return [];
-  try {
-    const data = JSON.parse(m[1]);
-    if (!Array.isArray(data)) return [];
-    return data
-      .filter((r) => r && typeof r.topic === "string")
-      .map((r) => ({
-        platform: r.platform === "youtube" ? ("youtube" as const) : ("instagram" as const),
-        account: String(r.account ?? ""),
-        url: r.url,
-        views: Number(r.views) || 0,
-        likes: Number(r.likes) || 0,
-        topic: String(r.topic),
-        hookStyle: r.hookStyle,
-        angle: r.angle,
-      }))
-      .sort((a, b) => b.views - a.views);
-  } catch {
-    return [];
-  }
-}
-
-const fmt = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n));
-
 export default function ClientShare() {
   const { token = "" } = useParams<{ token: string }>();
   const { data, isLoading, error } = trpc.clientShare.get.useQuery({ token }, { enabled: !!token });
   const [openReport, setOpenReport] = useState<number | null>(0);
-  const pieces = useMemo(() => parsePieces(data?.intelContent ?? null), [data?.intelContent]);
 
   if (isLoading) {
     return (
@@ -75,7 +34,7 @@ export default function ClientShare() {
     );
   }
 
-  const totalViews = pieces.reduce((s, p) => s + p.views, 0);
+  const hasPulse = parsePulsePieces(data.intelContent).length > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,66 +77,9 @@ export default function ClientShare() {
           </section>
         )}
 
-        {pieces.length > 0 && (
-          <section>
-            <div className="flex items-baseline justify-between gap-2 mb-2">
-              <h2 className="text-sm font-semibold text-foreground">What's winning in your market</h2>
-              {data.intelUpdatedAt && (
-                <span className="text-[11px] text-muted-foreground">
-                  updated {formatDistanceToNow(new Date(data.intelUpdatedAt), { addSuffix: true })}
-                </span>
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              {[
-                { label: "Top pieces analyzed", value: String(pieces.length) },
-                { label: "Combined views", value: fmt(totalViews) },
-                { label: "Platforms", value: String(new Set(pieces.map((p) => p.platform)).size) },
-              ].map((s) => (
-                <div key={s.label} className="rounded-xl border border-border/50 bg-card/30 px-3 py-2.5">
-                  <p className="text-lg font-semibold text-foreground">{s.value}</p>
-                  <p className="text-[11px] text-muted-foreground">{s.label}</p>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-2">
-              {pieces.slice(0, 12).map((p, i) => (
-                <div key={i} className="rounded-xl border border-border/50 bg-card/30 px-4 py-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    {p.platform === "youtube" ? (
-                      <Youtube className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-                    ) : (
-                      <Instagram className="w-3.5 h-3.5 text-pink-400 flex-shrink-0" />
-                    )}
-                    <span className="text-[11px] text-muted-foreground truncate">@{p.account.replace(/^@/, "")}</span>
-                    <span className="flex-1" />
-                    <span className="text-[11px] text-muted-foreground flex items-center gap-1 flex-shrink-0">
-                      <Eye className="w-3 h-3" />
-                      {fmt(p.views)}
-                    </span>
-                    {p.hookStyle && (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/15 text-primary flex-shrink-0">
-                        {p.hookStyle}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-foreground leading-snug">{p.topic}</p>
-                  {p.angle && (
-                    <p className="text-[11px] text-muted-foreground mt-1 flex items-start gap-1.5">
-                      <TrendingUp className="w-3 h-3 mt-0.5 flex-shrink-0 text-primary" />
-                      <span>
-                        <span className="text-foreground/80 font-medium">Your angle: </span>
-                        {p.angle}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        <MarketPulse intelContent={data.intelContent} intelUpdatedAt={data.intelUpdatedAt} />
 
-        {!data.weeklyReports.length && !pieces.length && (
+        {!data.weeklyReports.length && !hasPulse && (
           <p className="text-sm text-muted-foreground text-center py-16">
             Nothing published here yet — your first report lands soon.
           </p>

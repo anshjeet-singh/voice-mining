@@ -160,6 +160,22 @@ export const clientRefImages = mysqlTable("client_ref_images", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** Client portal logins (app.cashflowcoaches.io/portal): email + password
+ *  credentials the operator creates at onboarding, scoped to ONE client
+ *  workspace. Deliberately separate from the owner Google allowlist — a
+ *  portal session can only ever read its own client's approved work. */
+export const clientPortalLogins = mysqlTable("client_portal_logins", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  /** scrypt, stored as "s2$<saltB64>$<hashB64>" — no plaintext ever kept. */
+  passwordHash: varchar("passwordHash", { length: 300 }).notNull(),
+  lastLoginAt: timestamp("lastLoginAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ClientPortalLogin = typeof clientPortalLogins.$inferSelect;
+
 /** The recording queue: script documents the operator sent to the client to
  *  record. The client sees them on the public /record/:token page and marks
  *  each one recorded — replaces the Notion to-do handoff. */

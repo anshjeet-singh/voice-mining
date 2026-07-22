@@ -693,6 +693,29 @@ export function registerWorkerRoutes(app: Express) {
     }
   });
 
+  // Serve an APPROVED ad to the client's portal session (img src or download).
+  // Approved-only on purpose: pending/rejected work never reaches the client.
+  app.get("/api/portal/assets/:id", async (req: Request, res: Response) => {
+    try {
+      const { authenticatePortalRequest } = await import("./portalAuth");
+      const session = await authenticatePortalRequest(req).catch(() => null);
+      if (!session) return res.status(401).json({ error: "unauthorized" });
+      const asset = await getClientAssetById(Number(req.params.id));
+      if (!asset || asset.clientId !== session.clientId || asset.status !== "approved") {
+        return res.status(404).json({ error: "not found" });
+      }
+      res.setHeader("Content-Type", asset.mime);
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      if (req.query.download !== undefined) {
+        res.setHeader("Content-Disposition", `attachment; filename="${asset.filename.replace(/["\\]/g, "")}"`);
+      }
+      res.send(Buffer.from(asset.data, "base64"));
+    } catch (err) {
+      console.error("[portal/assets]", err);
+      res.status(500).json({ error: "asset fetch failed" });
+    }
+  });
+
   // Operator-uploaded reference image bytes (owner-only), for UI thumbnails.
   app.get("/api/refimages/:id", async (req: Request, res: Response) => {
     try {

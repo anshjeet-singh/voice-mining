@@ -1,4 +1,4 @@
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS, PORTAL_COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -55,6 +55,13 @@ import {
   getVaultItemCount,
   getVaultItemsByUser,
   logActivity,
+  getPortalLoginByEmail,
+  getPortalLoginById,
+  getPortalLoginByClientId,
+  upsertPortalLogin,
+  setPortalLoginPassword,
+  deletePortalLogin,
+  touchPortalLastLogin,
   reviewClientAsset,
   revokeSharedReport,
   setClientDocumentStatus,
@@ -93,6 +100,27 @@ import { getClientSocialStats } from "./socialStats";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import {
+  authenticatePortalRequest,
+  clearLoginFailures,
+  createPortalSessionToken,
+  generatePortalPassword,
+  hashPortalPassword,
+  loginThrottled,
+  recordLoginFailure,
+  verifyPortalPassword,
+} from "./portalAuth";
+
+/** Requires a valid client-portal session cookie; injects ctx.portal. */
+const portalProcedure = publicProcedure.use(async ({ ctx, next }) => {
+  const session = await authenticatePortalRequest(ctx.req);
+  if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "Sign in to your portal" });
+  const login = await getPortalLoginById(session.loginId);
+  if (!login || login.clientId !== session.clientId) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Sign in to your portal" });
+  }
+  return next({ ctx: { ...ctx, portal: { loginId: login.id, clientId: login.clientId, email: login.email } } });
+});
 
 /**
  * Pull competitor URLs out of whatever the user pasted — full URLs, bare
@@ -666,6 +694,59 @@ export const appRouter = router({
         return { token };
       }),
 
+    // ── Client portal access: email + password credentials, one per client ──
+
+    /** Current portal login for a client (never returns the password). */
+    portalAccess: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const login = await getPortalLoginByClientId(input.clientId);
+        return login ? { email: login.email, lastLoginAt: login.lastLoginAt, createdAt: login.createdAt } : null;
+      }),
+
+    /**
+     * Create (or re-key) the client's portal login. Generates the password
+     * server-side and returns it ONCE — it is never stored in plaintext, so
+     * the operator copies it into the welcome email right here or resets.
+     */
+    setPortalLogin: protectedProcedure
+      .input(z.object({ clientId: z.number(), email: z.string().email().max(320) }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const email = input.email.trim().toLowerCase();
+        const existing = await getPortalLoginByEmail(email);
+        if (existing && existing.clientId !== input.clientId) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "That email already belongs to another client's portal login",
+          });
+        }
+        const password = generatePortalPassword();
+        await upsertPortalLogin(input.clientId, email, await hashPortalPassword(password));
+        return { email, password };
+      }),
+
+    /** New password for the existing login, returned once. */
+    resetPortalPassword: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const login = await getPortalLoginByClientId(input.clientId);
+        if (!login) throw new TRPCError({ code: "NOT_FOUND", message: "No portal login for this client yet" });
+        const password = generatePortalPassword();
+        await setPortalLoginPassword(login.id, await hashPortalPassword(password));
+        return { email: login.email, password };
+      }),
+
+    removePortalLogin: protectedProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        await deletePortalLogin(input.clientId);
+        return { ok: true };
+      }),
+
     // ── Recording queue: hand scripts to the client, they mark them recorded ──
 
     /** The shareable /record/:token link, minting the token on first use. */
@@ -1230,6 +1311,175 @@ export const appRouter = router({
         return getReportById(input.id);
       }),
 
+  }),
+
+  // ─── Client portal (app.cashflowcoaches.io/portal) ──────────────────────────
+
+  /**
+   * The client's own logged-in home: read-only, scoped to ONE client by the
+   * portal session. Ad library with downloads + the Meta copy, recording
+   * to-dos, research report, competitor desk, and every approved document.
+   * NO generate buttons — the engines stay the operator's.
+   */
+  portal: router({
+    login: publicProcedure
+      .input(z.object({ email: z.string().email().max(320), password: z.string().min(1).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        const ip = String(ctx.req.headers["x-forwarded-for"] ?? ctx.req.socket?.remoteAddress ?? "unknown")
+          .split(",")[0]
+          .trim();
+        if (loginThrottled(input.email, ip)) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "Too many attempts — wait 15 minutes and try again.",
+          });
+        }
+        const login = await getPortalLoginByEmail(input.email);
+        const ok = login && (await verifyPortalPassword(input.password, login.passwordHash));
+        if (!ok) {
+          recordLoginFailure(input.email, ip);
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "That email and password don't match." });
+        }
+        clearLoginFailures(input.email);
+        await touchPortalLastLogin(login.id);
+        // The To-Do tab reuses the recording checklist by token — mint it here
+        // so every portal account can always reach its list.
+        const client = await getClientById(login.clientId);
+        if (client && !client.recordingToken) await setRecordingToken(client.id, nanoid(14));
+        const token = await createPortalSessionToken(login.id, login.clientId);
+        ctx.res.cookie(PORTAL_COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
+        return { ok: true };
+      }),
+
+    logout: publicProcedure.mutation(({ ctx }) => {
+      ctx.res.clearCookie(PORTAL_COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
+      return { ok: true } as const;
+    }),
+
+    /** Light session probe for the login screen. */
+    me: publicProcedure.query(async ({ ctx }) => {
+      const session = await authenticatePortalRequest(ctx.req);
+      if (!session) return null;
+      const login = await getPortalLoginById(session.loginId);
+      if (!login || login.clientId !== session.clientId) return null;
+      const client = await getClientById(login.clientId);
+      return client ? { clientName: client.name, email: login.email } : null;
+    }),
+
+    /** Everything the portal renders, in one scoped read. */
+    home: portalProcedure.query(async ({ ctx }) => {
+      const client = await getClientById(ctx.portal.clientId);
+      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+      const [docs, assets] = await Promise.all([
+        getClientDocuments(client.id),
+        getClientAssetsMeta(client.id),
+      ]);
+
+      // A stage's docs stay status=draft (the JOB carries the approval), so
+      // client visibility = the owning stage's latest job is approved. Engine
+      // docs carry their own kanban status: approved/posted only.
+      const stageNames = [...STAGE_ORDER, "funnel"];
+      const docTypeStage = new Map<string, string>();
+      for (const stage of stageNames) {
+        for (const d of STAGES[stage].docs(client.funnelType)) docTypeStage.set(d.docType, stage);
+      }
+      const stageApproved: Record<string, boolean> = {};
+      await Promise.all(
+        stageNames.map(async (stage) => {
+          const job = await getLatestJobForClient(client.id, stage);
+          stageApproved[stage] = job?.status === "approved";
+        })
+      );
+      const HIDDEN_DOC_TYPES = new Set([
+        "client_facts", // operator ground-truth notes
+        "weekly_report", // shown on the Overview, not the library
+        "content_intel_extra", // rendered as the competitor desk
+        "ad_statics", // batch spec working file — the ads live in the Ad Library
+        "ad_statics_extra",
+      ]);
+      const documents = docs
+        .filter((d) => {
+          if (HIDDEN_DOC_TYPES.has(d.docType)) return false;
+          if (d.kind === "lesson" || d.kind === "onboarding") return false;
+          const approvedStatus = d.status === "approved" || d.status === "posted";
+          const stage = docTypeStage.get(d.docType);
+          return stage ? stageApproved[stage] || approvedStatus : approvedStatus;
+        })
+        .map((d) => ({
+          id: d.id,
+          docType: d.docType,
+          title: d.title,
+          content: d.content,
+          status: d.status,
+          updatedAt: d.updatedAt,
+        }));
+
+      const weeklyReports = docs
+        .filter((d) => d.docType === "weekly_report")
+        .sort((a, b) => b.id - a.id)
+        .slice(0, 6)
+        .map((d) => ({ title: d.title, content: d.content }));
+      const intel = docs
+        .filter((d) => d.docType === "content_intel_extra")
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+
+      const searches = await getSearchesByClient(client.id);
+      const completeSearch = searches.find((sr) => sr.status === "complete");
+      const researchReport = completeSearch ? await getReportBySearchId(completeSearch.id) : null;
+
+      return {
+        clientName: client.name,
+        niche: client.niche,
+        funnelType: client.funnelType,
+        recordingToken: client.recordingToken,
+        ads: assets
+          .filter((a) => a.status === "approved")
+          .map((a) => ({
+            id: a.id,
+            filename: a.filename,
+            format: a.format,
+            copyPrimary: a.copyPrimary,
+            copyHeadline: a.copyHeadline,
+            copyDescription: a.copyDescription,
+            createdAt: a.createdAt,
+          })),
+        documents,
+        weeklyReports,
+        intelContent: intel?.content ?? null,
+        intelUpdatedAt: intel?.updatedAt ?? null,
+        hasReport: Boolean(client.linkedReportId ?? researchReport),
+      };
+    }),
+
+    /** The client's market research report — same payload shape as the public
+     *  share so the portal renders the exact owner report, read-only. */
+    report: portalProcedure.query(async ({ ctx }) => {
+      const client = await getClientById(ctx.portal.clientId);
+      if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+      let report = client.linkedReportId ? await getReportById(client.linkedReportId) : null;
+      if (!report) {
+        const searches = await getSearchesByClient(client.id);
+        const completeSearch = searches.find((sr) => sr.status === "complete");
+        report = completeSearch ? await getReportBySearchId(completeSearch.id) : null;
+      }
+      if (!report) return null;
+      const analysis = await getAnalysisResultBySearchId(report.searchId);
+      const { userId: _u, searchId: _s, ...publicReport } = report;
+      return {
+        report: publicReport,
+        analysis: analysis
+          ? {
+              painPoints: analysis.painPoints,
+              desires: analysis.desires,
+              objections: analysis.objections,
+              fears: analysis.fears,
+              sentimentBreakdown: analysis.sentimentBreakdown,
+              topThemes: analysis.topThemes,
+              verbatimQuotes: analysis.verbatimQuotes,
+            }
+          : null,
+      };
+    }),
   }),
 
   // ─── Report Sharing ──────────────────────────────────────────────────────────

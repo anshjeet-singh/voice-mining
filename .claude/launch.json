@@ -5,7 +5,8 @@
       "name": "voice-mining-dev",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["-y", "pnpm@10.4.1", "dev"],
-      "port": 3000
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

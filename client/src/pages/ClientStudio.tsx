@@ -1007,6 +1007,140 @@ function ClientSharePanel({ clientId }: { clientId: number }) {
 }
 
 /**
+ * Portal access: the client's email + password login for /portal. Created at
+ * onboarding; the password is generated server-side and shown ONCE, so this
+ * panel is also where you copy the ready-to-send invite message.
+ */
+function PortalAccessPanel({ clientId }: { clientId: number }) {
+  const { data: access, refetch } = trpc.clients.portalAccess.useQuery({ clientId });
+  const [email, setEmail] = useState("");
+  const [creds, setCreds] = useState<{ email: string; password: string } | null>(null);
+
+  const create = trpc.clients.setPortalLogin.useMutation({
+    onSuccess: (c) => {
+      setCreds(c);
+      setEmail("");
+      refetch();
+      toast.success("Portal login created — copy the invite below, the password won't show again");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const reset = trpc.clients.resetPortalPassword.useMutation({
+    onSuccess: (c) => {
+      setCreds(c);
+      toast.success("New password generated — copy the invite below");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const remove = trpc.clients.removePortalLogin.useMutation({
+    onSuccess: () => {
+      setCreds(null);
+      refetch();
+      toast.success("Portal login removed");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const portalUrl = `${window.location.origin}/portal`;
+  const inviteText = creds
+    ? [
+        "Your client portal is live.",
+        "",
+        `Sign in: ${portalUrl}`,
+        `Email: ${creds.email}`,
+        `Password: ${creds.password}`,
+        "",
+        "Everything we build for you lives there: your approved ads ready to download, your recording list, your market research, and what's winning in your market right now.",
+      ].join("\n")
+    : "";
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-card/30 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-foreground">Client portal login</h3>
+          <p className="text-xs text-muted-foreground">
+            {access
+              ? `${access.email} · ${access.lastLoginAt ? `last signed in ${new Date(access.lastLoginAt).toLocaleDateString()}` : "never signed in"}`
+              : "Their own sign-in for the portal: ad library with downloads, to-dos, research, market pulse. Read-only."}
+          </p>
+        </div>
+        {access ? (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              disabled={reset.isPending}
+              onClick={() => reset.mutate({ clientId })}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-card transition-colors disabled:opacity-50"
+            >
+              {reset.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+              Reset password
+            </button>
+            <button
+              disabled={remove.isPending}
+              onClick={() => {
+                if (window.confirm("Remove this client's portal access?")) remove.mutate({ clientId });
+              }}
+              className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && email.trim()) create.mutate({ clientId, email: email.trim() });
+              }}
+              placeholder="client@business.com"
+              className="h-8 w-52 rounded-lg border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/60"
+            />
+            <button
+              disabled={create.isPending || !email.trim()}
+              onClick={() => create.mutate({ clientId, email: email.trim() })}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
+            >
+              {create.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+              Create login
+            </button>
+          </div>
+        )}
+      </div>
+      {creds && (
+        <div className="mt-3 rounded-lg border border-primary/25 bg-primary/[0.06] p-3.5">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className="text-xs font-semibold text-foreground">
+              One-time credentials — copy now, the password is not stored
+            </p>
+            <div className="flex items-center gap-2">
+              <CopyButton text={inviteText} label="Copy invite" />
+              <button className="text-[10px] text-muted-foreground hover:text-foreground" onClick={() => setCreds(null)}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-2 text-xs">
+            <div className="rounded-md bg-background/50 px-2.5 py-1.5">
+              <p className="text-[10px] text-muted-foreground">Portal</p>
+              <p className="text-foreground truncate">{portalUrl.replace(/^https?:\/\//, "")}</p>
+            </div>
+            <div className="rounded-md bg-background/50 px-2.5 py-1.5">
+              <p className="text-[10px] text-muted-foreground">Email</p>
+              <p className="text-foreground truncate">{creds.email}</p>
+            </div>
+            <div className="rounded-md bg-background/50 px-2.5 py-1.5">
+              <p className="text-[10px] text-muted-foreground">Password</p>
+              <p className="text-foreground font-mono">{creds.password}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Recording to-do: the scripts sent to the client to film, with the magic
  * link the client opens. Replaces the copy-into-Notion handoff entirely.
  */
@@ -1496,6 +1630,7 @@ export default function ClientStudio() {
               <FoundationRefine clientId={clientId} invalidate={invalidate} />
 
               <ClientLinksPanel clientId={clientId} documents={documents} invalidate={invalidate} />
+              <PortalAccessPanel clientId={clientId} />
               <ClientSharePanel clientId={clientId} />
               <RecordingQueuePanel clientId={clientId} />
 
