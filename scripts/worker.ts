@@ -302,8 +302,33 @@ async function runDeliverable(
     stopWatching?.();
   }
 
-  const files = await readJobDir(jobDir);
-  const parsed = parseDocOutput(files, output);
+  let files = await readJobDir(jobDir);
+  let parsed: ReturnType<typeof parseDocOutput>;
+  try {
+    parsed = parseDocOutput(files, output);
+  } catch (err) {
+    // Salvage pass: some sessions compose the whole deliverable but end by
+    // summarizing in chat (or handing off to a subagent) without ever writing
+    // the file. Continue the SAME session so the finished work gets dumped to
+    // disk instead of re-running a 15-minute job from scratch.
+    console.log(`[job ${job.id}] ${title}: ${(err as Error).message} — salvage pass (--continue)`);
+    await runClaude(
+      [
+        "-p",
+        `Your previous run ended WITHOUT writing the required output file. Nothing said in chat counts: the deliverable must be ON DISK. Using the work you already composed, Write ${output.filename} (plus client_lessons.md and craft_lessons.md) into the current directory NOW, exactly per ${promptFile}. Do not re-plan, do not delegate, do not summarize: write the files, then stop.`,
+        "--continue",
+        "--model",
+        WORKER_MODEL,
+        "--effort",
+        WORKER_EFFORT,
+        "--dangerously-skip-permissions",
+      ],
+      jobDir,
+      Math.min(CLAUDE_TIMEOUT_MS, 30 * 60 * 1000)
+    );
+    files = await readJobDir(jobDir);
+    parsed = parseDocOutput(files, output);
+  }
 
   // Rendered binaries: the session copies final PNGs into ./assets/ so the
   // app can display them for per-ad review. Collected before jobDir cleanup.

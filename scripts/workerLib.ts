@@ -167,6 +167,9 @@ After the deliverable, also write:
 - <lesson>
 Write "none" if nothing. Be conservative.
 
+# OUTPUT IS FILES, NOTHING ELSE COUNTS
+Write the deliverable YOURSELF with the Write tool, directly into the current directory. NEVER delegate the writing to a subagent or the Agent tool, and NEVER put the deliverable (or a summary of it) in your chat reply: content that is not on disk in ${output.filename} does not exist and the whole run fails. Compose, then WRITE THE FILE.
+
 Write ${output.filename}, client_lessons.md, and craft_lessons.md, then stop.`;
 }
 
