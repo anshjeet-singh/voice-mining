@@ -7,3 +7,6 @@ Accumulated craft lessons applied on every run.
 
 <!-- 2026-07-22 · job 810001 · client: Blake Matthews -->
 - On the occupation-callout / big-text spotlight format, the flat radial spotlight glow is full-bleed background and legitimately trips qa_extents() at the right margin (max_x ~1015 to 1035), the same as a divider or search pill. Treat a right-edge flag on these formats as the glow (verify by viewing), not a text overflow, so a builder does not shrink correct hero copy chasing a false positive.
+
+<!-- 2026-07-22 · job 840003 · client: Blake Matthews -->
+- none
