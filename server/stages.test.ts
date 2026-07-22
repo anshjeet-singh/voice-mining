@@ -126,8 +126,9 @@ describe("stage registry", () => {
     // Both funnel types: 14-day community sequence + SMS only
     expect(call.outputs.map((o) => o.docType)).toEqual(["email_sequence_14day", "sms_set"]);
     expect(webinar.outputs.map((o) => o.docType)).toEqual(["email_sequence_14day", "sms_set"]);
-    // Exactly two community CTAs, the locked placeholder, and the three lead magnets
-    expect(call.outputs[0].description).toContain("ONLY TWO calls to action");
+    // Exactly two community CTA destinations (phased), the locked placeholder, and the three lead magnets
+    expect(call.outputs[0].description).toContain("ONLY TWO CTA destinations");
+    expect(call.outputs[0].description).toContain("PHASED");
     expect(call.outputs[0].description).toContain("weekly live Q&A");
     expect(call.outputs[0].description).toContain("[COMMUNITY NAME]");
     expect(call.outputs[0].description).toContain("THREE named free lead magnets");
