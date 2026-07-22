@@ -1398,7 +1398,7 @@ export default function ClientStudio() {
                 <AssetGallery assets={assets} clientId={clientId} stageId="ads" invalidate={invalidate} canRegenerate exportJob={(data.exportJob ?? null) as StageJob} />
               </StudioBlock>
               <StudioBlock title="Script pipeline" hint="To record puts a script on the client's portal to-do; their tick moves it to In editing here" frame="border-violet-500/25 bg-violet-500/[0.05]">
-                <DocBoard docs={[...docsFor("ad_video_scripts"), ...docsFor("ad_scripts_extra")]} invalidate={invalidate} clientId={clientId} docType="ad_scripts_extra" recordable />
+                <DocBoard docs={[...docsFor("ad_video_scripts"), ...docsFor("ad_scripts_extra")]} invalidate={invalidate} clientId={clientId} docType="ad_scripts_extra" recordable aiJob={jobs.doc_edit ?? null} />
               </StudioBlock>
             </>
           )}
@@ -1418,7 +1418,7 @@ export default function ClientStudio() {
                 hint="Every funnel file lands here: the VSL landing code, the post-booking code, and the recording script for the client. Approve, then mark posted once it's live. Write your own too"
                 frame="border-sky-500/25 bg-sky-500/[0.05]"
               >
-                <DocBoard docs={docsFor("lander_extra")} invalidate={invalidate} clientId={clientId} docType="lander_extra" />
+                <DocBoard docs={docsFor("lander_extra")} invalidate={invalidate} clientId={clientId} docType="lander_extra" aiJob={jobs.doc_edit ?? null} />
               </StudioBlock>
             </>
           )}
@@ -1430,7 +1430,7 @@ export default function ClientStudio() {
                 <EngineCard engine={engineByKind("more_content_ig")} job={jobs.more_content_ig ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
               </StudioBlock>
               <StudioBlock title="Reel pipeline" hint="To record puts a reel on the client's portal to-do; their tick moves it to In editing here" frame="border-pink-500/25 bg-pink-500/[0.05]">
-                <DocBoard docs={docsFor("content_ig_extra")} invalidate={invalidate} clientId={clientId} docType="content_ig_extra" recordable />
+                <DocBoard docs={docsFor("content_ig_extra")} invalidate={invalidate} clientId={clientId} docType="content_ig_extra" recordable aiJob={jobs.doc_edit ?? null} />
               </StudioBlock>
             </>
           )}
@@ -1442,7 +1442,7 @@ export default function ClientStudio() {
                 <EngineCard engine={engineByKind("more_content_yt")} job={jobs.more_content_yt ?? null} clientId={clientId} invalidate={invalidate} avatars={avatars} />
               </StudioBlock>
               <StudioBlock title="Video pipeline" hint="To record puts a video on the client's portal to-do; their tick moves it to In editing here" frame="border-red-500/25 bg-red-500/[0.05]">
-                <DocBoard docs={docsFor("content_yt_extra")} invalidate={invalidate} clientId={clientId} docType="content_yt_extra" recordable />
+                <DocBoard docs={docsFor("content_yt_extra")} invalidate={invalidate} clientId={clientId} docType="content_yt_extra" recordable aiJob={jobs.doc_edit ?? null} />
               </StudioBlock>
             </>
           )}
@@ -1475,6 +1475,7 @@ export default function ClientStudio() {
                   invalidate={invalidate}
                   clientId={clientId}
                   docType="emails_extra"
+                  aiJob={jobs.doc_edit ?? null}
                 />
               </StudioBlock>
             </>
@@ -1487,7 +1488,7 @@ export default function ClientStudio() {
                 <EngineCard engine={engineByKind("more_skool")} job={jobs.more_skool ?? null} clientId={clientId} invalidate={invalidate} />
               </StudioBlock>
               <StudioBlock title="Post pipeline" hint="One card per post: approve, then mark posted once live in the community" frame="border-amber-500/25 bg-amber-500/[0.05]">
-                <DocBoard docs={docsFor("skool_extra")} invalidate={invalidate} clientId={clientId} docType="skool_extra" />
+                <DocBoard docs={docsFor("skool_extra")} invalidate={invalidate} clientId={clientId} docType="skool_extra" aiJob={jobs.doc_edit ?? null} />
               </StudioBlock>
               <StudioBlock title="Community setup" hint="What the Skool actually is: the free and paid community structure, names, and pinned content" frame="border-amber-500/25 bg-amber-500/[0.05]">
                 <div className="space-y-1.5">

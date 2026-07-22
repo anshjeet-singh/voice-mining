@@ -41,6 +41,7 @@ import {
   getRecentActivity,
   getReportById,
   getReportBySearchId,
+  repointLinkedReports,
   getReportsByUser,
   getSharedReportByToken,
   addRecordingItem,
@@ -1268,6 +1269,40 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    /**
+     * TRUE refresh: re-run the whole mining pipeline for this report's search
+     * (fresh scrape -> fresh analysis -> a NEW report row carrying this
+     * report's name). Async: the client polls searches.getStatus for live
+     * progress, then navigates to the new report when the search completes.
+     */
+    refresh: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const report = await getReportById(input.id);
+        if (!report || report.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+        const search = await getMiningSearchById(report.searchId);
+        if (!search) throw new TRPCError({ code: "NOT_FOUND", message: "The original search behind this report no longer exists" });
+        if (search.status === "mining" || search.status === "analyzing") {
+          throw new TRPCError({ code: "CONFLICT", message: "A refresh is already running for this report" });
+        }
+
+        processAnalysis(
+          search.id,
+          search.keyword,
+          search.platforms as string[],
+          search.brandVoice ?? undefined,
+          ctx.user.id,
+          (search.competitorUrls as string[] | null) ?? undefined,
+          search.competitorNotes ?? undefined,
+          report.name
+        ).catch((err) => console.error("[Report refresh] Failed:", err));
+
+        await logActivity(ctx.user.id, "search_created", `Refresh: ${report.name}`);
+        return { searchId: search.id };
+      }),
+
     regenerate: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
@@ -2208,7 +2243,7 @@ async function generateAllSections(
 
 // ─── Background processing ────────────────────────────────────────────────────
 
-async function processAnalysis(searchId: number, keyword: string, platforms: string[], brandVoice?: string, userId?: number, competitorUrls?: string[], competitorNotes?: string) {
+async function processAnalysis(searchId: number, keyword: string, platforms: string[], brandVoice?: string, userId?: number, competitorUrls?: string[], competitorNotes?: string, reportName?: string) {
   try {
     await updateMiningSearchStatus(searchId, "mining", 10, "Warming up the scrapers...");
 
@@ -2228,8 +2263,9 @@ async function processAnalysis(searchId: number, keyword: string, platforms: str
 
     await updateMiningSearchStatus(searchId, "analyzing", 60, "Writing your report: hooks, ads, Skool posts, scripts, emails, competitor intel...");
 
-    // Auto-generate the full report immediately — no manual button needed
-    const reportName = `${keyword} Market Intelligence Report`;
+    // Auto-generate the full report immediately — no manual button needed.
+    // A refresh passes the old report's name so the rebuilt report keeps it.
+    const finalReportName = reportName ?? `${keyword} Market Intelligence Report`;
     const sections = await generateAllSections(keyword, analysisOutput, brandVoice, competitorUrls, competitorNotes);
 
     await updateMiningSearchStatus(searchId, "analyzing", 90, "Finalising your report...");
@@ -2237,11 +2273,15 @@ async function processAnalysis(searchId: number, keyword: string, platforms: str
     await createReport({
       searchId,
       userId: userId ?? 0,
-      name: reportName,
+      name: finalReportName,
       ...sections,
     });
 
-    if (userId) await logActivity(userId, "report_generated", reportName);
+    if (userId) await logActivity(userId, "report_generated", finalReportName);
+
+    // Clients pinned to an older report of this search follow the rebuild.
+    const newReport = await getReportBySearchId(searchId);
+    if (newReport) await repointLinkedReports(searchId, newReport.id);
 
     await updateMiningSearchStatus(searchId, "complete", 100, "Report ready!");
   } catch (err) {

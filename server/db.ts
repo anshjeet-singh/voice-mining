@@ -183,6 +183,16 @@ export async function createReport(data: InsertReport) {
   return result[0];
 }
 
+/** After a search refresh builds a new report, repoint any client linked to one of the search's older reports so engines consume the fresh data. */
+export async function repointLinkedReports(searchId: number, newReportId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const rows = await db.select({ id: reports.id }).from(reports).where(eq(reports.searchId, searchId));
+  const oldIds = rows.map((r) => r.id).filter((id) => id !== newReportId);
+  if (!oldIds.length) return;
+  await db.update(clients).set({ linkedReportId: newReportId }).where(inArray(clients.linkedReportId, oldIds));
+}
+
 export async function getReportById(id: number) {
   const db = await getDb();
   if (!db) return undefined;

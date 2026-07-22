@@ -79,6 +79,8 @@ export type StageJob = {
   status: "queued" | "running" | "review" | "approved" | "failed";
   error?: string | null;
   progress?: string | null;
+  /** doc_create/doc_edit jobs carry the target doc so boards can badge the exact card. */
+  payload?: { docId?: number; docType?: string; title?: string } | null;
 } | null;
 
 export interface RefImageMeta {
@@ -1227,6 +1229,11 @@ export function EmailEngineCard({
 
   return (
     <div>
+      {job?.status === "failed" && (
+        <p className="mb-2.5 text-[11px] text-destructive">
+          Last run failed: {(job.error ?? "the worker returned no document").slice(0, 200)} — adjust the request and generate again.
+        </p>
+      )}
       <div className="mb-2.5">
         <p className="text-[11px] text-muted-foreground mb-1">Type</p>
         <div className="flex flex-wrap gap-1.5">
@@ -2030,6 +2037,7 @@ export function DocBoard({
   docType,
   accent = "primary",
   recordable = false,
+  aiJob = null,
 }: {
   docs: ClientDoc[];
   invalidate: () => void;
@@ -2037,6 +2045,8 @@ export function DocBoard({
   clientId?: number;
   docType?: string;
   accent?: string;
+  /** Latest doc_edit job for this client: badges the card being rewritten with live status. */
+  aiJob?: StageJob;
   /** Recordable scripts run Draft → To record → In editing → Posted; the
    *  "To record" column IS the client's to-do list, and their tick moves the
    *  card to In editing on this board automatically. */
@@ -2174,6 +2184,19 @@ export function DocBoard({
                           <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                         )}
                       </button>
+                      {aiJob?.payload?.docId === doc.id && (aiJob.status === "queued" || aiJob.status === "running") && (
+                        <div className="flex items-center gap-1.5 px-2.5 pb-1.5">
+                          <Loader2 className="w-3 h-3 text-primary animate-spin flex-shrink-0" />
+                          <p className="text-[10px] text-primary">
+                            {aiJob.status === "queued" ? "AI rewrite queued — waiting for your Mac worker" : aiJob.progress || "AI is rewriting this doc..."}
+                          </p>
+                        </div>
+                      )}
+                      {aiJob?.payload?.docId === doc.id && aiJob.status === "failed" && (
+                        <p className="px-2.5 pb-1.5 text-[10px] text-destructive">
+                          AI rewrite failed: {(aiJob.error ?? "the worker returned no document").slice(0, 160)} — hit AI to try again.
+                        </p>
+                      )}
                       <div className="flex items-center gap-1 px-2.5 pb-2">
                         {colIdx > 0 && (
                           <button

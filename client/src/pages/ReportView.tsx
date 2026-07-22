@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
@@ -116,12 +116,45 @@ export default function ReportView() {
   const regenerateMutation = trpc.reports.regenerate.useMutation({
     onSuccess: () => {
       utils.reports.get.invalidate({ id: reportId });
-      toast.success("Report regenerated with latest AI analysis");
+      toast.success("Copy rewritten from the existing scraped data");
     },
     onError: (err) => {
       toast.error(err.message ?? "Failed to regenerate report");
     },
   });
+
+  // TRUE refresh: re-scrape + re-analyze, then hop to the freshly built report.
+  const [refreshingSearchId, setRefreshingSearchId] = useState<number | null>(null);
+  const refreshMutation = trpc.reports.refresh.useMutation({
+    onSuccess: (res) => {
+      setRefreshingSearchId(res.searchId);
+      toast.success("Refresh started: re-scraping the market now");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to start the refresh"),
+  });
+  const { data: refreshStatus } = trpc.mining.getStatus.useQuery(
+    { id: refreshingSearchId ?? 0 },
+    { enabled: refreshingSearchId != null, refetchInterval: 4000 }
+  );
+  useEffect(() => {
+    if (refreshingSearchId == null || !refreshStatus) return;
+    if (refreshStatus.status === "complete") {
+      const searchId = refreshingSearchId;
+      setRefreshingSearchId(null);
+      utils.reports.getBySearch.fetch({ searchId }).then((fresh) => {
+        toast.success("Report rebuilt on fresh data");
+        if (fresh && fresh.id !== reportId) {
+          navigate(`/report/${fresh.id}${window.location.search}`);
+        } else {
+          utils.reports.get.invalidate({ id: reportId });
+        }
+      });
+    } else if (refreshStatus.status === "failed") {
+      setRefreshingSearchId(null);
+      toast.error(refreshStatus.progressMessage || "Refresh failed. Try again in a minute.");
+    }
+  }, [refreshStatus, refreshingSearchId, reportId, navigate, utils]);
+  const refreshing = refreshMutation.isPending || refreshingSearchId != null;
 
   const exportReport = () => {
     if (!report) return;
@@ -296,6 +329,7 @@ export default function ReportView() {
             </div>
             <h1 className="text-2xl font-semibold text-foreground tracking-tight">{report.name}</h1>
             <p className="text-sm text-muted-foreground mt-1">
+              Data collected{" "}
               {new Date(report.createdAt).toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "long",
@@ -307,17 +341,32 @@ export default function ReportView() {
             <ShareButton reportId={reportId} />
             <Button
               size="sm"
-              variant="outline"
-              onClick={() => regenerateMutation.mutate({ id: reportId })}
-              disabled={regenerateMutation.isPending}
-              className="border-border/50 text-muted-foreground hover:text-foreground"
+              onClick={() => refreshMutation.mutate({ id: reportId })}
+              disabled={refreshing || regenerateMutation.isPending}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              title="Re-scrapes the market from scratch and rebuilds every section on fresh data (takes a few minutes)"
             >
-              {regenerateMutation.isPending ? (
+              {refreshing ? (
                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
               ) : (
                 <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
               )}
-              {regenerateMutation.isPending ? "Regenerating..." : "Regenerate"}
+              {refreshing ? "Refreshing data..." : "Refresh data"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => regenerateMutation.mutate({ id: reportId })}
+              disabled={regenerateMutation.isPending || refreshing}
+              className="border-border/50 text-muted-foreground hover:text-foreground"
+              title="Re-writes every section from the data already scraped — does NOT collect new data"
+            >
+              {regenerateMutation.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              {regenerateMutation.isPending ? "Rewriting..." : "Rewrite copy"}
             </Button>
             <Button
               size="sm"
@@ -330,6 +379,22 @@ export default function ReportView() {
             </Button>
           </div>
         </div>
+
+        {refreshing && (
+          <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 mb-6">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">
+                  Refreshing with fresh market data{typeof refreshStatus?.progress === "number" ? ` — ${refreshStatus.progress}%` : ""}
+                </p>
+                <p className="text-sm text-foreground/80">
+                  {refreshStatus?.progressMessage || "Re-scraping the market. This page will jump to the rebuilt report when it's ready (a few minutes)."}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Executive Summary */}
         {mi.executiveSummary && (
@@ -351,7 +416,7 @@ export default function ReportView() {
               <RefreshCw className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">Report needs regeneration</p>
-                <p className="text-sm text-foreground/70">This report was generated before the latest AI upgrade. Click <strong>Regenerate</strong> above to get the full report with all tabs populated.</p>
+                <p className="text-sm text-foreground/70">This report was generated before the latest AI upgrade. Click <strong>Rewrite copy</strong> above to populate every tab (or <strong>Refresh data</strong> to also re-scrape the market first).</p>
               </div>
             </div>
           </div>
