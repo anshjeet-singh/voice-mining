@@ -116,8 +116,13 @@ export function AppShell({ children }: AppShellProps) {
                 By continuing, you agree to our Terms of Service and Privacy Policy
               </p>
             </div>
-            <div className="pt-4 border-t border-border/30">
+            <div className="pt-4 border-t border-border/30 space-y-2">
               <p className="text-xs text-muted-foreground/50 text-center">Secure authentication powered by OAuth 2.0</p>
+              <p className="text-xs text-center">
+                <a href="/portal" className="text-muted-foreground hover:text-primary transition-colors">
+                  Are you a client? Sign in to your portal
+                </a>
+              </p>
             </div>
           </div>
         </div>

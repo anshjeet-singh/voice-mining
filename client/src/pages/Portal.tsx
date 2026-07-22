@@ -43,7 +43,6 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
 
 /**
  * The client portal (app.cashflowcoaches.io/portal): a client signs in with
@@ -316,31 +315,31 @@ function AdLibraryTab({ home }: { home: PortalHome }) {
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
         {ads.map((ad, i) => (
-          <button
+          <div
             key={ad.id}
-            onClick={() => setOpenIdx(i)}
-            className="group rounded-xl overflow-hidden border border-border/50 bg-card/30 text-left hover:border-primary/40 transition-colors"
+            className="group rounded-xl overflow-hidden border border-border/50 bg-card/30 hover:border-primary/40 transition-colors"
           >
-            <div className="aspect-[4/5] overflow-hidden">
+            <button onClick={() => setOpenIdx(i)} className="block w-full aspect-[4/5] overflow-hidden" title={ad.filename}>
               <img
                 src={`/api/portal/assets/${ad.id}`}
                 alt={adLabel(ad)}
                 loading="lazy"
                 className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-200"
               />
-            </div>
+            </button>
             <div className="px-3 py-2.5 flex items-center gap-2">
-              <span className="flex-1 text-xs font-medium text-foreground truncate">{adLabel(ad)}</span>
+              <button onClick={() => setOpenIdx(i)} className="flex-1 text-left text-xs font-medium text-foreground truncate">
+                {adLabel(ad)}
+              </button>
               <a
                 href={`/api/portal/assets/${ad.id}?download`}
-                onClick={(e) => e.stopPropagation()}
                 className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                 title="Download PNG"
               >
                 <Download className="w-3.5 h-3.5" />
               </a>
             </div>
-          </button>
+          </div>
         ))}
       </div>
 
@@ -413,6 +412,10 @@ function AdLibraryTab({ home }: { home: PortalHome }) {
 }
 
 function TodoTab({ home }: { home: PortalHome }) {
+  const { data: rec } = trpc.recording.get.useQuery(
+    { token: home.recordingToken ?? "" },
+    { enabled: !!home.recordingToken }
+  );
   if (!home.recordingToken) {
     return (
       <div className="text-center py-20">
@@ -423,10 +426,12 @@ function TodoTab({ home }: { home: PortalHome }) {
   }
   return (
     <div>
-      <p className="text-xs text-muted-foreground mb-4">
-        Each card is one video, scripted word for word. Open it, film it, tick it off, and paste your recording link so
-        your coach can grab the footage.
-      </p>
+      {(rec?.items.length ?? 0) > 0 && (
+        <p className="text-xs text-muted-foreground mb-4">
+          Each card is one video, scripted word for word. Open it, film it, tick it off, and paste your recording link
+          so your coach can grab the footage.
+        </p>
+      )}
       <RecordingChecklist token={home.recordingToken} />
     </div>
   );
@@ -725,14 +730,7 @@ export default function Portal() {
   }
 
   if (!me) {
-    return (
-      <PortalLogin
-        onSignedIn={() => {
-          utils.portal.invalidate();
-          toast.success("Welcome back");
-        }}
-      />
-    );
+    return <PortalLogin onSignedIn={() => utils.portal.invalidate()} />;
   }
 
   return (
