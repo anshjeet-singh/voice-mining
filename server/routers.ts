@@ -681,7 +681,8 @@ export const appRouter = router({
         return { token };
       }),
 
-    /** Put one script doc on the client's recording to-do list. */
+    /** Put one script doc on the client's recording to-do list. Sending it
+     *  IS approval — the card moves to Approved automatically. */
     sendToRecording: protectedProcedure
       .input(z.object({ docId: z.number() }))
       .mutation(async ({ ctx, input }) => {
@@ -689,6 +690,9 @@ export const appRouter = router({
         if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" });
         await requireClient(doc.clientId, ctx.user.id);
         const id = await addRecordingItem(doc.clientId, input.docId);
+        if ((doc.status ?? "draft") === "draft") {
+          await setClientDocumentStatus(input.docId, "approved");
+        }
         return { id };
       }),
 
@@ -1275,8 +1279,34 @@ export const appRouter = router({
             content: i.content,
             recordedAt: i.recordedAt,
             checkedSections: (i.checkedSections as string[] | null) ?? [],
+            sectionLinks: (i.sectionLinks as Record<string, string> | null) ?? {},
+            recordingUrl: i.recordingUrl ?? null,
           })),
         };
+      }),
+
+    /** Client pastes the recording URL (Loom/Wistia/YouTube) for a video. */
+    setLink: publicProcedure
+      .input(
+        z.object({
+          token: z.string().min(6).max(64),
+          itemId: z.number(),
+          section: z.string().min(1).max(300).optional(),
+          url: z.string().max(1000),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const client = await getClientByRecordingToken(input.token);
+        if (!client) throw new TRPCError({ code: "NOT_FOUND" });
+        const item = await getRecordingItemById(input.itemId);
+        if (!item || item.clientId !== client.id) throw new TRPCError({ code: "NOT_FOUND" });
+        const url = input.url.trim();
+        if (url && !/^https?:\/\/\S+$/i.test(url)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Paste a full link starting with https://" });
+        }
+        const { setRecordingLink } = await import("./db");
+        await setRecordingLink(input.itemId, input.section ?? null, url);
+        return { ok: true };
       }),
 
     /** Client ticks one section (one video) inside a multi-part script doc. */

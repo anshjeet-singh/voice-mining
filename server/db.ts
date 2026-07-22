@@ -1008,6 +1008,8 @@ export async function listRecordingItems(clientId: number) {
       docId: clientRecordingItems.docId,
       recordedAt: clientRecordingItems.recordedAt,
       checkedSections: clientRecordingItems.checkedSections,
+      sectionLinks: clientRecordingItems.sectionLinks,
+      recordingUrl: clientRecordingItems.recordingUrl,
       createdAt: clientRecordingItems.createdAt,
       title: clientDocuments.title,
       content: clientDocuments.content,
@@ -1023,6 +1025,21 @@ export async function getRecordingItemById(id: number) {
   if (!db) return null;
   const rows = await db.select().from(clientRecordingItems).where(eq(clientRecordingItems.id, id)).limit(1);
   return rows[0] ?? null;
+}
+
+/** Save a recording URL: per-section when a section is named, else the item's. */
+export async function setRecordingLink(id: number, section: string | null, url: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (!section) {
+    await db.update(clientRecordingItems).set({ recordingUrl: url || null }).where(eq(clientRecordingItems.id, id));
+    return;
+  }
+  const item = await getRecordingItemById(id);
+  const links: Record<string, string> = (item?.sectionLinks as Record<string, string>) ?? {};
+  if (url) links[section] = url;
+  else delete links[section];
+  await db.update(clientRecordingItems).set({ sectionLinks: links }).where(eq(clientRecordingItems.id, id));
 }
 
 /** Toggle one section title in an item's checklist; returns the new list. */

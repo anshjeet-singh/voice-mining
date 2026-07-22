@@ -1047,27 +1047,53 @@ function RecordingQueuePanel({ clientId }: { clientId: number }) {
         </button>
       </div>
       <div className="space-y-1.5">
-        {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-2.5 rounded-lg border border-border/40 bg-background/40 px-3 py-2">
-            {item.recordedAt ? (
-              <span className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                <Check className="w-2.5 h-2.5 text-white" />
-              </span>
-            ) : (
-              <span className="w-4 h-4 rounded-full border border-border flex-shrink-0" />
-            )}
-            <span className={`flex-1 text-xs truncate ${item.recordedAt ? "text-muted-foreground line-through" : "text-foreground"}`}>
-              {item.title}
-            </span>
-            <button
-              disabled={remove.isPending}
-              onClick={() => remove.mutate({ id: item.id })}
-              className="text-[10px] text-muted-foreground hover:text-destructive flex-shrink-0"
-            >
-              Remove
-            </button>
-          </div>
-        ))}
+        {items.map((item) => {
+          const links: Array<[string, string]> = [
+            ...(item.recordingUrl ? ([["Recording", item.recordingUrl]] as Array<[string, string]>) : []),
+            ...Object.entries((item.sectionLinks as Record<string, string> | null) ?? {}),
+          ];
+          return (
+            <div key={item.id} className="rounded-lg border border-border/40 bg-background/40 px-3 py-2">
+              <div className="flex items-center gap-2.5">
+                {item.recordedAt ? (
+                  <span className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-2.5 h-2.5 text-white" />
+                  </span>
+                ) : (
+                  <span className="w-4 h-4 rounded-full border border-border flex-shrink-0" />
+                )}
+                <span className={`flex-1 text-xs truncate ${item.recordedAt ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                  {item.title}
+                </span>
+                {links.length > 0 && (
+                  <span className="text-[10px] font-semibold text-emerald-400 flex-shrink-0">{links.length} link{links.length > 1 ? "s" : ""}</span>
+                )}
+                <button
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutate({ id: item.id })}
+                  className="text-[10px] text-muted-foreground hover:text-destructive flex-shrink-0"
+                >
+                  Remove
+                </button>
+              </div>
+              {links.length > 0 && (
+                <div className="mt-1.5 pl-6 space-y-0.5">
+                  {links.map(([label, url]) => (
+                    <div key={label} className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] text-muted-foreground truncate max-w-56" title={label}>
+                        {label}
+                      </span>
+                      <a href={url} target="_blank" rel="noreferrer" className="text-[10px] text-primary underline truncate flex-1" title={url}>
+                        {url.replace(/^https?:\/\//, "")}
+                      </a>
+                      <CopyButton text={url} label="Copy" className="flex-shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

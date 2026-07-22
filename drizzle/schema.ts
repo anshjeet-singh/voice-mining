@@ -170,6 +170,10 @@ export const clientRecordingItems = mysqlTable("client_recording_items", {
   recordedAt: timestamp("recordedAt"),
   /** Section titles the client has ticked off inside a multi-part doc. */
   checkedSections: json("checkedSections").$type<string[]>(),
+  /** Per-section recording URLs (Loom/Wistia/YouTube): section title -> url. */
+  sectionLinks: json("sectionLinks").$type<Record<string, string>>(),
+  /** The recording URL for a single-video item. */
+  recordingUrl: varchar("recordingUrl", { length: 1000 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
