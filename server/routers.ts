@@ -798,6 +798,25 @@ export const appRouter = router({
         return { id };
       }),
 
+    /** Operator pastes a headline + script straight onto the client's to-do —
+     *  becomes a Script pipeline card in the Recording stage like any other. */
+    addManualRecordingItem: protectedProcedure
+      .input(z.object({ clientId: z.number(), title: z.string().trim().min(1).max(300), content: z.string().trim().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        await requireClient(input.clientId, ctx.user.id);
+        const docId = await createClientDocument({
+          clientId: input.clientId,
+          kind: "deliverable",
+          docType: "ad_scripts_extra",
+          title: input.title,
+          content: input.content,
+          source: "manual to-do",
+          status: "recording",
+        });
+        const id = await addRecordingItem(input.clientId, docId);
+        return { id, docId };
+      }),
+
     recordingQueue: protectedProcedure
       .input(z.object({ clientId: z.number() }))
       .query(async ({ ctx, input }) => {

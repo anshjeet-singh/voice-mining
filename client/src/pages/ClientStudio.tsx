@@ -818,7 +818,23 @@ function PortalAccessPanel({ clientId }: { clientId: number }) {
  * link the client opens. Replaces the copy-into-Notion handoff entirely.
  */
 function RecordingQueuePanel({ clientId }: { clientId: number }) {
+  const utils = trpc.useUtils();
   const { data: items, refetch } = trpc.clients.recordingQueue.useQuery({ clientId });
+  const [adding, setAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newScript, setNewScript] = useState("");
+  const addItem = trpc.clients.addManualRecordingItem.useMutation({
+    onSuccess: () => {
+      toast.success("Added to the client's to-do list");
+      setNewTitle("");
+      setNewScript("");
+      setAdding(false);
+      refetch();
+      // The new item is also a Script pipeline card in Recording — refresh the boards.
+      utils.clients.get.invalidate({ id: clientId });
+    },
+    onError: (err) => toast.error(err.message),
+  });
   const getLink = trpc.clients.getRecordingLink.useMutation({
     onSuccess: ({ token }) => {
       const url = `${window.location.origin}/record/${token}`;
@@ -832,8 +848,14 @@ function RecordingQueuePanel({ clientId }: { clientId: number }) {
     onError: (err) => toast.error(err.message),
   });
 
-  if (!items?.length) return null;
-  const done = items.filter((i) => i.recordedAt).length;
+  const done = (items ?? []).filter((i) => i.recordedAt).length;
+  const submitNewItem = () => {
+    if (!newTitle.trim() || !newScript.trim()) {
+      toast.error("Give it a headline and the script");
+      return;
+    }
+    addItem.mutate({ clientId, title: newTitle.trim(), content: newScript.trim() });
+  };
 
   return (
     <div className="rounded-xl border border-border/50 bg-card/30 p-5">
@@ -841,20 +863,64 @@ function RecordingQueuePanel({ clientId }: { clientId: number }) {
         <div>
           <h3 className="text-sm font-semibold text-foreground">Recording list</h3>
           <p className="text-xs text-muted-foreground">
-            Scripts the client films. They tick each one off on their link. {done}/{items.length} recorded.
+            Scripts the client films. They tick each one off on their link.{" "}
+            {items?.length ? `${done}/${items.length} recorded.` : "Nothing on it yet."}
           </p>
         </div>
-        <button
-          disabled={getLink.isPending}
-          onClick={() => getLink.mutate({ clientId })}
-          className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
-        >
-          {getLink.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
-          Copy client link
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => setAdding((v) => !v)}
+            className="inline-flex items-center gap-1 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-accent transition-colors"
+          >
+            <Plus className="w-3 h-3" />
+            Add item
+          </button>
+          <button
+            disabled={getLink.isPending}
+            onClick={() => getLink.mutate({ clientId })}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
+          >
+            {getLink.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+            Copy client link
+          </button>
+        </div>
       </div>
+      {adding && (
+        <div className="mb-3 rounded-lg border border-border/40 bg-background/40 p-3 space-y-2">
+          <input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Headline — e.g. Free Skool community VSL"
+            maxLength={300}
+            className="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <textarea
+            value={newScript}
+            onChange={(e) => setNewScript(e.target.value)}
+            placeholder="Paste the script for them to record…"
+            rows={6}
+            className="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+          />
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => setAdding(false)}
+              className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={addItem.isPending}
+              onClick={submitNewItem}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary transition-colors disabled:opacity-50"
+            >
+              {addItem.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+              Add to to-do list
+            </button>
+          </div>
+        </div>
+      )}
       <div className="space-y-1.5">
-        {items.map((item) => {
+        {(items ?? []).map((item) => {
           const links: Array<[string, string]> = [
             ...(item.recordingUrl ? ([["Recording", item.recordingUrl]] as Array<[string, string]>) : []),
             ...Object.entries((item.sectionLinks as Record<string, string> | null) ?? {}),
